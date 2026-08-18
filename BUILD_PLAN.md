@@ -52,7 +52,7 @@ Replace the default Stack-chan chatbot (xiaozhi cloud brain) with a real OpenCla
 
 ### 1. esp-openclaw-node (the core)
 - **Take verbatim:** esp_openclaw_node core, esp_openclaw_talk, provisioning, room-node product
-- **Board port template:** Waveshare ESP32-S3 example — STRUCTURAL template only (~40-50% reusable as code, 100% as port contract)
+- **Board port reference:** esp-openclaw-node ships with an example board port for a Waveshare ESP32-S3 dev board. This is NOT our hardware — our hardware is M5Stack CoreS3. The Waveshare example is only useful as a structural reference (how to fill in the board port contract struct). The actual CoreS3 hardware is completely different (AW88298 vs ES8311 codec, ILI9342 vs SH8601 display, TDM vs STD I2S). ~40-50% code reuse, 100% port contract reuse.
 - **Protocol:** WebSocket JSON-RPC v3-4 to Gateway on port **18789** (NOT 19001), Ed25519 pairing
 - **Key files:** `esp_openclaw_node.h`, `esp_openclaw_node_protocol.c`, `esp_openclaw_room_node.h`, `room_media.c`, `esp_openclaw_talk.c`
 
@@ -81,11 +81,11 @@ Replace the default Stack-chan chatbot (xiaozhi cloud brain) with a real OpenCla
 
 ### Phase 1: Core Bring-Up + Voice Verification (2-3 days)
 - [ ] Set up ESP-IDF v5.5.4 build environment on Clawdio-Mini
-- [ ] Use Waveshare ESP32-S3 board port as STRUCTURAL template (not code template)
-- [ ] Write CoreS3 board port (real engineering — ~40-50% code reuse from Waveshare):
-  - [ ] AW88298 speaker codec (NOT ES8311 like Waveshare — different chip)
-  - [ ] ES7210 mic with TDM I2S (NOT STD like Waveshare — needed for AEC reference)
-  - [ ] ILI9342 SPI display init (NOT SH8601 QSPI like Waveshare — different driver)
+- [ ] Study the Waveshare ESP32-S3 example in esp-openclaw-node (NOT our hardware — just a reference for how to structure a board port)
+- [ ] Write CoreS3 board port from scratch (M5Stack Stack-chan hardware):
+  - [ ] AW88298 speaker codec (CoreS3 chip — Waveshare uses ES8311, different)
+  - [ ] ES7210 mic with TDM I2S (CoreS3 needs TDM for AEC reference — Waveshare uses STD)
+  - [ ] ILI9342 SPI display init (CoreS3 display — Waveshare uses SH8601 QSPI AMOLED, different)
   - [ ] AXP2101 PMIC config
   - [ ] FT6336 touch
 - [ ] Get esp-openclaw-node connecting to Gateway on port 18789
