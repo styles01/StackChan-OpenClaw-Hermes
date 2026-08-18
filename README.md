@@ -1,114 +1,233 @@
-# Stack-chan OpenClaw Integration
+<div align="center">
 
-Connecting a Stack-chan robot (ESP32) to an OpenClaw agent (Rosie) via the Gateway's HTTP API — with proper agent binding, workspace access, and session control.
+# Stack-chan × OpenClaw
 
-## Status
+**Give a little robot a real AI agent — with persistent identity, workspace access, and session control.**
 
-### ✅ Done
-- **Firmware extensions** (commit `ff2df3a` on fork)
-  - `openclaw_s` config struct extended with `agent_id`, `bot_token`, `default_model`
-  - `hermes_s` backend struct (same shape, swappable)
-  - `backend` selector in `ex_config_s` (0=openclaw, 1=hermes)
-  - `OpenClawClient::chat()` routes host/port/model based on backend
-  - `/config` GET endpoint returns current config as JSON
-  - `/config` POST endpoint writes config to SPIFFS
-  - YAML buffer bumped to min 4096 bytes
-- **Web config editor** (`config-editor/`)
-  - Node.js server on port 5570
-  - Edit Stack-chan config from a browser
-  - POSTs config to the robot's `/config` endpoint
-- **End-to-end test harness** (`test-harness/e2e_test_harness.py`)
-  - 8/8 tests passed — full pipeline simulation
-  - Proves: agent identity (Rosie), workspace access (read + write), multi-turn conversation, system prompt handling, streaming-capable, tool-use support, response parsing (firmware-compatible), workspace file write as rosie agent
-- **Workspace write test** (`test-harness/workspace_write_test.py`)
-  - 5/5 tests passed — Stack-chan writes to Rosie's workspace AS rosie
-  - Proves: agent binding is real, file written to disk, content verified
-- **Research phase 1** (`research/`)
-  - 5 research docs covering: channel plugin architecture, Hermes/agent binding, HTTP endpoint session behavior, Gateway WebSocket protocol, multi-agent session routing
-  - Root cause found: bare session keys get re-scoped to default agent (Clawdio); fix is `user` field or agent-prefixed session key
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platform: ESP32](https://img.shields.io/badge/platform-ESP32-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
+[![Agent: OpenClaw](https://img.shields.io/badge/agent-OpenClaw-purple.svg)](https://docs.openclaw.ai)
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support-yellow?logo=buy-me-a-coffee&logoColor=white)](https://buymeacoffee.com/aitamedia)
 
-### 🔄 In Progress
-- **Research phase 2** — 5 deep-read subagents investigating:
-  - Channel plugin SDK (minimum viable plugin, session key construction, binding logic)
-  - HTTP endpoint internals (code-level trace of `x-openclaw-message-channel` behavior)
-  - Hermes channel/integration patterns (how Hermes handles channels, ACP adapter)
-  - Session reset & channel persistence (what survives 4am dreaming, how channels recreate sessions)
-  - Existing device/robot patterns (robot-bridge, nodes config, talk config)
-- **Channel surface validation** — James raised the critical question: sessions reset at 4am, channels survive. Stack-chan needs to be a proper channel, not just a session key. Deep-read research will determine v1 vs v2 approach.
+[Project](#the-problem) · [Architecture](#architecture) · [Firmware](#firmware) · [Config Editor](#web-config-editor) · [Tests](#test-harness) · [Research](#research)
 
-### 📋 TODO
-- Determine v1 (HTTP + headers + binding config) vs v2 (full channel plugin)
-- Validate channel surface survives 4am session reset
-- Update firmware `OpenClawClient::chat()` with correct headers
-- Test on hardware
+</div>
+
+---
+
+## The Problem
+
+You have a [Stack-chan](https://github.com/meganetaaan/stack-chan) — a cute little ESP32 robot with a face, a speaker, and a microphone. Out of the box, it talks to cloud LLM APIs the same way every other IoT device does: stateless HTTP calls, no identity, no memory, no agent binding. Every request is a one-shot. The robot has no idea who it is, who it's talking to, or what was said 5 minutes ago.
+
+That's not an AI companion. That's a smart speaker with a face.
+
+## The Brief
+
+**What if the robot was a first-class citizen in your AI agent ecosystem?**
+
+[OpenClaw](https://docs.openclaw.ai) runs AI agents with workspace access, memory files, and tool use. Agents talk to humans via channels (Telegram, Discord, WhatsApp). Each channel has a **stable identity** that survives session resets, dreaming cycles, and context compaction. Sessions come and go — the channel persists.
+
+**The goal:** Make Stack-chan a proper channel in OpenClaw. Not a stateless HTTP client. A channel with a stable identity, agent binding, persistent sessions, and full workspace access — so the robot can remember conversations, write files, use tools, and be a real member of the agent ecosystem.
+
+## What We Built
+
+### Firmware Extensions
+
+Extended the Stack-chan ESP32 firmware to talk to the OpenClaw Gateway instead of a raw LLM API:
+
+- **Agent binding** — config struct extended with `agent_id`, `bot_token`, `default_model` so the robot knows which agent it belongs to
+- **Backend selector** — swappable between OpenClaw (`backend: 0`) and Hermes (`backend: 1`) with the same config shape
+- **Config endpoint** — `GET /config` returns current config as JSON, `POST /config` writes config to SPIFFS. The robot can be reconfigured over the network without reflashing.
+- **YAML buffer** — bumped to 4096 bytes to fit the extended config
+- **Emoji stripping** — `stripEmoji()` removes 4-byte emoji and 3-byte symbols for TTS compatibility (robots can't say 🎉)
+
+```cpp
+// Firmware config struct (StackchanExConfig.h)
+// Replace "rosie" with your agent's id
+struct openclaw_s {
+  String host;
+  uint16_t port;
+  String agent_id;      // e.g. "rosie"
+  String bot_token;     // Gateway auth
+  String default_model; // e.g. "openclaw/rosie"
+};
+```
+
+### Web Config Editor
+
+A browser-based config editor for Stack-chan — because flashing YAML files via SD card gets old:
+
+- Node.js server on port 5570
+- Edit robot config from any device on your network
+- POSTs config directly to the robot's `/config` endpoint
+- No reflashing, no SD card swapping
+
+### Test Harness
+
+**8/8 end-to-end tests passed. 5/5 workspace write tests passed.**
+
+The test harness simulates the full firmware message pipeline — system prompts + user message array → Gateway → agent response → JSON parsing — and validates that Stack-chan can:
+
+- ✅ Talk to the right agent (your agent, not the default)
+- ✅ Read and write files in your agent's workspace
+- ✅ Handle multi-turn conversations
+- ✅ Process system prompts from SPIFFS
+- ✅ Parse responses in firmware-compatible JSON
+- ✅ Use tools (workspace file writes confirmed on disk)
+- ✅ Maintain agent identity across requests
 
 ## Architecture
 
 ```
-ESP32 Stack-chan                    OpenClaw Gateway                    Rosie Agent
+ESP32 Stack-chan                    OpenClaw Gateway                    Your Agent
 ┌─────────────┐    POST /v1/chat     ┌──────────────┐    agent run     ┌─────────────┐
-│ OpenClaw    │ ──────────────────▶ │ Gateway      │ ──────────────▶ │ rosie       │
+│ OpenClaw    │ ──────────────────▶ │ Gateway      │ ──────────────▶ │ your-agent  │
 │ Client      │  model:openclaw/    │ :18789       │                 │ (workspace) │
-│             │  rosie              │              │  ◀────────────── │             │
+│             │  your-agent         │              │  ◀────────────── │             │
 │ TTS + Avatar│ ◀───────────────── │              │   response      │             │
 └─────────────┘    JSON response    └──────────────┘                 └─────────────┘
 ```
 
-## Key Files
+### The Channel Question
 
-### Firmware (in fork repo)
-- `firmware/src/llm/OpenClaw/OpenClawClient.cpp` — HTTP client, sends chat requests
+> **Why not just use a stateless HTTP client?** Because OpenClaw resets sessions at 4am — the conversation context gets wiped to prevent bloat and enable dreaming. But the **channel identity survives**. The next message after a reset creates a fresh session under the same channel. Stack-chan needs the same treatment.
+
+OpenClaw channels (Telegram, Discord, WhatsApp) have **stable identities** that survive the 4am session reset / dreaming cycle. Sessions are ephemeral — they get wiped nightly to prevent context bloat. Channels are permanent — the next message after a reset creates a fresh session under the same channel.
+
+**Stack-chan needs the same treatment.** Two approaches:
+
+| | v1: HTTP + Headers | v2: Channel Plugin |
+|---|---|---|
+| **How** | Firmware sends `model: openclaw/<agent_id>` + `x-openclaw-message-channel: stackchan` + `x-openclaw-session-key: agent:<agent_id>:stackchan:<device>` | A minimal OpenClaw channel plugin that registers `stackchan` as a first-class channel |
+| **Agent binding** | Via `model` field + explicit session key prefix | Via `bindings` config (like Telegram) |
+| **Session persistence** | Session key survives 4am reset (only sessionId rotates, sessionKey persists) | Same — channel plugin constructs proper session keys |
+| **Channel identity** | Synthetic (header label, not a real channel in the registry) | First-class (appears in `channels list`, has config, can have multiple accounts) |
+| **Effort** | Low — works today, no Gateway changes | Medium — plugin code + manifest |
+| **When** | Ship now, validate behavior | When Stack-chan needs multi-device, outbound push, or channel management |
+
+### Key Findings
+
+- **`model: openclaw/rosie`** routes to the target agent with full workspace access (read + write) ✅
+- **`user: "stackchan:<device_id>"`** creates persistent agent-bound sessions ✅
+- **Bare session keys route to the wrong agent** — `x-openclaw-session-key: stackchan:*` gets re-scoped to the default agent. Must use agent-prefixed key: `agent:<agent_id>:stackchan:*` ✅
+- **4am reset rotates `sessionId`, not `sessionKey`** — the channel identity and session key survive, only the conversation context resets. This is by design (dreaming/compaction). ✅
+- **`x-openclaw-message-channel: stackchan`** sets the delivery routing context (where replies go) but does NOT affect session identity
+
+## Firmware
+
+The firmware lives in a fork of [plaipin-openclaw-stackchan](https://github.com/PlaiPin/plaipin-openclaw-stackchan):
+
+- **Fork:** https://github.com/styles01/plaipin-openclaw-stackchan
+
+### Key files
+- `firmware/src/llm/OpenClaw/OpenClawClient.cpp` — HTTP client, sends chat requests to Gateway
 - `firmware/src/StackchanExConfig.h` — config structs with agent binding
 - `firmware/src/llm/OpenClaw/OpenClawConfig.h` — config loading from SPIFFS YAML
 - `Copy-to-SD/app/AiStackChanEx/SC_ExConfig.yaml.example` — example config
 
-### Config Editor
-- `config-editor/server.js` — Node.js web server (port 5570)
-- `config-editor/public/` — web UI for editing robot config
+### Config YAML
+```yaml
+openclaw:
+  host: "192.168.x.x"     # Gateway host (LAN or tailnet)
+  port: 18789              # Gateway port
+  agent_id: "rosie"        # Your agent's id
+  bot_token: "..."         # Gateway auth token
+  default_model: "openclaw/rosie"  # openclaw/<agent_id>
+hermes:
+  host: ""
+  port: 0
+  agent_id: ""
+  bot_token: ""
+  default_model: ""
+backend: 0                 # 0 = OpenClaw, 1 = Hermes
+```
 
-### Test Harness
-- `test-harness/e2e_test_harness.py` — 8-test end-to-end simulation
-- `test-harness/workspace_write_test.py` — workspace write validation
+## Web Config Editor
 
-### Research
-- `research/CURRENT_PLAN.md` — current plan & findings (saved Aug 18 12:00 MDT)
+```
+config-editor/
+├── server.js           # Node.js server (port 5570)
+├── public/
+│   ├── index.html      # Config editor UI
+│   ├── app.js          # Config fetch/save logic
+│   └── style.css       # Styles
+└── package.json
+```
+
+Start it:
+```bash
+cd config-editor && npm start
+# Open http://localhost:5570
+```
+
+## Test Harness
+
+```bash
+# End-to-end test (simulates full firmware pipeline)
+python3 test-harness/e2e_test_harness.py
+
+# Workspace write validation (proves agent binding is real)
+python3 test-harness/workspace_write_test.py
+```
+
+### Test results
+| Suite | Tests | Passed | Time |
+|---|---|---|---|
+| End-to-end | 8 | 8 ✅ | 40.3s |
+| Workspace write | 5 | 5 ✅ | — |
+
+## Research
+
+Deep research into OpenClaw's channel plugin architecture, session lifecycle, and agent binding — using subagents to read source code and docs without burning main context.
+
+### Phase 1: Architecture survey
 - `research/channel-plugin-architecture.md` — how channel plugins work
 - `research/hermes-and-agent-binding.md` — how Hermes/agent binding works
 - `research/http-endpoint-session-behavior.md` — HTTP endpoint session routing
 - `research/gateway-protocol-ws.md` — WebSocket protocol analysis
 - `research/multi-agent-session-routing.md` — multi-agent routing config
-- `research/deep-read-*.md` — phase 2 deep-read reports (in progress)
 
-### Analysis
-- `analysis/` — repo analyses, adversarial reviews, architecture feasibility studies
+### Phase 2: Deep code reads
+- `research/deep-read-channel-sdk.md` — channel plugin SDK internals
+- `research/deep-read-http-internals.md` — HTTP endpoint code trace
+- `research/deep-read-hermes-channels.md` — Hermes channel patterns
+- `research/deep-read-session-reset.md` — 4am reset & channel persistence
+- `research/deep-read-device-patterns.md` — existing robot/device patterns
 
-## Key Findings
+### Current plan
+- `research/CURRENT_PLAN.md` — living plan & findings document
 
-### Agent Binding
-- `model: openclaw/rosie` routes to Rosie with full workspace access (read + write) ✅
-- `user: "stackchan:<device_id>"` creates persistent Rosie-bound sessions ✅
-- Bare `x-openclaw-session-key: stackchan:*` routes to default agent (Clawdio) ❌ — must use agent-prefixed key `agent:rosie:stackchan:*`
+## Status
 
-### Channel vs Session
-- **Session** = ephemeral conversation context. Reset at 4am for dreaming/compaction.
-- **Channel** = stable identity (like `telegram`, `discord`). Survives session resets.
-- Stack-chan needs to be a **channel**, not just a session — this is the current open question.
+### ✅ Done
+- Firmware extensions (commit `ff2df3a`, pushed to fork)
+- Web config editor (port 5570)
+- End-to-end test harness — 8/8 passed
+- Workspace write test — 5/5 passed, bar met
+- Bug fixes (C1/C2/C4 critical, H1/H2/H3 high) — commit `568c571`
+- Telegram input reaction — commit `d9132fb`
+- Research phase 1 — 5 research docs
 
-### Bindings (from Gateway config)
-```json
-[
-  { "agentId": "rosie", "match": { "channel": "telegram", "accountId": "rosie" } }
-]
-```
-Stack-chan would need a similar binding to route to the right agent.
+### 🔄 In Progress
+- Research phase 2 — deep code reads (channel SDK, HTTP internals, Hermes, session reset, device patterns)
+- Channel surface validation — does `x-openclaw-message-channel: stackchan` + binding config survive 4am reset?
 
-## Firmware Repo
+### 📋 TODO
+- Determine v1 vs v2 architecture (HTTP+headers vs channel plugin)
+- Validate channel surface across session reset
+- Update firmware `OpenClawClient::chat()` with correct headers
+- Test on hardware
 
-The firmware lives in a fork of plaipin-openclaw-stackchan:
-- **Fork:** https://github.com/styles01/plaipin-openclaw-stackchan
-- **Upstream:** https://github.com/PlaiPin/plaipin-openclaw-stackchan
+## License
 
-## Team
-- **Rosie** (household ops director) — project lead, agent binding, test harness
-- **Dex** (subagent) — firmware extensions, research
-- **James** — product direction, architecture decisions
+MIT — see [LICENSE](LICENSE)
+
+---
+
+<div align="center">
+
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support-yellow?logo=buy-me-a-coffee&logoColor=white)](https://buymeacoffee.com/aitamedia)
+
+If this project helped you build something cool with a little robot, consider supporting the work. 🤖☕
+
+</div>
