@@ -35,3 +35,6 @@ dependencies.lock
 *.wn9
 *.wav2vec
 *.model
+# Reference repos (cloned, not our code)
+firmware/
+repos/
