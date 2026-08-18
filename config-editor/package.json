@@ -1,0 +1,12 @@
+{
+  "name": "stackchan-config-editor",
+  "version": "1.0.0",
+  "description": "Web-based config editor for Stack-chan OpenClaw firmware",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}

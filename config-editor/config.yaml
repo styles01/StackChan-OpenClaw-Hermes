@@ -1,0 +1,32 @@
+backend: 0
+openclaw:
+  host: "192.168.2.173"
+  port: 18789
+  model: "openclaw/rosie"
+  agent_id: "rosie"
+  bot_token: ""
+  default_model: "openclaw/rosie"
+hermes:
+  host: ""
+  port: 0
+  model: ""
+  agent_id: ""
+  bot_token: ""
+  default_model: ""
+llm:
+  type: 4
+  model: ""
+  enableMemory: false
+tts:
+  type: 0
+  model: ""
+  voice: "3"
+stt:
+  type: 1
+  model: ""
+wakeword:
+  type: 0
+  keyword: ""
+moduleLLM:
+  rxPin: 13
+  txPin: 14
