@@ -1,5 +1,7 @@
-# Rosie Node — CoreS3 (M5Stack Stack-chan) sdkconfig defaults
+# StackChan-OpenClaw-Hermes — CoreS3 (M5Stack Stack-chan) sdkconfig defaults
 # Based on Waveshare room-node defaults + CoreS3 hardware config
+# Dual-target: OpenClaw Gateway OR Hermes Agent
+# Dual-target: OpenClaw Gateway OR Hermes Agent
 
 # Target
 CONFIG_IDF_TARGET="esp32s3"

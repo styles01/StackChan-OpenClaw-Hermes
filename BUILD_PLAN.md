@@ -1,7 +1,7 @@
-# Stack-chan → Rosie Node Build Plan
+# StackChan-OpenClaw-Hermes — Build Plan
 
 ## Goal
-Replace the default Stack-chan chatbot (xiaozhi cloud brain) with a real OpenClaw node that makes the robot a physical extension of Rosie.
+Replace the default Stack-chan chatbot (xiaozhi cloud brain) with a native AI agent node — OpenClaw or Hermes — that makes the robot a first-class extension of your agent.
 
 ## Architecture
 

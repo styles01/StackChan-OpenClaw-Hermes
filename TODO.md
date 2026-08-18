@@ -1,15 +1,19 @@
-# TODO
+# TODO — StackChan-OpenClaw-Hermes
 
 ## ⚠️ HARD RULE: Backup Stock Firmware Before Flashing
-We have bricked multiple devices before. BEFORE flashing rosie-node to the Stack-chan:
+We have bricked multiple devices before. BEFORE flashing StackChan-OpenClaw-Hermes firmware to the Stack-chan:
 1. Plug in via USB, detect serial port
 2. `esptool read_flash 0 0x1000000 backup_stackchan_stock.bin` (full 16MB dump)
 3. Save partition table: `esptool read_flash 0x8000 0x1000 backup_partition_table.bin`
 4. Verify backup file is exactly 16MB
 5. Store backups on 1TB SSD: `/Volumes/1TBSSDClawd/stackchan-node/backups/`
-6. ONLY then flash rosie-node
+6. ONLY then flash our firmware
 
 If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` restores brick-for-brick.
+
+## GitHub
+- [x] Rename project to StackChan-OpenClaw-Hermes
+- [x] Create GitHub repo and push
 
 ## Phase 0: Gateway Prep (0.5 day)
 - [ ] Confirm Gateway port: 18789 (NOT 19001 — that's the `--dev` profile default)
@@ -27,7 +31,7 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
   - [x] ILI9342 SPI display init (CoreS3 display — Waveshare uses SH8601 QSPI AMOLED, different)
   - [ ] AXP2101 PMIC config
   - [ ] FT6336 touch driver (deferred to Phase 2 — BOOT button for v1)
-- [x] Create `rosie-node/` firmware project structure
+- [x] Create firmware project structure (`rosie-node/`)
 - [x] Set up dual-OTA partition table + rollback from the start
 - [ ] Configure WebSocket target to OpenClaw Gateway on port 18789
 - [ ] Verify WebSocket handshake + Ed25519 pairing

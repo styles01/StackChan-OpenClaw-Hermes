@@ -1,6 +1,6 @@
-# rosie-node — Stack-chan as a Native OpenClaw / Hermes Node
+# StackChan-OpenClaw-Hermes
 
-> **The open-source reference firmware for making M5Stack Stack-chan a first-class node of your AI agent.**
+> **The open-source reference firmware for making M5Stack Stack-chan a first-class node of your AI agent — OpenClaw or Hermes.**
 
 [![ESP-IDF](https://img.shields.io/badge/ESP--IDF-5.5.4-red)](https://docs.espressif.com/projects/esp-idf/)
 [![Board](https://img.shields.io/badge/board-M5Stack%20CoreS3-blue)](https://shop.m5stack.com/products/stack-chan)
@@ -13,18 +13,19 @@
 
 Custom ESP-IDF firmware that turns the M5Stack Stack-chan robot into a **native node** of [OpenClaw](https://github.com/openclaw/openclaw) and/or [Hermes agent](https://github.com/nicoborghi/hermes). No proxies, no middlemen, no cloud brokers — the robot connects directly to your agent over WebSocket + WebRTC.
 
-**This is the firmware people on Reddit keep asking for.** Every Stack-chan owner who wants to hook it up to their AI agent has the same problem: the existing solutions all require a middleman server (Node.js proxy, Python MCP server, cloud broker). We're building the thing that just works — natively.
+**This is the firmware people on Reddit keep asking for.** Every Stack-chan owner who wants to hook it up to their AI agent has the same problem: the existing solutions all require a middleman server (Node.js proxy, Python MCP server, Python bridge, cloud broker). We're building the thing that just works — natively.
 
 ## Why This Exists
 
-The Stack-chan community wants OpenClaw integration. We analyzed every existing approach:
+The Stack-chan community wants AI agent integration. We analyzed every existing approach:
 
 | Solution | Problem |
 |----------|---------|
 | [PlaiPin/plaipin-openclaw-stackchan](https://github.com/PlaiPin/plaipin-openclaw-stackchan) | Needs a Node.js proxy server running 24/7 |
 | [migratorywhale/stackchan-mcp](https://github.com/migratorywhale/stackchan-mcp) | Needs a Python MCP server + HTTP REST |
+| [waynecc-at/robot-bridge](https://github.com/waynecc-at/robot-bridge) | Needs a Python FastAPI bridge — closest to production, but still a middleman |
 | [Reddit community efforts](https://www.reddit.com/r/StackChan/comments/1tey028/) | Modifying stock XiaoZhi firmware, hitting codec bugs |
-| **rosie-node (this project)** | **Native ESP-IDF, direct WebSocket+WebRTC, no proxy** |
+| **StackChan-OpenClaw-Hermes (this project)** | **Native ESP-IDF, direct WebSocket+WebRTC, no proxy, dual-target** |
 
 Full analyses in [`analysis/`](analysis/).
 
@@ -80,6 +81,13 @@ The firmware is architected to work with **either** OpenClaw **or** Hermes as th
 - **Hermes** gives you a lightweight local agent with its own tool ecosystem. Some users prefer self-hosted simplicity.
 - **Same firmware, different config.** The connection target is a build-time or runtime config option, not a fork.
 
+### Architecture Inspiration
+
+This dual-target design is directly inspired by two reference repos:
+
+- [kkdev92/stackchan-atoms3r](https://github.com/kkdev92/stackchan-atoms3r) — **Best architecture reference.** Their core/platform separation pattern (`src/core` has zero ESP-IDF deps, `src/platform` implements hardware + connection) proves you can swap the backend without touching core firmware.
+- [waynecc-at/robot-bridge](https://github.com/waynecc-at/robot-bridge) — **Best Hermes integration reference.** Production-deployed Stack-chan → Hermes bridge with 21 features, 11 MCP tools, multi-user face recognition, and a self-critique (REFACTOR-PLAN.md) that validates going native instead of using a bridge.
+
 ## Hardware
 
 | Component | Chip | Notes |
@@ -101,7 +109,7 @@ The firmware is architected to work with **either** OpenClaw **or** Hermes as th
 - [x] CoreS3 board port (audio, display, touch button)
 - [x] Dual-OTA partitions (6MB each)
 - [x] WakeNet 9 wake word support
-- [x] Firmware builds successfully (`rosie_node.bin`, 3.4MB)
+- [x] Firmware builds successfully (`stackchan_node.bin`, 3.4MB)
 - [ ] Flash to hardware (backup stock firmware first!)
 - [ ] WebSocket connection to OpenClaw Gateway
 - [ ] WebRTC Talk voice path (make-or-break test)
@@ -114,9 +122,9 @@ The firmware is architected to work with **either** OpenClaw **or** Hermes as th
 - [ ] LED control (status indicators, expressions)
 - [ ] Full face animation system
 
-### Phase 3 — Polish + Release
-- [ ] BLE/AP provisioning
+### Phase 3 — Dual-Target + Release
 - [ ] Hermes agent connection layer
+- [ ] BLE/AP provisioning
 - [ ] Configuration UI
 - [ ] Documentation + release
 - [ ] Open source publication
@@ -138,7 +146,7 @@ export IDF_TOOLS_PATH=~/.espressif
 . $IDF_PATH/export.sh
 
 # Build
-cd rosie-node
+cd StackChan-OpenClaw-Hermes
 idf.py set-target esp32s3
 idf.py build
 ```
@@ -156,7 +164,7 @@ esptool.py --port /dev/cu.usbmodemXXXX read_flash 0 0x1000000 backup_stackchan_s
 # 4. Save partition table
 esptool.py --port /dev/cu.usbmodemXXXX read_flash 0x8000 0x1000 backup_partition_table.bin
 
-# 5. ONLY NOW flash rosie-node
+# 5. ONLY NOW flash our firmware
 idf.py -p /dev/cu.usbmodemXXXX flash
 ```
 
@@ -169,15 +177,20 @@ The firmware needs to know where your agent is:
 ```bash
 # OpenClaw Gateway (default)
 idf.py menuconfig
-# → Rosie Node → Connection Target → OpenClaw
-# → Rosie Node → Gateway URL → ws://your-gateway:18789
-# → Rosie Node → Gateway Token → your-token
+# → StackChan Node → Connection Target → OpenClaw
+# → StackChan Node → Gateway URL → ws://your-gateway:18789
+# → StackChan Node → Gateway Token → your-token
+
+# Hermes Agent
+idf.py menuconfig
+# → StackChan Node → Connection Target → Hermes
+# → StackChan Node → Hermes URL → ws://your-hermes:PORT
 ```
 
 ## Project Structure
 
 ```
-stackchan-node/
+StackChan-OpenClaw-Hermes/
 ├── rosie-node/               # ESP-IDF firmware project
 │   ├── CMakeLists.txt
 │   ├── partitions.csv         # Dual-OTA + SPIFFS model partition
@@ -188,15 +201,17 @@ stackchan-node/
 │           ├── cores3_audio.c  # AW88298 + ES7210 TDM I2S
 │           ├── cores3_display.c # ILI9342 320×240
 │           └── cores3_touch.c  # BOOT button (Phase 1)
-├── analysis/                  # Reference repo analyses
+├── analysis/                  # Reference repo analyses (5 repos)
 │   ├── plaipin-repo-analysis.md
 │   ├── stackchan-mcp-repo-analysis.md
 │   ├── stackchan-atoms3r-repo-analysis.md
+│   ├── robot-bridge-repo-analysis.md
 │   └── reddit-openclaw-stackchan-thread.md
 ├── docs/
-│   ├── BUILD_PLAN.md          # Detailed 5-phase build plan
-│   ├── TODO.md                # Task checklist
-│   └── CHANGELOG.md           # What's done
+│   ├── BRIEF.md              # Project brief
+│   ├── BUILD_PLAN.md         # Detailed build plan
+│   ├── TODO.md               # Task checklist
+│   └── CHANGELOG.md          # What's done
 ├── backups/                   # Stock firmware backups (gitignored)
 └── README.md                  # This file
 ```
@@ -207,20 +222,24 @@ stackchan-node/
 
 2. **GC0308 camera shares I2C with system** — must release M5Unified's I2C before camera init. ([Source: stackchan-mcp repo](analysis/stackchan-mcp-repo-analysis.md))
 
-3. **ILI9342 needs BGR color correction** — RGB565 R/B channels are swapped. Formula: `color = ((c & 0x1F) << 11) | (c & 0x07E0) | (c >> 11)`.
+3. **GC0308 pin mapping controversy** — stackchan-mcp and robot-bridge have **completely different** GPIO pin configs for the same camera on the same board. Must verify which is correct for your CoreS3 board revision before camera init. ([Source: robot-bridge analysis](analysis/robot-bridge-repo-analysis.md))
 
-4. **Mic quality is a known challenge** — ES7210 may need gain tuning. Plan for AGC early.
+4. **ILI9342 needs BGR color correction** — RGB565 R/B channels are swapped. Formula: `color = ((c & 0x1F) << 11) | (c & 0x07E0) | (c >> 11)`.
 
-5. **Servo angles use 0.1° units** — StackChan-BSP uses `deg * 10` for servo positioning.
+5. **Mic quality is a known challenge** — ES7210 may need gain tuning. Plan for AGC early.
+
+6. **Servo angles use 0.1° units** — StackChan-BSP uses `deg * 10` for servo positioning.
 
 ## References
 
 - [esp-openclaw-node](https://github.com/openclaw/esp-openclaw-node) — OpenClaw ESP32 node core
 - [OpenClaw](https://github.com/openclaw/openclaw) — AI agent gateway
+- [Hermes Agent](https://github.com/nicoborghi/hermes) — Local AI agent
 - [M5Stack Stack-chan](https://shop.m5stack.com/products/stack-chan) — Hardware
 - [StackChan-BSP](https://github.com/meganetaaan/stack-chan) — Board support package
 - [migratorywhale/stackchan-mcp](https://github.com/migratorywhale/stackchan-mcp) — Best hardware reference
 - [kkdev92/stackchan-atoms3r](https://github.com/kkdev92/stackchan-atoms3r) — Best architecture reference
+- [waynecc-at/robot-bridge](https://github.com/waynecc-at/robot-bridge) — Best Hermes integration reference (production-deployed)
 
 ## Status
 

@@ -1,4 +1,4 @@
-# Stack-chan Node — Project Plan
+# StackChan-OpenClaw-Hermes — Project Plan
 
 ## Two Work Streams
 

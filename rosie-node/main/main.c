@@ -1,5 +1,5 @@
-// Rosie Node — main entry point
-// Connects M5Stack Stack-chan (CoreS3) to the OpenClaw Gateway as a Rosie node
+// StackChan-OpenClaw-Hermes — main entry point
+// Connects M5Stack Stack-chan (CoreS3) to OpenClaw Gateway or Hermes Agent
 //
 // Architecture:
 //   esp-openclaw-node core → WebSocket to Gateway (port 18789)
@@ -7,17 +7,18 @@
 //   CoreS3 board port → AW88298 speaker, ES7210 mic, ILI9342 display
 //
 // The robot does zero LLM/STT/TTS locally — all intelligence lives on the Gateway.
+// Dual-target: swap connection layer for Hermes Agent (same firmware, different config).
 
 #include "cores3_board.h"
 #include "esp_openclaw_room_node.h"
 #include "esp_log.h"
 #include "esp_err.h"
 
-#define TAG "rosie_node"
+#define TAG "stackchan_node"
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "Rosie Node starting up — CoreS3 (M5Stack Stack-chan)");
+    ESP_LOGI(TAG, "StackChan-OpenClaw-Hermes starting up — CoreS3 (M5Stack Stack-chan)");
 
     // Fill the board port config struct
     // This is the contract between esp-openclaw-room-node and our CoreS3 board

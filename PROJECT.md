@@ -1,60 +1,47 @@
-# Stack-chan → Rosie Node
+# StackChan-OpenClaw-Hermes
 
 ## Overview
-Convert the M5Stack Stack-chan robot (ESP32-S3, CoreS3) from its default xiaozhi cloud chatbot into a real OpenClaw node — a physical extension of Rosie, the Aita household operations director.
+Custom ESP-IDF firmware that turns the M5Stack Stack-chan robot (ESP32-S3, CoreS3) into a native node for OpenClaw and/or Hermes agent — no proxies, no middlemen, no cloud brokers.
 
 ## Vision
-Stack-chan becomes Rosie's body in the physical world:
-- **Wake word:** "Hey Rosie" (custom ESP-SR/WakeNet model)
-- **Brain:** OpenClaw Gateway (Rosie's personality, tools, household context)
-- **Voice:** WebRTC audio pipeline through the Gateway (STT → Rosie LLM → TTS)
-- **Face:** LVGL avatar with emotions mapped to Rosie's state
+Stack-chan becomes a first-class AI agent node:
+- **Wake word:** ESP-SR WakeNet 9 ("Hi ESP", custom "Hey Rosie" as parallel track)
+- **Brain:** OpenClaw Gateway OR Hermes Agent (dual-target, config-time switch)
+- **Voice:** WebRTC audio pipeline (Opus 16kHz) through the Gateway
+- **Face:** LVGL avatar with emotions mapped to conversation state
 - **Body:** Servo head tracking, camera vision, touch sensors
-- **Tools:** Household status, 3D printer, fridge dashboard, memory, Telegram
+- **Tools:** Full agent ecosystem — household ops, memory, Telegram, Notion, MCP tools
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────┐
-│  Stack-chan Hardware (CoreS3)       │
-│  ESP32-S3 + PSRAM                   │
-│  ┌───────────────────────────────┐  │
-│  │ esp-openclaw-node core        │  │
-│  │  WebSocket → OpenClaw Gateway │  │
-│  │  WebRTC audio (Opus 16kHz)    │  │
-│  │  WakeNet 9 wake word          │  │
-│  │  BLE/AP provisioning          │  │
-│  └───────────────────────────────┘  │
-│  ┌───────────────────────────────┐  │
-│  │ CoreS3 Board Port             │  │
-│  │  AW88298 speaker / ES7210 mic │  │
-│  │  ILI9342 display / AXP2101    │  │
-│  │  FT6336 touch                 │  │
-│  └───────────────────────────────┘  │
-│  ┌───────────────────────────────┐  │
-│  │ Robot Layer (from StackChan)  │  │
-│  │  SCSCL servos (yaw + pitch)   │  │
-│  │  LVGL face/avatar + emotions  │  │
-│  │  GC0308 camera                │  │
-│  │  BMI270 IMU / Si12T touch     │  │
-│  └───────────────────────────────┘  │
-└─────────────────────────────────────┘
-          │ WebSocket (ws://gateway:19001)
+┌──────────────────────────────────────────┐
+│  Stack-chan Hardware (M5Stack CoreS3)     │
+│  ESP32-S3 + 8MB PSRAM                    │
+│                                          │
+│  ┌────────────────────────────────────┐  │
+│  │ Core Firmware (backend-agnostic)   │  │
+│  │  WakeNet 9 wake word               │  │
+│  │  AW88298 speaker / ES7210 mic      │  │
+│  │  ILI9342 320×240 display           │  │
+│  │  SCSCL servos (yaw + pitch)        │  │
+│  │  GC0308 camera                     │  │
+│  └────────────────────────────────────┘  │
+│  ┌────────────────────────────────────┐  │
+│  │ Connection Layer (swappable)       │  │
+│  │  Option A: OpenClaw Gateway :18789 │  │
+│  │  Option B: Hermes Agent :PORT      │  │
+│  └────────────────────────────────────┘  │
+└──────────────────────────────────────────┘
+          │
           ▼
-┌─────────────────────────────────────┐
-│  OpenClaw Gateway (Clawdio-Mini)    │
-│  ┌───────────────────────────────┐  │
-│  │ Rosie Agent                   │  │
-│  │  System prompt: Rosie persona │  │
-│  │  Tools: household, printer,   │  │
-│  │  fridge, memory, Telegram     │  │
-│  │  Voice: en-GB-LibbyNeural     │  │
-│  └───────────────────────────────┘  │
-│  ┌───────────────────────────────┐  │
-│  │ Audio Pipeline                │  │
-│  │  STT (Whisper) → LLM → TTS   │  │
-│  └───────────────────────────────┘  │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│  Your Agent (choose one)                  │
+│  OpenClaw Gateway       Hermes Agent      │
+│  - Rosie, Claude, etc.  - Local agent     │
+│  - Tools, memory, TTS    - MCP tools      │
+│  - Telegram, Notion     - Custom logic    │
+└──────────────────────────────────────────┘
 ```
 
 ## Source Repos
@@ -63,35 +50,40 @@ Stack-chan becomes Rosie's body in the physical world:
 | `openclaw/esp-openclaw-node` | `repos/esp-openclaw-node/` | Core firmware — steal verbatim |
 | `m5stack/StackChan` | `firmware/StackChan/` | Robot layer — servo/face/camera/sensor drivers |
 | `78/xiaozhi-esp32` | `firmware/xiaozhi-esp32/` | Reference — what we're replacing |
-| `tnm/zclaw` | `repos/zclaw/` | Pattern reference — agent loop, provisioning |
 
-## Analysis Reports
+## Analysis Reports (5 reference repos)
 - `analysis/zclaw-analysis.md` — zclaw technical analysis
 - `analysis/esp-openclaw-node-analysis.md` — esp-openclaw-node technical analysis
 - `analysis/xiaozhi-firmware-analysis.md` — xiaozhi-esp32 firmware analysis
 - `analysis/stackchan-firmware-analysis.md` — StackChan firmware analysis
+- `analysis/plaipin-repo-analysis.md` — PlaiPin REST proxy analysis
+- `analysis/stackchan-mcp-repo-analysis.md` — Best hardware reference (CoreS3)
+- `analysis/stackchan-atoms3r-repo-analysis.md` — Best architecture reference (core/platform separation)
+- `analysis/robot-bridge-repo-analysis.md` — Best Hermes integration reference (production-deployed)
+- `analysis/reddit-openclaw-stackchan-thread.md` — Real-world community findings
+- `analysis/adversarial-review.md` — Adversarial review of all claims
 
 ## Build Phases
 See [BUILD_PLAN.md](./BUILD_PLAN.md) for detailed build plan.
 
 1. **Core bring-up** — esp-openclaw-node on CoreS3, Gateway connection, first voice test
 2. **Robot layer** — servos, LVGL face, camera, sensors
-3. **Wake word** — "Hey Rosie" ESP-SR model
-4. **Gateway config** — Rosie personality + household tools
+3. **Wake word** — stock WakeNet model now, "Hey Rosie" as parallel track
+4. **Gateway config** — agent personality + household tools
 5. **Polish** — end-to-end testing and calibration
 
 ## Hardware
-- **Device:** M5Stack Stack-chan (2025 Kickstarter edition)
-- **MCU:** ESP32-S3 with PSRAM
-- **Display:** ILI9342 320x240 LCD
-- **Audio:** AW88298 speaker codec, ES7210 mic
+- **Device:** M5Stack Stack-chan (CoreS3 version)
+- **MCU:** ESP32-S3 with 16MB flash, 8MB PSRAM
+- **Display:** ILI9342 320×240 LCD
+- **Audio:** AW88298 speaker codec, ES7210 mic (TDM I2S, AEC)
 - **Servos:** 2× SCSCL serial-bus servos (head yaw + pitch)
 - **Camera:** GC0308 (optional vision)
-- **Sensors:** BMI270 IMU, Si12T head touch, PCF8563 RTC
+- **Sensors:** BMI270 IMU, Si12T head touch, FT6336 capacitive touch
 - **Power:** AXP2101 PMIC + battery
 
 ## Build Environment
-- **ESP-IDF:** v5.5.4+ (v5.5.5 preferred)
-- **Host:** Clawdio-Mini (macOS arm64) or James's laptop
+- **ESP-IDF:** v5.5.4
+- **Host:** Clawdio-Mini (macOS arm64)
 - **Storage:** 1TB SSD (`/Volumes/1TBSSDClawd/stackchan-node/`)
 - **Symlink:** `~/openclaw-workspaces/rosie/stackchan-node/` → SSD

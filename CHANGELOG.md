@@ -1,6 +1,6 @@
-# Changelog
+# Changelog — StackChan-OpenClaw-Hermes
 
-All notable changes to the Stack-chan → Rosie Node project.
+All notable changes to the StackChan-OpenClaw-Hermes project.
 
 ## [Unreleased]
 
@@ -104,6 +104,13 @@ All notable changes to the Stack-chan → Rosie Node project.
 - ⚠️ GC0308 pin mapping DIFFERENT from stackchan-mcp — must verify correct config for our CoreS3
 - REFACTOR-PLAN.md self-critique validates our native approach (no bridge needed)
 - This IS the Hermes integration blueprint for our dual-target design
+
+### Project Rename + GitHub Publication
+- Project renamed from "rosie-node" → **StackChan-OpenClaw-Hermes**
+- README, BRIEF, BUILD_PLAN, TODO, CHANGELOG all updated with new name
+- GitHub repository created and pushed
+- Frames project as the open-source reference firmware for Stack-chan + AI agent integration
+- Dual-target architecture (OpenClaw + Hermes) front and center
 
 ### Backup Rule
 - HARD RULE added to TODO.md: backup stock firmware before flashing

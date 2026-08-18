@@ -1,4 +1,4 @@
-# Project Brief — rosie-node
+# Project Brief — StackChan-OpenClaw-Hermes
 
 ## Vision
 
@@ -14,13 +14,15 @@ Every existing Stack-chan + AI agent solution has a fatal flaw:
 
 2. **migratorywhale/stackchan-mcp** (55 stars) — requires a Python MCP server translating tool calls into HTTP REST requests to the robot. Clean code, but the architecture adds a whole server layer that shouldn't need to exist.
 
-3. **Reddit community efforts** — people modifying the stock XiaoZhi firmware, hitting `esp_codec_dev_write()` silent failures, fighting mic quality issues, and posting "is there a GitHub link?" when they get stuck.
+3. **waynecc-at/robot-bridge** — the closest to production (21 features, 11 E2E tests, actually deployed), but still uses a Python FastAPI bridge as a middleman. Their own REFACTOR-PLAN.md admits the bridge is "too thick" and should be thinner. We eliminate the bridge entirely.
+
+4. **Reddit community efforts** — people modifying the stock XiaoZhi firmware, hitting `esp_codec_dev_write()` silent failures, fighting mic quality issues, and posting "is there a GitHub link?" when they get stuck.
 
 **Nobody has shipped a clean, native, no-proxy solution.** That's the gap we fill.
 
 ## Solution
 
-**rosie-node** — native ESP-IDF firmware that connects directly to your agent:
+**StackChan-OpenClaw-Hermes** — native ESP-IDF firmware that connects directly to your agent:
 
 - **Direct WebSocket** to the OpenClaw Gateway (or Hermes agent) — no proxy server
 - **WebRTC audio** for the Talk voice path — Opus 16kHz, sub-100ms latency
@@ -49,7 +51,9 @@ The core firmware (audio, wake word, face, servos, camera) is **backend-agnostic
 
 **Same firmware. Different config. Not a fork.**
 
-This is inspired by [kkdev92/stackchan-atoms3r](https://github.com/kkdev92/stackchan-atoms3r)'s excellent core/platform separation pattern — `src/core` has zero ESP-IDF dependencies and is host-testable, `src/platform` implements the hardware and connection layer.
+This is inspired by two reference repos:
+- [kkdev92/stackchan-atoms3r](https://github.com/kkdev92/stackchan-atoms3r) — core/platform separation pattern that enables swapping the backend without touching core firmware
+- [waynecc-at/robot-bridge](https://github.com/waynecc-at/robot-bridge) — production-deployed Hermes integration that proves the tool set and conversation flow work in practice
 
 ## Hardware Target
 
@@ -62,7 +66,7 @@ This is inspired by [kkdev92/stackchan-atoms3r](https://github.com/kkdev92/stack
 | Mic | ES7210 | TDM I2S, 4-slot, MIC1+MIC3 for AEC — enables full-duplex (others are half-duplex) |
 | Display | ILI9342 | 320×240 SPI, needs BGR color correction |
 | Servos | SCSCL ×2 | UART1, yaw ±128° / pitch 5-85°, BSP uses 0.1° units |
-| Camera | GC0308 | 320×240, RGB565→JPEG (no hardware JPEG), shares I2C with system |
+| Camera | GC0308 | 320×240, RGB565→JPEG (no hardware JPEG), shares I2C with system — ⚠️ pin mapping controversy between reference repos |
 | Touch | FT6336/Si12T | Head-pet as push-to-talk fallback |
 | Wake Word | ESP-SR WakeNet 9 | "Hi ESP" (wn9_hiesp), 284KB, on-device |
 
@@ -72,6 +76,7 @@ This is inspired by [kkdev92/stackchan-atoms3r](https://github.com/kkdev92/stack
 |------|-------|-----------|--------------|
 | [migratorywhale/stackchan-mcp](https://github.com/migratorywhale/stackchan-mcp) | 55 | ⭐⭐⭐⭐ | Best hardware reference — GC0308 pins, servo patterns, BGR correction, audio gate |
 | [kkdev92/stackchan-atoms3r](https://github.com/kkdev92/stackchan-atoms3r) | — | ⭐⭐⭐⭐ | Best architecture reference — core/platform separation, port abstractions, host tests |
+| [waynecc-at/robot-bridge](https://github.com/waynecc-at/robot-bridge) | — | ⭐⭐⭐⭐⭐ | Best Hermes integration reference — production-deployed, 11 MCP tools, 21 features, validates our native approach |
 | [PlaiPin/plaipin-openclaw-stackchan](https://github.com/PlaiPin/plaipin-openclaw-stackchan) | 2 | ⭐⭐ | Concept validation — coredump partition, emoji stripping |
 | [Reddit r/StackChan](https://www.reddit.com/r/StackChan/comments/1tey028/) | — | ⭐⭐⭐ | Real-world findings — codec write bug, mic quality issues, community demand |
 
@@ -106,6 +111,7 @@ Full analyses in [`analysis/`](analysis/).
 
 - NOT building a cloud broker
 - NOT building a proxy server
+- NOT building a Python bridge (robot-bridge already did that — we're going native)
 - NOT modifying stock XiaoZhi firmware
 - NOT supporting Arduino/PlatformIO (ESP-IDF only)
 - NOT a closed-source project — this goes open source
