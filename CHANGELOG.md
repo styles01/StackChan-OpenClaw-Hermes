@@ -58,6 +58,14 @@ All notable changes to the Stack-chan → Rosie Node project.
 - NOT useful: REST proxy architecture, SimpleVox wake word, LLM/TTS/STT abstraction layers
 - Key insight: validates Stack-chan → OpenClaw is viable; our native approach is harder but better
 
+### stackchan-mcp Repo Analysis
+- Cloned `migratorywhale/stackchan-mcp` (55 stars) — MCP bridge for Stack-chan on CoreS3
+- `analysis/stackchan-mcp-repo-analysis.md` (170 lines) — full investigation
+- BEST hardware reference found: same CoreS3, GC0308 camera, SCSCL servos, ILI9342 display
+- Key borrowable patterns: GC0308 pin config, camera I2C release gotcha, servo gestures, BGR color correction, audio gate/mic resume, face state machine
+- Architecture: MCP Python server → HTTP REST → ESP32 (different from our WebSocket+WebRTC approach)
+- Firmware is a goldmine for Phase 2 robot layer work
+
 ### Backup Rule
 - HARD RULE added to TODO.md: backup stock firmware before flashing
 - `backups/` directory created on 1TB SSD

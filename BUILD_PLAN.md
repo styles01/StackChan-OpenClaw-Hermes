@@ -80,6 +80,21 @@ Replace the default Stack-chan chatbot (xiaozhi cloud brain) with a real OpenCla
 - Full analysis: `analysis/plaipin-repo-analysis.md`
 - Repo cloned to `repos/plaipin-openclaw-stackchan/` (excluded from git tracking)
 
+### 6. migratorywhale/stackchan-mcp (BEST hardware reference — different architecture)
+- **NOT our architecture** — they use MCP Python server → HTTP REST → ESP32 firmware. We use WebSocket+WebRTC via esp-openclaw-node.
+- **VERY useful firmware reference** — same hardware (CoreS3, GC0308 camera, SCSCL servos, ILI9342 display):
+  - GC0308 camera pin config (exact GPIO mapping for CoreS3) — critical for Phase 2
+  - Camera I2C bus sharing gotcha: must `M5.In_I2C.release()` before camera init
+  - GC0308 does NOT support hardware JPEG — must capture RGB565 and software convert
+  - Servo API: `servoMove(yawDeg, pitchDeg, speedPct)` with yaw ±128°, pitch 5-85°
+  - BSP uses 0.1° units (`deg * 10`) — important for our servo port
+  - Servo gestures: nod/shake as 4-step non-blocking state machines
+  - ILI9342 BGR color correction: `color = ((c & 0x1F) << 11) | (c & 0x07E0) | (c >> 11)`
+  - Audio gate / mic resume pattern to prevent feedback during Talk
+  - Face state machine: IDLE/LISTENING/PLAYING/THINKING/HAPPY — matches room-node states
+- Full analysis: `analysis/stackchan-mcp-repo-analysis.md`
+- Repo cloned to `repos/stackchan-mcp/` (excluded from git tracking)
+
 ## Build Phases
 
 ### Phase 0: Gateway Prep (0.5 day)

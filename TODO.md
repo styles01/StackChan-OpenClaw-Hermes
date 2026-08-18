@@ -35,6 +35,9 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [ ] First voice test: talk to Stack-chan → audio routes through Gateway → Rosie responds
 - [ ] Add coredump partition (64KB at end of flash) — pattern from PlaiPin repo
 - [ ] Add emoji-stripping filter before TTS output — pattern from PlaiPin repo
+- [ ] Borrow GC0308 camera pin config from stackchan-mcp (Phase 2 camera work)
+- [ ] Borrow servo gesture patterns (nod/shake state machine) from stackchan-mcp (Phase 2 servo work)
+- [ ] Add audio gate / mic resume pattern to prevent feedback during Talk — from stackchan-mcp
 
 ## Phase 2: Robot Layer Integration (3-5 days)
 NOTE: StackChan robot layer is NOT cleanly separable. Extract only portable pieces.
