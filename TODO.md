@@ -40,6 +40,10 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [ ] Add audio gate / mic resume pattern to prevent feedback during Talk — from stackchan-mcp
 - [ ] ⚠️ KNOWN GOTCHA: If `esp_codec_dev_write()` silently fails, bypass it and write PCM directly to `i2s_channel_write()`. Keep codec only for amp/volume. (From Reddit community finding)
 - [ ] Test mic quality early — Reddit users report Whisper returns empty transcriptions due to low mic gain on CoreS3
+- [ ] Study stackchan-atoms3r core/platform separation pattern for our OpenClaw + Hermes dual-target architecture
+- [ ] Adapt stackchan-atoms3r's port abstractions (AudioSource/AudioSink/Face) for backend-agnostic core firmware
+- [ ] Borrow stackchan-atoms3r's SpeechSegmenter for streaming TTS text → sentence boundaries → face expressions
+- [ ] Borrow stackchan-atoms3r's deadline-based audio I/O pattern to prevent hangs on slow gateway responses
 
 ## Phase 2: Robot Layer Integration (3-5 days)
 NOTE: StackChan robot layer is NOT cleanly separable. Extract only portable pieces.

@@ -104,6 +104,22 @@ Replace the default Stack-chan chatbot (xiaozhi cloud brain) with a real OpenCla
 - Real demand for Stack-chan + OpenClaw integration — people buying hardware for this use case
 - No clean reference implementation exists yet — our project could fill this gap
 
+### 8. kkdev92/stackchan-atoms3r (BEST architecture reference — different hardware)
+- **DIFFERENT HARDWARE** — M5Stack AtomS3R + Atomic Voice Base (not CoreS3)
+- **SAME BUILD SYSTEM** — ESP-IDF 6.0.1 via PlatformIO (closest to our ESP-IDF approach)
+- **EXCELLENT architecture** — best software design of all repos analyzed:
+  - Core/platform separation: `src/core` has zero ESP-IDF deps, host-testable
+  - Port abstractions: `AudioSource`, `AudioSink`, `Face` interfaces in core, implementations in platform
+  - Deadline-based audio I/O — no unbounded waits, prevents hangs
+  - Half-duplex direction lock pattern (recursive mutex for capture/playback transitions)
+  - Speech segmenter: splits streaming text at sentence boundaries, handles UTF-8, supports `[expression]text[/expression]` markers
+  - Versioned protocol envelope with explicit error codes + retry semantics
+  - Command registry with auto-generated capability list
+  - Coredump partition (confirms pattern from PlaiPin)
+  - Host tests + QEMU verification
+- Full analysis: `analysis/stackchan-atoms3r-repo-analysis.md`
+- Key insight: their core/platform separation pattern directly enables our OpenClaw + Hermes dual-target architecture — swap the connection layer without touching core firmware
+
 ## Build Phases
 
 ### Phase 0: Gateway Prep (0.5 day)

@@ -74,6 +74,21 @@ All notable changes to the Stack-chan → Rosie Node project.
 - Mic quality is a known problem — plan for gain/AGC tuning early
 - Real demand for Stack-chan + OpenClaw integration — no clean reference implementation exists yet
 
+### stackchan-atoms3r Repo Analysis
+- Cloned `kkdev92/stackchan-atoms3r` — AtomS3R + Voice Base firmware, ESP-IDF 6.0.1
+- `analysis/stackchan-atoms3r-repo-analysis.md` (200 lines) — full investigation
+- BEST architecture reference found — excellent core/platform separation pattern
+- Key borrowable patterns: port abstractions (AudioSource/AudioSink/Face), deadline-based I/O, speech segmenter, half-duplex direction lock, command registry, versioned protocol envelope
+- Different hardware (AtomS3R vs CoreS3, ES8311 vs AW88298) but same build system (ESP-IDF)
+- Their core/platform separation directly enables our OpenClaw + Hermes dual-target architecture
+
+### README + Brief Rewrite
+- Complete README rewrite — frames project as "the open-source reference firmware"
+- New `docs/BRIEF.md` — project brief with vision, problem, solution, dual-target architecture
+- Dual-target design: same firmware works with OpenClaw OR Hermes by swapping connection layer
+- Acknowledgments section crediting all reference repo authors
+- Known Gotchas section with all 5 critical findings from reference repos
+
 ### Backup Rule
 - HARD RULE added to TODO.md: backup stock firmware before flashing
 - `backups/` directory created on 1TB SSD
