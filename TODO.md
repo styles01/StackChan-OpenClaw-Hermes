@@ -1,12 +1,12 @@
-# TODO — Stack-chan Thin Audio Client
+# TODO — Stack-chan OpenClaw Audio Client
 
 ## ⚠️ HARD RULE: Backup Stock Firmware Before Flashing
 We have bricked multiple devices before. BEFORE flashing any firmware to the Stack-chan:
-1. Plug in via USB, detect serial port
+1. Plug in via USB, detect serial port (`ls /dev/cu.usb*`)
 2. `esptool read_flash 0 0x1000000 backup_stackchan_stock.bin` (full 16MB dump)
 3. Save partition table: `esptool read_flash 0x8000 0x1000 backup_partition_table.bin`
 4. Verify backup file is exactly 16MB
-5. Store backups on 1TB SSD: `/Volumes/1TBSSDClawd/stackchan-node/backups/`
+5. Store backups on SSD: `/Volumes/1TBSSDClawd/stackchan-node/backups/`
 6. ONLY then flash our firmware
 
 If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` restores brick-for-brick.
@@ -15,59 +15,97 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [x] Create project structure and analysis
 - [x] Swarm 3 review complete (4 reports + synthesis)
 - [x] BRIEF.md rewritten (swap-backends v1, thin client v1.1)
-- [x] BUILD_PLAN.md rewritten
-- [ ] TODO.md updated (this file)
-- [ ] Rename repo to `stackchan-thin-audio-client` or `stackchan-openclaw` (current name oversells Hermes)
+- [x] BUILD_PLAN.md rewritten with codebase specifics
+- [x] TODO.md updated (this file)
+- [ ] Rename repo to `stackchan-openclaw` (current name oversells Hermes)
 - [ ] Write README (community-first framing: "dumb audio terminal, no API keys")
 - [ ] Commit and push updated docs
 
 ## Phase 1: Fork & Flash Stock (1 day)
-- [ ] Full 16MB flash backup of stock Stack-chan firmware (HARD RULE)
-- [ ] Fork from Stack-chan (MIT-licensed) — NOT plaipin (no license)
-- [ ] Port plaipin's OpenClawClient + REST proxy concepts as reference (write our own code)
-- [ ] Flash unmodified firmware to Stack-chan — verify body works (face, servo, touch, lip sync)
-- [ ] **MILESTONE: Stack-chan boots, body works**
+- [ ] Plug in Stack-chan, detect serial port
+- [ ] Full 16MB flash backup of stock firmware (HARD RULE)
+- [ ] Save partition table backup
+- [ ] Verify backup is 16MB
+- [ ] Store on SSD: `/Volumes/1TBSSDClawd/stackchan-node/backups/`
+- [ ] Fork from Stack-chan upstream (MIT-licensed) — NOT plaipin (no license)
+- [ ] Keep plaipin cloned as reference (concepts only, not code)
+- [ ] Flash plaipin firmware unmodified to Stack-chan — verify body works:
+  - [ ] Face/avatar displays and animates
+  - [ ] Servos move (yaw + pitch)
+  - [ ] Touch screen responds
+  - [ ] Button A triggers conversation flow
+  - [ ] Speaker plays audio
+  - [ ] Mic records audio
+  - [ ] Wake word works (if cores3 build with ENABLE_WAKEWORD)
+- [ ] **MILESTONE: Stack-chan boots, body works, plaipin firmware verified**
 
 ## Phase 2: Audio Pipeline Server on Mini (1-2 days)
-- [ ] Port Larry V2's `lobster_audio_server.py` pattern to new server on Clawdio-Mini
-- [ ] `/stt` endpoint: receive WAV → Whisper/Parakeet STT → return JSON `{ text, confidence }`
-- [ ] `/tts` endpoint: receive text → strip body command markers → Kokoro TTS → return WAV + body commands JSON
-- [ ] Body command marker parser (regex — `[expression:happy]`, `[gesture:nod]`, `[led:blue]`, `[servo:...]`)
-- [ ] STT: decide Whisper vs Parakeet based on what's on the mini
-- [ ] TTS: Kokoro (already on mini, British voice — bm_george or bf_emma)
-- [ ] Test: `curl -F audio=test.wav http://mini:18790/stt` → text back
-- [ ] Test: `curl -d "hello [expression:happy]" http://mini:18790/tts` → WAV + JSON back
-- [ ] Latency logging (reuse Larry V2's two-clock NTP-style reconciliation)
-- [ ] systemd service on mini (auto-start, auto-restart)
+**Mini environment verified: faster-whisper ✓, kokoro ✓, fastapi ✓, uvicorn ✓**
+- [ ] Create `server/audio_pipeline.py` (FastAPI, port 18791)
+- [ ] Port Larry V2's `transcribe()` → `POST /stt` endpoint (faster-whisper, returns text + confidence)
+- [ ] Port Larry V2's `generate_speech()` → `POST /tts` endpoint (Kokoro, bm_george, 24kHz)
+- [ ] Write `parse_body_commands()` — extend Larry's `parse_effects()` regex from `[tag]` to `[key:value]`
+- [ ] `/tts` strips markers from text → TTS → returns WAV + `X-Body-Commands` header JSON
+- [ ] `GET /health` endpoint (for systemd watchdog)
+- [ ] Port 18791 (18789=gateway, 18790=REST proxy, 18791=audio)
+- [ ] Test: `curl -F audio=test.wav http://localhost:18791/stt` → JSON text back
+- [ ] Test: `curl -d "hello [expression:happy]" http://localhost:18791/tts` → WAV + header back
+- [ ] Test: `curl http://localhost:18791/health` → 200 OK
+- [ ] systemd service: `audio-pipeline.service` (auto-start, auto-restart, watchdog)
 - [ ] **MILESTONE: Server works end-to-end with curl — no ESP32 needed**
 
 ## Phase 3: Retarget Backends (2-3 days)
-- [ ] Write `MiniSTT` class (implements `STTBase`)
-  - [ ] Record audio via M5.Mic (reuse plaipin's `AudioWhisper.cpp` recording code)
-  - [ ] HTTP POST WAV to mini:18790/stt (use `http.getStream()`, NOT `getString()`)
-  - [ ] Allocate buffers from PSRAM (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`)
-  - [ ] Parse JSON response (text + confidence)
-  - [ ] Return text to `Robot::listen()` → `Robot::chat()`
-- [ ] Write `MiniTTS` class (implements `TTSBase`)
-  - [ ] HTTP POST text to mini:18790/tts
-  - [ ] Receive WAV response via `http.getStream()` into PSRAM buffer
+**Swap at the abstract interface — keep plaipin's pipeline intact**
+
+### Config changes (StackchanExConfig.h)
+- [ ] Add `#define STT_TYPE_MINI_WHISPER 4`
+- [ ] Add `#define TTS_TYPE_MINI_KOKORO 5`
+- [ ] Add `mini_audio_s` struct (host + port) to ExConfig
+
+### MiniSTT (stt/MiniSTT.cpp + .h)
+- [ ] Implement `speech_to_text()`:
+  - [ ] Record audio via M5.Mic (reuse plaipin's AudioWhisper.cpp — 16kHz mono, PSRAM buffer)
+  - [ ] HTTP POST multipart WAV to `http://<host>:18791/stt` (use WiFiClient, HTTP not HTTPS)
+  - [ ] Parse JSON response `{text, confidence}` (small response — `getString()` OK here)
+  - [ ] Return text string
+  - [ ] 10s timeout (same as plaipin's Whisper STT)
+- [ ] Pattern: plaipin's `Whisper.cpp` does exactly this but sends to Groq — adapt for LAN HTTP
+
+### MiniTTS (tts/MiniTTS.cpp + .h)
+- [ ] Implement `stream(String text)`:
+  - [ ] HTTP POST text to `http://<host>:18791/tts`
+  - [ ] Receive WAV via `http.getStream()` into PSRAM buffer (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`)
   - [ ] Play WAV through M5.Speaker
-  - [ ] Provide `getLevel()` for lip sync (reuse plaipin's audio level tracking)
-  - [ ] NO base64-in-JSON for audio — raw WAV body or multipart
-- [ ] Write `BodyCommandParser` class
-  - [ ] Parse `[expression:happy]` → `avatar.setExpression()`
-  - [ ] Parse `[gesture:nod]` → trigger gesture (nod/shake/look_around)
-  - [ ] Parse `[led:blue]` → LED state (off/green/blue/rainbow)
-  - [ ] Parse `[servo:yaw:-30,pitch:45]` → `servo->moveToGaze()`
-- [ ] Update `platformio.ini`
-  - [ ] Select new backends (MiniSTT, MiniTTS) instead of cloud backends
-  - [ ] Remove cloud API key fields from config
-  - [ ] Add PSRAM allocation flags if needed
-- [ ] Update config (point to mini's IP:18790, no cloud API keys)
-- [ ] Verify lip sync still works (`robot->tts->getLevel()` must return audio level)
-- [ ] Verify triggers still work (Button A, screen touch — unchanged from plaipin)
+  - [ ] Parse `X-Body-Commands` header → execute body commands
+  - [ ] **NEVER use `getString()` for audio** — use `getStream()` + PSRAM
+- [ ] Implement `getLevel()` for lip sync (return current audio sample amplitude)
+- [ ] Pattern: plaipin's `OpenAITTS.cpp` streams MP3 via buffer + `playMP3()` — adapt for HTTP WAV
+
+### BodyCommandParser (BodyCommandParser.cpp + .h)
+- [ ] Parse JSON body commands from TTS response header
+- [ ] `expression` → `avatar.setExpression()` (happy, sad, angry, sleepy, surprised, doubting, etc.)
+- [ ] `gesture` → servo gesture sequence (nod, shake, look_around)
+- [ ] `led` → LED state (off, green, blue, rainbow)
+- [ ] `servo` → `servo->moveToGaze(yaw, pitch)` with params
+
+### Robot.cpp changes (~8 LOC total)
+- [ ] Add `#include "stt/MiniSTT.h"` and `#include "tts/MiniTTS.h"`
+- [ ] Add to `initSTT()`: `case STT_TYPE_MINI_WHISPER: stt = new MiniSTT(stt_param, mini_audio); break;`
+- [ ] Add to `initTTS()`: `case TTS_TYPE_MINI_KOKORO: tts = new MiniTTS(tts_param, mini_audio); break;`
+
+### platformio.ini changes
+- [ ] Set STT type to 4 (MINI_WHISPER)
+- [ ] Set TTS type to 5 (MINI_KOKORO)
+- [ ] Set LLM type to 4 (OPENCLAW — already works)
+- [ ] Remove cloud API key fields
+- [ ] Add mini audio server host/port to config
+- [ ] Keep `-DENABLE_WAKEWORD` (cores3)
+
+### Flash & Test
 - [ ] Flash to Stack-chan
-- [ ] **MILESTONE: Press button → speak → Rosie responds through robot speaker**
+- [ ] Verify lip sync still works (`robot->tts->getLevel()` returns audio level)
+- [ ] Verify triggers still work (Button A, screen touch, wake word — unchanged)
+- [ ] **MILESTONE: Press button → speak → Rosie responds through robot speaker + body moves**
 
 ## Phase 4: Agent Configuration (1 day)
 - [ ] Configure "rosie-robot" agent session on OpenClaw Gateway
@@ -85,19 +123,24 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
   - [ ] rosie_say (Telegram voice notes)
   - [ ] rosie_time
 - [ ] Test: "What's the printer status?" → robot looks, thinks, speaks + body commands
+- [ ] Optional: record "Rosie" as custom wake word via plaipin's registration flow
 - [ ] **MILESTONE: Robot does useful agentic work through the pipeline**
 
 ## Phase 5: Polish & Testing (1-2 days)
 - [ ] End-to-end test: button → speak → Rosie responds + body commands execute
+- [ ] End-to-end test: wake word → speak → Rosie responds
 - [ ] Calibrate audio levels (mic gain, speaker volume)
-- [ ] Test body commands (expression changes, servo gestures, LED states)
-- [ ] Error handling (reuse plaipin's existing pattern: avatar text "Connection error" + sad face)
-- [ ] Latency logging (reuse Larry V2's two-clock reconciliation)
-- [ ] Write README (community-first framing per swarm3-gamma):
+- [ ] Test all body commands (expression changes, servo gestures, LED states)
+- [ ] Error handling:
+  - [ ] Server down → avatar text "Connection error" + sad face
+  - [ ] WiFi not connected → avatar text "No WiFi" + sad face
+  - [ ] STT returned empty → avatar text "Didn't catch that" + confused face
+  - [ ] LLM timeout → avatar text "Thinking..." → "Sorry, took too long"
+- [ ] Latency logging (reuse Larry V2's two-clock NTP-style reconciliation)
+- [ ] Write README (community-first framing):
   - [ ] Headline: "The ESP32 is a dumb audio terminal. No API keys on the device."
   - [ ] Architecture diagram
   - [ ] "What can it do?" section (printer status, fridge, camera vision examples)
-  - [ ] Comparison table vs other Stack-chan forks
   - [ ] "Bring your own personality" — agent template, not actual prompts
   - [ ] "Also powers Larry" — one paragraph footnote
   - [ ] License: MIT, credit Stack-chan + plaipin inspiration
@@ -112,21 +155,20 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
   - [ ] Local sample playback (greeting, trumpet — Larry's core sounds)
   - [ ] Effect markers (reuse Larry's `[trumpet]` pattern)
 - [ ] Configure "larry" agent session on OpenClaw Gateway
-  - [ ] Larry's HEART.md → system prompt (PRIVATE — not in repo)
-  - [ ] Larry's MEMORY.md → agent memory (PRIVATE — not in repo)
 - [ ] Same mini server — just a different agent session
 - [ ] Test with Larry's plush body (LED, speaker, mic — no screen/servos)
 - [ ] **MILESTONE: Larry the Elephant runs on ESP32 instead of Pi**
 
 ## v1.1: Thin Audio Client (after v1 is working)
-- [ ] Collapse 3 round-trips to 1 (`ThinAudioClient` class — single HTTP POST)
+- [ ] Add `POST /chat` endpoint to mini server (WAV in → STT → LLM → TTS → WAV out, one call)
+- [ ] Write `ThinAudioClient` class — single HTTP POST, single WAV response
 - [ ] Delete plaipin's STT/TTS/LLM classes (now safe — server validated)
 - [ ] Add VAD on ESP32 (energy threshold or WebRTC-style in C++)
-- [ ] Add streaming audio (SSE — like Larry V2's `transcribe_respond_and_speak_stream`)
+- [ ] Add VAD cooldown (1.8s after playback — prevents echo-loop)
+- [ ] Add streaming audio (SSE — like Larry V2's streaming endpoint)
 - [ ] Add local error audio samples ("I can't connect", "taking a while")
 - [ ] Add noise calibration (Larry's p95 × 1.4 multiplier approach)
 - [ ] Add gibberish detection (confidence < -0.8 → TME mode, play local sample)
-- [ ] Add VAD cooldown (1.8s after playback — prevents echo-loop)
 
 ## v2: Hermes Routing (deferred)
 - [ ] Proxy routes to OpenClaw OR Hermes based on config
@@ -135,31 +177,34 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 ## v3: Real-time Streaming with Interruption (deferred)
 - [ ] Borrow patterns from ChatGPT-live and OpenClaw/Hermes live modes
 - [ ] Streaming audio chunks with interruption handling
-- [ ] Same skeleton (audio in → STT → LLM → TTS → audio out), different transport
 
 ## 🧠 ESP32 Memory Rules (from swarm3-alpha)
-- **`HTTPClient.getString()` is FORBIDDEN for audio responses** — buffers in internal SRAM (~320KB), will OOM on any real audio. Use `http.getStream()`.
-- **All audio buffers MUST use PSRAM** — `heap_caps_malloc(size, MALLOC_CAP_SPIRAM)`. The 8MB PSRAM is more than enough, but only if explicitly allocated.
-- **No base64-in-JSON for audio** — inflates payload 33%, forces full in-memory decode. Use raw WAV body + metadata in headers or small JSON.
-- **M5.Speaker.playWav() needs full PCM in contiguous memory** — allocate from PSRAM, not fragmented heap.
+- **`HTTPClient.getString()` is FORBIDDEN for audio responses** — buffers in internal SRAM (~320KB), will OOM. Use `http.getStream()`.
+- **All audio buffers MUST use PSRAM** — `heap_caps_malloc(size, MALLOC_CAP_SPIRAM)`. 8MB PSRAM is sufficient IF allocated correctly.
+- **No base64-in-JSON for audio** — raw WAV body + metadata in HTTP headers.
+- **M5.Speaker needs full PCM in contiguous memory** — allocate from PSRAM.
 
-## Reference Patterns to Borrow (from robot-bridge — PATTERNS not code)
-- [ ] LED state machine: idle=off, wake=green(1.8s), think=rainbow chase, reply=blue
-- [ ] Face tracking: EMA smoothing=0.25, dead zone=6%, rate limit=12°/0.5s
-- [ ] Per-person memory sessions: `stackchan-{name}` session IDs
-- [ ] 11 MCP tool definitions as reference for our gateway tool list
+## Reference Patterns (verified from plaipin source)
+- `stt/Whisper.cpp` → multipart WAV POST pattern (adapt for LAN HTTP, no TLS)
+- `tts/OpenAITTS.cpp` → HTTP POST text + stream response via buffer (adapt for WAV)
+- `llm/OpenClawClient.cpp` → already works, NO CHANGES
+- `driver/AudioWhisper.cpp` → mic recording code (reuse as-is)
+- `driver/PlayMP3.cpp` → audio playback + `getLevel()` for lip sync
+- `driver/WakeWord.cpp` → SimpleVox MFCC+DTW wake word (keep as-is)
 
 ## Larry V2 Reference Files
-- `/Users/clawdio/Larry-android-port/lobster_audio.py` — Pi client source (VAD, noise filtering, HTTP POST, WAV playback)
-- `/Users/clawdio/Larry-android-port/lobster_audio_server.py` — Mac server source (Whisper STT, LM Studio LLM, Kokoro TTS, session manager, latency logging)
+- `/Users/clawdio/Larry-android-port/lobster_audio.py` — Pi client source
+- `/Users/clawdio/Larry-android-port/lobster_audio_server.py` — Mac server source
+  - `transcribe()` line 103 → faster-whisper
+  - `generate_speech()` line 123 → Kokoro
+  - `parse_effects()` line 165 → regex marker stripping
+  - `_log_latency()` line 180 → latency logging
 
-## Hardware Notes (for reference if firmware needs fixes)
-- ⚠️ GC0308 camera pins: SDA=GPIO12, SCL=GPIO11 (2-repo consensus), XCLK=external 20MHz (NOT LEDC)
-- ⚠️ Camera I2C release: `M5.In_I2C.release()` before `esp_camera_init()`, deinit after capture
-- ⚠️ `esp_codec_dev_write()` may silently fail — bypass to `i2s_channel_write()` if needed
-- ⚠️ Mic quality: Reddit users report Whisper returns empty transcriptions due to low gain — may need AGC tuning
+## Hardware Notes
+- ⚠️ GC0308 camera pins: SDA=GPIO12, SCL=GPIO11, XCLK=external 20MHz (NOT LEDC)
+- ⚠️ Camera NOT compiled in by default — `ENABLE_CAMERA` undefined. Future work.
+- ⚠️ "Head-pet" trigger does NOT exist in plaipin — real triggers: Button A, screen touch (top-right), wake word (cores3)
 - ⚠️ Servo UART1 @ 1Mbps GPIO6/7 (NO CONFLICT — console on USB Serial/JTAG)
-- ⚠️ ILI9342 BGR color correction: `color = ((c & 0x1F) << 11) | (c & 0x07E0) | (c >> 11)`
 - ⚠️ Servo BSP uses 0.1° units (`deg * 10`) — yaw ±128° / pitch 0-90°
-- ⚠️ Camera NOT compiled in by default — `ENABLE_CAMERA` undefined in platformio.ini. Enabling is future work, not a preserved feature.
-- ⚠️ "Head-pet" trigger does NOT exist in plaipin — real triggers are Button A, screen touch (top-right region), wake word (cores3)
+- ⚠️ ILI9342 BGR color correction: `color = ((c & 0x1F) << 11) | (c & 0x07E0) | (c >> 11)`
+- ⚠️ Mic quality: Reddit users report Whisper returns empty transcriptions due to low gain — may need AGC tuning
