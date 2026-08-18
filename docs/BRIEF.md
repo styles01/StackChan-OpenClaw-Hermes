@@ -2,164 +2,161 @@
 
 ## Vision
 
-**The open-source reference firmware for making M5Stack Stack-chan a first-class node of your AI agent.**
+**Replace the Stack-chan's weak chatbot brain with a real agentic harness.**
 
-No proxies. No middlemen. No cloud brokers. The robot connects directly to your agent — OpenClaw or Hermes — over WebSocket + WebRTC. This is the firmware the Stack-chan community keeps asking for.
+The Stack-chan robot already has a polished body — cute face, servo gestures, camera, LED emotions, petting/scanning interactions. But its AI is a dumb ChatGPT call with no tools, no memory, no personality, no agency.
 
-## Problem
+We're replacing that brain with OpenClaw or Hermes — real agent harnesses with tools, memory, MCP, and personality. The body stays untouched. We're just hijacking the LLM call.
 
-Every existing Stack-chan + AI agent solution has a fatal flaw:
+## Architecture
 
-1. **PlaiPin/plaipin-openclaw-stackchan** (2 stars) — requires a Node.js proxy server running 24/7 as a middleman between the robot and the OpenClaw Gateway. Adds latency, adds a failure point, adds a dependency.
+```
+Stack-chan (Arduino/PlatformIO firmware — UNTOUCHED)
+  ├── mic → records audio → STT → text
+  ├── text → LLMBase.chat() → OUR ADAPTER
+  │
+  ├── OUR ADAPTER (implements LLMBase)
+  │   ├── sends text + context to mini (Clawdio-Mini)
+  │   └── receives response: text + emotion + body commands
+  │
+  ├── Mini (Clawdio-Mini) — the middleman
+  │   ├── receives query from Stack-chan
+  │   ├── routes to: OpenClaw Gateway OR Hermes Gateway
+  │   ├── gateway does agentic work (tools, memory, personality, MCP)
+  │   └── formats response back for Stack-chan's body
+  │
+  └── Stack-chan body responds:
+      ├── TTS speaks the text
+      ├── avatar.setExpression() drives the face
+      ├── servo moves (look, nod, shake)
+      └── LED shows emotion state
+```
 
-2. **migratorywhale/stackchan-mcp** (55 stars) — requires a Python MCP server translating tool calls into HTTP REST requests to the robot. Clean code, but the architecture adds a whole server layer that shouldn't need to exist.
+**Key principle:** The ESP32 doesn't know about WebSocket protocols, Ed25519, WebRTC, or gateway internals. It just calls `LLMBase::chat(text)` and gets back text + body commands. The mini handles all the gateway complexity.
 
-3. **waynecc-at/robot-bridge** — the closest to production (21 features, 11 E2E tests, actually deployed), but still uses a Python FastAPI bridge as a middleman. Their own REFACTOR-PLAN.md admits the bridge is "too thick" and should be thinner. We eliminate the bridge entirely.
+## Why This Architecture
 
-4. **taranton/stackchan-gemini-firmware** — solid CoreS3 hardware work (GC0308 pin config, servo gestures, emotion states, SD-backed provisioning) but locked to Google Gemini Live API. Useful hardware patterns, not reusable AI backend.
+1. **Stack-chan's body is already polished.** Face, servo, camera, LED, petting, scanning — all working, all proven. We don't reinvent any of it.
 
-5. **Reddit community efforts** — people modifying the stock XiaoZhi firmware, hitting `esp_codec_dev_write()` silent failures, fighting mic quality issues, and posting "is there a GitHub link?" when they get stuck.
+2. **Half-duplex is fine.** Stack-chan is already half-duplex (mic OR speaker). Robot-bridge shipped half-duplex. Plaipin shipped half-duplex. Nobody complained. Full-duplex/AEC is a nice-to-have for interruption, not a requirement.
 
-**Nobody has shipped a clean, native, no-proxy solution.** That's the gap we fill.
+3. **Dual-gateway support is free.** The adapter just hits an endpoint on the mini. The mini decides: OpenClaw or Hermes? Same response format either way. Swap gateways without touching firmware.
 
-## Solution
+4. **Minimal new code.** Plaipin already wrote `OpenClawClient.cpp` implementing `LLMBase` → it works. We polish it, add body commands, add the Hermes path, and run the proxy on the mini.
 
-**StackChan-OpenClaw-Hermes** — native ESP-IDF firmware that connects directly to your agent:
+5. **No build system drama.** Stays PlatformIO/Arduino. No ESP-IDF conversion, no Arduino-as-component hacks, no LVGL vs M5GFX debates.
 
-- **Direct WebSocket** to the OpenClaw Gateway (or Hermes agent) — no proxy server
-- **WebRTC audio** for the Talk voice path — Opus 16kHz, sub-100ms latency
-- **ESP-SR WakeNet 9** wake word — hands-free, on-device, no cloud
-- **Dual-OTA partitions** — firmware updates without bricking risk
-- **Proper CoreS3 board support** — AW88298 speaker, ES7210 mic with AEC, ILI9342 display, SCSCL servos, GC0308 camera
-- **Dual-target architecture** — same firmware works with OpenClaw OR Hermes by swapping the connection layer
+6. **The mini does the heavy lifting.** Gateway protocol, auth, tools, memory, TTS/STT — all on Clawdio-Mini. The ESP32 stays dumb and fast.
 
-## Dual-Target Architecture
+## What We're NOT Doing
 
-The core firmware (audio, wake word, face, servos, camera) is **backend-agnostic**. Only the connection layer changes:
+- ❌ NOT building ESP-IDF firmware from scratch (rosie-node is throwaway)
+- ❌ NOT using esp-openclaw-room-node SDK (locks us to OpenClaw, kills Hermes option)
+- ❌ NOT using WebRTC (half-duplex is fine, no AEC needed)
+- ❌ NOT using LVGL (Stack-chan's m5avatar face stays)
+- ❌ NOT reinventing servo/camera/LED drivers (Stack-chan already has them)
+- ❌ NOT building a Python bridge (robot-bridge already did that — we use a thin Node.js proxy on the mini instead)
+- ❌ NOT a closed-source project — goes open source
 
-### Option A: OpenClaw Gateway
-- WebSocket → `ws://gateway:18789`
-- WebRTC audio (Opus 16kHz)
-- Uses `esp-openclaw-node` core components
-- Agent has tools, memory, TTS, Telegram, Notion — full ecosystem
-- Robot becomes a physical extension of your existing agent
+## What We ARE Doing
 
-### Option B: Hermes Agent
-- WebSocket → `ws://hermes:PORT`
-- Audio bridge (16kHz PCM)
-- Uses Hermes protocol adapter
-- Lightweight local agent with MCP tools
-- Robot is a standalone node
+1. **Fork plaipin's Stack-chan firmware** — it already has the `OpenClawClient` LLMBase backend
+2. **Improve the adapter** — streaming, body commands, better error handling
+3. **Run the proxy on the mini** — plaipin's `openclaw-rest-proxy.js` (456 lines) already translates HTTP → OpenClaw WebSocket
+4. **Add Hermes routing** — same proxy, different gateway endpoint
+5. **Define a response format** — text + emotion + optional servo/gesture/LED commands so the agent can drive the body
+6. **Configure the agent** — Rosie's system prompt, tools, and personality on the gateway side
 
-**Same firmware. Different config. Not a fork.**
+## The LLMBase Interface (what the adapter implements)
 
-This is inspired by two reference repos:
-- [kkdev92/stackchan-atoms3r](https://github.com/kkdev92/stackchan-atoms3r) — core/platform separation pattern that enables swapping the backend without touching core firmware
-- [waynecc-at/robot-bridge](https://github.com/waynecc-at/robot-bridge) — production-deployed Hermes integration that proves the tool set and conversation flow work in practice
+Stack-chan already has this abstraction:
+
+```cpp
+class LLMBase {
+    virtual void chat(String text, const char *base64_buf = NULL) = 0;
+    // ... plus chat history, system prompts, memory management
+};
+```
+
+Existing backends:
+- `ChatGPT` — basic OpenAI chat (the weak one)
+- `Gemini` — Google Gemini (also has RealtimeLLM for live audio)
+- `ModuleLLM` — M5Stack ModuleLLM hardware
+- `ModuleLLMFncl` — ModuleLLM with function calling
+- `OpenClaw` — plaipin's adapter (already works, our starting point)
+
+We're improving the `OpenClaw` backend and making it the primary one.
+
+## The Proxy (runs on Clawdio-Mini)
+
+Plaipin already wrote `openclaw-rest-proxy.js` (456 lines, only dependency `ws@^8.18.0`):
+- HTTP server on port 18790
+- Receives OpenAI-shaped POST from ESP32
+- Translates to OpenClaw WebSocket protocol (port 18789)
+- Returns OpenAI-shaped response to ESP32
+- Auto-reconnect, session management, response deduplication
+
+We extend it to:
+- Route to OpenClaw OR Hermes based on config
+- Parse agent responses for body commands (emotion, servo, LED)
+- Stream responses back to ESP32 (plaipin used `stream: false`)
 
 ## Hardware Target
 
-**M5Stack Stack-chan (CoreS3)** — the most popular Stack-chan variant:
+**M5Stack Stack-chan (CoreS3)** — unchanged from stock:
 
-| Component | Chip | Why It Matters |
-|-----------|------|----------------|
-| MCU | ESP32-S3 | 16MB flash, 8MB PSRAM — enough for dual-OTA + wake word models |
-| Speaker | AW88298 | I2S STD — ⚠️ `esp_codec_dev_write()` may silently fail, bypass to `i2s_channel_write()` |
-| Mic | ES7210 | STD I2S stereo, MIC1+MIC3 for AEC — enables full-duplex (others are half-duplex) |
-| Display | ILI9342 | 320×240 SPI, needs BGR color correction |
-| Servos | SCSCL ×2 | UART1, yaw ±128° / pitch 5-85°, BSP uses 0.1° units |
-| Camera | GC0308 | 320×240, RGB565→JPEG (no hardware JPEG), shares I2C with system — ⚠️ pin mapping controversy between reference repos |
-| Touch | FT6336/Si12T | Head-pet as push-to-talk fallback |
-| Wake Word | ESP-SR WakeNet 9 | "Hi ESP" (wn9_hiesp), 284KB, on-device |
+| Component | Chip | Status |
+|-----------|------|--------|
+| MCU | ESP32-S3 | 16MB flash, 8MB PSRAM |
+| Speaker | AW88298 | M5.Speaker — works as-is |
+| Mic | ES7210 | M5.Mic — works as-is (half-duplex) |
+| Display | ILI9342 | m5avatar face — works as-is |
+| Servos | SCSCL ×2 | M5StackChan.Motion — works as-is |
+| Camera | GC0308 | esp_camera — works as-is |
+| Touch | FT6336/Si12T | Head-pet — works as-is |
+| LED | WS2812C ×12 | Works as-is |
 
-## Reference Repos Analyzed
+**Nothing changes on the hardware side.** We're swapping software brains, not rebuilding the body.
 
-| Repo | Stars | Usefulness | Key Takeaway |
-|------|-------|-----------|--------------|
-| [migratorywhale/stackchan-mcp](https://github.com/migratorywhale/stackchan-mcp) | 55 | ⭐⭐⭐⭐ | Best hardware reference — GC0308 pins, servo patterns, BGR correction, audio gate |
-| [kkdev92/stackchan-atoms3r](https://github.com/kkdev92/stackchan-atoms3r) | — | ⭐⭐⭐⭐ | Best architecture reference — core/platform separation, port abstractions, host tests |
-| [waynecc-at/robot-bridge](https://github.com/waynecc-at/robot-bridge) | — | ⭐⭐⭐⭐⭐ | Best Hermes integration reference — production-deployed, 11 MCP tools, 21 features, validates our native approach |
-| [PlaiPin/plaipin-openclaw-stackchan](https://github.com/PlaiPin/plaipin-openclaw-stackchan) | 2 | ⭐⭐ | Concept validation — coredump partition, emoji stripping |
-| [taranton/stackchan-gemini-firmware](https://github.com/taranton/stackchan-gemini-firmware) | — | ⭐⭐⭐ | CoreS3 hardware patterns — GC0308 pin confirmation, XCLK/LEDC audio gotcha, servo gestures, emotion states, SD provisioning |
-| [Reddit r/StackChan](https://www.reddit.com/r/StackChan/comments/1tey028/) | — | ⭐⭐⭐ | Real-world findings — codec write bug, mic quality issues, community demand |
+## Reference Repos
 
-Full analyses in [`analysis/`](analysis/) — 6 reference repos + 1 community thread.
+| Repo | Role | What we take |
+|------|------|-------------|
+| [PlaiPin/plaipin-openclaw-stackchan](https://github.com/PlaiPin/plaipin-openclaw-stackchan) | **OUR BASE** | Fork this. OpenClawClient adapter, rest-proxy, emoji stripping, partition table |
+| [migratorywhale/stackchan-mcp](https://github.com/migratorywhale/stackchan-mcp) | Hardware reference | GC0308 pins, servo patterns, camera I2C release (if we need hardware fixes) |
+| [waynecc-at/robot-bridge](https://github.com/waynecc-at/robot-bridge) | Hermes reference | 11 MCP tool definitions, LED state machine, face tracking algorithm, Opus params |
+| [taranton/stackchan-gemini-firmware](https://github.com/taranton/stackchan-gemini-firmware) | Hardware patterns | Emotion states, servo gestures, XCLK gotcha (if needed) |
+| [kkdev92/stackchan-atoms3r](https://github.com/kkdev92/stackchan-atoms3r) | Architecture reference | Core/platform separation pattern (informs our adapter design) |
 
-## Build Phases
-
-### Phase 1 — Core Bring-Up + Voice Verification (current)
-- ESP-IDF v5.5.4 build environment ✅
-- CoreS3 board port (audio, display, touch) ✅
-- Dual-OTA partitions ✅
-- WakeNet 9 wake word ✅
-- Firmware builds (3.4MB, 46% free) ✅
-- **Flash to hardware + Talk voice test** ← WE ARE HERE
-- Face + expression rendering
-
-### Phase 2 — Robot Layer (reuse-first: wrap proven Stack-chan libraries via Arduino-ESP32 component)
-- Servo control + gestures → wrap `M5StackChan.Motion` BSP (from stackchan-mcp)
-- Camera capture → adapt `esp_camera` init + I2C release pattern (from stackchan-mcp)
-- Touch sensor (head-pet push-to-talk)
-- LED control + emotion states → adapt gemini-firmware's 10-mode state machine
-- Full face animation system (v2 — port StackChan avatar)
-
-### Phase 3 — Dual-Target + Release
-- Hermes agent connection layer
-- BLE/AP provisioning
-- Configuration UI
-- Documentation
-- Open source publication
-
-## Design Principle: Reuse First
-
-**Reuse proven code from reference repos unless we have a specific architectural reason to rewrite.** The Stack-chan community has already solved servo control, camera init, LED emotion states, and face rendering on CoreS3. We wrap their proven implementations, not reinvent them.
-
-**Architecture decision: Add Arduino-ESP32 as an ESP-IDF managed component.**
-
-- stackchan-mcp and plaipin are Arduino/PlatformIO projects using `M5StackChan.Motion`, `M5Unified`, `StackChan-BSP`, `esp_camera`
-- Arduino-ESP32 v3.3.6 is built on ESP-IDF v5.5.2 (matches our v5.5.4) and is officially supported as an ESP-IDF component
-- Adding it gives us direct access to all proven Stack-chan libraries without porting
-- This is the fastest path to working hardware with minimum reinvention
-- We can always strip the Arduino dependency later if binary size becomes an issue
-
-**What we reuse directly (thin wrappers, not rewrites):**
-- Servo control → `M5StackChan.Motion` BSP (proven on CoreS3 by stackchan-mcp)
-- Camera → `esp_camera` + stackchan-mcp's init/I2C-release pattern
-- LED/Emotion → stackchan-gemini-firmware's 10-mode emotion state machine pattern
-- Face → room-node built-in procedural face for v1 (already wired to Talk state)
-
-**What we legitimately write ourselves:**
-- Audio board port → room-node contract is ESP-IDF, AW88298/ES7210 codecs are CoreS3-specific (Waveshare reference uses different chips)
-- Display board port → room-node contract is ESP-IDF, ILI9342 SPI is CoreS3-specific
-- Connection layer → our dual-target OpenClaw/Hermes architecture is novel
-- Services hooks → `prepare_runtime`, `register_commands` are our custom robot commands
-
-## Non-Goals
-
-- NOT building a cloud broker
-- NOT building a proxy server
-- NOT building a Python bridge (robot-bridge already did that — we're going native)
-- NOT modifying stock XiaoZhi firmware
-- NOT reinventing servo/camera/LED drivers that already work (reuse them)
-- NOT a closed-source project — this goes open source
+Full analyses in [`analysis/`](analysis/) + swarm reports.
 
 ## Success Criteria
 
-1. **Talk voice path works** — say "Hi ESP", speak to the robot, hear the agent's voice response through the speaker. Sub-500ms latency. This is the make-or-break test.
+1. **Stack-chan talks to Rosie** — press button / pet head → speak → Rosie responds through the robot's speaker with her personality, tools, and memory
+2. **Dual-gateway works** — swap OpenClaw → Hermes by changing one config value on the mini, no firmware change
+3. **Body commands work** — agent can say "look left", "act happy", "turn LED green" and the robot does it
+4. **Streaming responses** — robot starts speaking first sentence while agent is still generating (not wait-for-full-response like plaipin)
+5. **Community adoption** — people on r/StackChan link to our repo instead of asking "is there a GitHub link?"
 
-2. **Dual-target works** — same firmware binary connects to OpenClaw Gateway or Hermes agent with only a config change. No recompilation.
+## Upstream Advantage
 
-3. **Community adoption** — people on r/StackChan link to our repo instead of asking "is there a GitHub link?"
+Because this is a **fork of plaipin** (which itself forks Stack-chan), we get:
 
-4. **No bricking** — dual-OTA means failed updates are recoverable. Stock firmware is backed up before first flash.
+1. **Pull upstream Stack-chan updates** — bug fixes, face improvements, servo tuning, M5Unified compatibility, new gestures/skins. Merge from upstream, not reinvent.
+2. **Stay compatible with the Stack-chan ecosystem** — M5StackChan BSP, M5Unified, community mods all drop in because we didn't change the firmware architecture.
+3. **Community contributions flow both ways** — our improved OpenClawClient adapter can PR back to plaipin/Stack-chan. Their improvements flow down to us.
+4. **No maintenance isolation** — rosie-node (Architecture A) would have been permanently cut off from the Stack-chan community. A fork stays connected.
+
+This is the open-source flywheel: we build the OpenClaw/Hermes adapter, the community builds everything else, and we all benefit from each other's work.
 
 ## Hard Rules
 
-1. **NO GATEWAY RESTARTS WITHOUT ASKING** — James's explicit rule. Gateway restarts disrupt running sessions.
-2. **Backup stock firmware BEFORE flashing** — we have bricked devices before. Full 16MB dump via esptool first.
-3. **No LAN Only Mode for any printer solution** — separate rule, not relevant here, but don't forget it.
+1. **Backup stock firmware BEFORE flashing** — full 16MB dump via esptool first
+2. **Stack-chan firmware stays PlatformIO/Arduino** — no ESP-IDF conversion
+3. **Don't touch the body** — face, servo, camera, LED, petting, scanning all stay as-is
+4. **The mini is the middleman** — ESP32 never talks directly to the gateway
 
 ## Team
 
 - **James** — project lead, hardware owner, firmware testing
-- **Rosie** — firmware development, research, documentation, git wrangling
+- **Rosie** — adapter development, proxy, gateway config, documentation
