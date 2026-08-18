@@ -63,27 +63,39 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [ ] Consider robot-bridge's natural stranger registration pattern (LLM-driven, no regex) for Phase 3
 
 ## Phase 2: Robot Layer Integration (3-5 days)
-NOTE: StackChan robot layer is NOT cleanly separable. Extract only portable pieces.
+**REUSE-FIRST PRINCIPLE: Wrap proven Stack-chan libraries, don't reinvent them.**
+Add `espressif/arduino-esp32` (v3.3.6) as a managed component for direct access to `M5StackChan.Motion`, `M5Unified`, `StackChan-BSP`, `esp_camera`.
 
-- [ ] **Servo + motion (HIGH VALUE, LOW RISK — genuinely portable):**
-  - [ ] Extract `stackchan/motion/` + `hal/hal_servo.cpp` + `drivers/FTServo_Arduino/`
-  - [ ] Add deps: `smooth_ui_toolkit` (v2.12.0), `ArduinoJson` (v7.4.2) as managed components
-  - [ ] Yaw + pitch control, lookAtNormalized / lookAtPoint 3D IK
-  - [ ] Spring-damper motion model, NVS zero-calibration
+- [ ] **Add Arduino-ESP32 as managed component:**
+  - [ ] Add `espressif/arduino-esp32` to `idf_component.yml`
+  - [ ] Add `m5stack/M5Unified`, `m5stack/StackChan-BSP` as Arduino library deps
+  - [ ] Verify build still compiles with Arduino component added
+
+- [ ] **Servo + motion (WRAP M5StackChan.Motion — proven by stackchan-mcp):**
+  - [ ] Thin wrapper around `M5StackChan.Motion.move()`, `.goHome()`, `.moveX()`, `.moveY()`
+  - [ ] Adapt stackchan-mcp's `servo_service.cpp` gesture patterns (nod, shake, look_around)
+  - [ ] BSP handles torque enable, VM_EN power, safe ranges — don't reimplement
   - [ ] UART1 @ 1Mbps GPIO6/7 (NO CONFLICT — console on USB Serial/JTAG)
   - [ ] Wire as board `services.register_commands` hook
 
-- [ ] **Face (USE ROOM-NODE BUILT-IN for v1):**
-  - [ ] v1: Use esp-openclaw-node's built-in procedural LVGL face (`room_face.c`) — zero work, already wired to Talk state
-  - [ ] v2 (later): Re-parent StackChan avatar widget tree onto room-node display (NOT a direct port — `StackChanAvatarDisplay` inherits from xiaozhi's `LvglDisplay`)
+- [ ] **Camera (ADAPT stackchan-mcp's camera_service.cpp — proven GC0308 driver):**
+  - [ ] Use stackchan-mcp's init/capture/deinit pattern directly
+  - [ ] `M5.In_I2C.release()` before `esp_camera_init()`, deinit after capture
+  - [ ] GC0308 pins: SDA=GPIO12, SCL=GPIO11 (2-repo consensus), XCLK=external 20MHz (NOT LEDC)
+  - [ ] Wire through room-node's `try_acquire_camera()` / `release_camera()`
+  - [ ] Use custom command name `rosie.vision` (gateway blocks `camera.snap`/`camera.clip`)
 
-- [ ] **Camera (SEPARATE, LATER — deeply coupled to xiaozhi):**
-  - [ ] Rewrite as standalone `esp_video` capture → JPEG → POST (NOT a port of StackChan camera)
-  - [ ] Wire through room-node's `try_acquire_camera()` / `release_camera()` to avoid media contention with Talk
-  - [ ] Note: gateway's `denyCommands` blocks `camera.snap`/`camera.clip` — use custom command name (e.g. `rosie.vision`)
+- [ ] **LED + Emotion (ADAPT gemini-firmware's 10-mode state machine):**
+  - [ ] Port emotion states: neutral/listening/speaking/thinking/looking/happy/angry/found/error/sleep
+  - [ ] LED state machine: idle=off, wake=green, think=rainbow chase, reply=blue (from robot-bridge)
+  - [ ] WS2812C ×12 LEDs via AW9523 IO expander
+
+- [ ] **Face (USE ROOM-NODE BUILT-IN for v1):**
+  - [ ] v1: Use esp-openclaw-node's built-in procedural LVGL face (`room_face.c`)
+  - [ ] v2 (later): Re-parent StackChan avatar widget tree onto room-node display
 
 - [ ] **Sensors (OPTIONAL, DEFER):**
-  - [ ] BMI270 IMU, Si12T touch — drivers are portable, gesture recognizers in `stackchan/modifiers/` are self-contained
+  - [ ] BMI270 IMU, Si12T touch
 
 ## Phase 3: Wake Word (1-2 days + parallel research track)
 NOTE: There is NO self-service online wake word generator. It's a submission to Espressif (GitHub issue #88).

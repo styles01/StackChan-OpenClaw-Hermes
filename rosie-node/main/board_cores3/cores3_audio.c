@@ -1,20 +1,28 @@
-// CoreS3 audio driver for Rosie Node
-// AW88298 speaker + ES7210 mic with TDM I2S for AEC reference
-// Adapted from StackChan firmware cores3_audio_codec.cc
+// CoreS3 audio driver for StackChan-OpenClaw-Hermes
+// AW88298 speaker + ES7210 mic with STD I2S (stereo) for AEC reference
+// Adapted from Waveshare room-node reference + StackChan firmware cores3_audio_codec.cc
+//
+// Key fix (adversarial review 2026-08-17): switched from TDM to STD I2S.
+// The ESP-IDF I2S driver does NOT support mixed modes (STD TX + TDM RX)
+// on the same port. The Waveshare reference uses STD for both with the
+// same ES7210 codec — proven working. TDM is only needed for 4+ channel
+// arrays; with MIC1 + MIC3 we can use STD stereo.
 
 #include "cores3_board.h"
 #include "esp_log.h"
 #include "esp_check.h"
 #include "esp_codec_dev_defaults.h"
 #include "driver/i2c_master.h"
-#include "driver/i2s_tdm.h"
 #include "driver/i2s_std.h"
 
 #define TAG "cores3_audio"
 
 static i2c_master_bus_handle_t s_i2c_bus = NULL;
 
-// Initialize I2C bus (shared by all CoreS3 peripherals)
+// Initialize I2C bus (shared by all CoreS3 peripherals: AW88298, ES7210,
+// AXP2101, FT6336, AW9523, and GC0308 camera)
+// NOTE: GC0308 camera shares this bus — camera driver must acquire/release
+// the bus (M5.In_I2C.release() pattern) before/after capture in Phase 2.
 esp_err_t cores3_i2c_init(void)
 {
     if (s_i2c_bus != NULL) {
@@ -31,7 +39,7 @@ esp_err_t cores3_i2c_init(void)
         .flags = { .enable_internal_pullup = true },
     };
     ESP_RETURN_ON_ERROR(i2c_new_master_bus(&bus_config, &s_i2c_bus), TAG, "I2C bus init");
-    ESP_LOGI(TAG, "I2C bus initialized on port %d (SDA=%d, SCL=%d)",
+    ESP_LOGI(TAG, "I2C bus initialized on port %d (SDA=%d, SCL=%d) — shared with camera",
              CORES3_I2C_PORT, CORES3_I2C_SDA, CORES3_I2C_SCL);
     return ESP_OK;
 }
@@ -50,14 +58,16 @@ esp_err_t cores3_audio_open(void *ctx, esp_openclaw_room_audio_handles_t *handle
     ESP_RETURN_ON_ERROR(cores3_i2c_init(), TAG, "I2C init");
 
     // Create I2S channels (TX for speaker, RX for mic)
+    // Both use STD mode on the same port — proven pattern from Waveshare reference
     i2s_chan_handle_t tx = NULL;
     i2s_chan_handle_t rx = NULL;
     i2s_chan_config_t channel_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     channel_cfg.auto_clear = true;
     ESP_RETURN_ON_ERROR(i2s_new_channel(&channel_cfg, &tx, &rx), TAG, "I2S channel create");
 
-    // TX: Standard I2S for AW88298 speaker (stereo, 16-bit)
-    i2s_std_config_t std_cfg = {
+    // STD I2S config — same for both TX and RX (symmetric stereo frame contract)
+    // 16kHz matches our WebRTC Opus pipeline and is proven working on CoreS3
+    const i2s_std_config_t i2s_cfg = {
         .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(CORES3_AUDIO_SAMPLE_RATE),
         .slot_cfg = I2S_STD_PHILIP_SLOT_DEFAULT_CONFIG(
             I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
@@ -66,43 +76,24 @@ esp_err_t cores3_audio_open(void *ctx, esp_openclaw_room_audio_handles_t *handle
             .bclk = CORES3_I2S_BCLK,
             .ws = CORES3_I2S_WS,
             .dout = CORES3_I2S_DOUT,
-            .din = I2S_GPIO_UNUSED,
-        },
-    };
-    ESP_RETURN_ON_ERROR(i2s_channel_init_std_mode(tx, &std_cfg), TAG, "I2S TX init (AW88298)");
-
-    // RX: TDM for ES7210 mic with AEC reference channel
-    // CoreS3 uses TDM 4-slot to capture MIC1 + reference (MIC3)
-    i2s_tdm_config_t tdm_cfg = {
-        .clk_cfg = {
-            .sample_rate_hz = CORES3_AUDIO_SAMPLE_RATE,
-            .clk_src = I2S_CLK_SRC_DEFAULT,
-            .mclk_multiple = I2S_MCLK_MULTIPLE_256,
-            .bclk_div = 8,
-        },
-        .slot_cfg = {
-            .data_bit_width = I2S_DATA_BIT_WIDTH_16BIT,
-            .slot_bit_width = I2S_SLOT_BIT_WIDTH_AUTO,
-            .slot_mode = I2S_SLOT_MODE_STEREO,
-            .slot_mask = (i2s_tdm_slot_mask_t)(I2S_TDM_SLOT0 | I2S_TDM_SLOT1 | I2S_TDM_SLOT2 | I2S_TDM_SLOT3),
-            .ws_width = I2S_TDM_AUTO_WS_WIDTH,
-            .ws_pol = false,
-            .bit_shift = true,
-            .left_align = false,
-            .big_endian = false,
-            .bit_order_lsb = false,
-            .skip_mask = false,
-            .total_slot = I2S_TDM_AUTO_SLOT_NUM,
-        },
-        .gpio_cfg = {
-            .mclk = CORES3_I2S_MCLK,
-            .bclk = CORES3_I2S_BCLK,
-            .ws = CORES3_I2S_WS,
-            .dout = I2S_GPIO_UNUSED,
             .din = CORES3_I2S_DIN,
         },
     };
-    ESP_RETURN_ON_ERROR(i2s_channel_init_tdm_mode(rx, &tdm_cfg), TAG, "I2S RX init (ES7210 TDM)");
+    ESP_RETURN_ON_ERROR(i2s_channel_init_std_mode(tx, &i2s_cfg), TAG, "I2S TX init (AW88298)");
+    ESP_RETURN_ON_ERROR(i2s_channel_init_std_mode(rx, &i2s_cfg), TAG, "I2S RX init (ES7210)");
+
+    // Validate TX/RX form a reciprocal pair (from Waveshare reference)
+    i2s_chan_info_t tx_info = {0};
+    i2s_chan_info_t rx_info = {0};
+    ESP_RETURN_ON_ERROR(i2s_channel_get_info(tx, &tx_info), TAG, "I2S TX channel info");
+    ESP_RETURN_ON_ERROR(i2s_channel_get_info(rx, &rx_info), TAG, "I2S RX channel info");
+    ESP_RETURN_ON_FALSE(
+        tx_info.pair_chan == rx && rx_info.pair_chan == tx,
+        ESP_ERR_INVALID_STATE,
+        TAG,
+        "I2S TX/RX failed to establish a reciprocal pair");
+    ESP_LOGI(TAG, "I2S paired at %d Hz with a symmetric stereo STD frame contract",
+             CORES3_AUDIO_SAMPLE_RATE);
 
     // Enable channels
     ESP_RETURN_ON_ERROR(i2s_channel_enable(tx), TAG, "I2S TX enable");
@@ -151,6 +142,8 @@ esp_err_t cores3_audio_open(void *ctx, esp_openclaw_room_audio_handles_t *handle
     ESP_RETURN_ON_FALSE(handles->playback != NULL, ESP_ERR_NO_MEM, TAG, "AW88298 playback device");
 
     // ES7210 mic codec
+    // MIC1 = near-end mic, MIC3 = speaker reference for AEC
+    // STD stereo mode captures both channels — proven by Waveshare reference
     audio_codec_i2c_cfg_t mic_ctrl_cfg = {
         .port = CORES3_I2C_PORT,
         .addr = ES7210_CODEC_DEFAULT_ADDR,
@@ -175,6 +168,6 @@ esp_err_t cores3_audio_open(void *ctx, esp_openclaw_room_audio_handles_t *handle
     handles->record = esp_codec_dev_new(&mic_dev);
     ESP_RETURN_ON_FALSE(handles->record != NULL, ESP_ERR_NO_MEM, TAG, "ES7210 capture device");
 
-    ESP_LOGI(TAG, "Audio initialized: AW88298 speaker + ES7210 mic (TDM, MIC1+MIC3 for AEC)");
+    ESP_LOGI(TAG, "Audio initialized: AW88298 speaker + ES7210 mic (STD stereo, MIC1+MIC3 for AEC)");
     return ESP_OK;
 }

@@ -95,7 +95,7 @@ This dual-target design is directly inspired by two reference repos:
 |-----------|------|-------|
 | MCU | ESP32-S3 | 16MB flash, 8MB PSRAM |
 | Speaker Codec | AW88298 | I2S STD, 16kHz mono |
-| Mic Codec | ES7210 | I2S TDM, 4-slot, MIC1+MIC3 (AEC) |
+| Mic Codec | ES7210 | STD I2S stereo, MIC1+MIC3 (AEC) |
 | Display | ILI9342 | 320×240 SPI, BGR color |
 | Touch | FT6336 / Si12T | Capacitive (Phase 2) |
 | Servos | SCSCL ×2 | UART1 GPIO6/7, yaw ±128° / pitch 5-85° |
@@ -199,7 +199,7 @@ StackChan-OpenClaw-Hermes/
 │       ├── main.c            # Entry point
 │       ├── idf_component.yml  # Dependencies
 │       └── board_cores3/      # CoreS3 board port
-│           ├── cores3_audio.c  # AW88298 + ES7210 TDM I2S
+│           ├── cores3_audio.c  # AW88298 + ES7210 STD I2S
 │           ├── cores3_display.c # ILI9342 320×240
 │           └── cores3_touch.c  # BOOT button (Phase 1)
 ├── analysis/                  # Reference repo analyses (6 repos + 1 community thread)
@@ -232,7 +232,9 @@ StackChan-OpenClaw-Hermes/
 
 6. **Camera XCLK via LEDC causes audio choppy** — must use external 20MHz clock (XCLK=-1), not LEDC-generated. Third repo to confirm this. ([Source: gemini-firmware analysis](analysis/stackchan-gemini-firmware-repo-analysis.md))
 
-6. **Servo angles use 0.1° units** — StackChan-BSP uses `deg * 10` for servo positioning.
+7. **Servo angles use 0.1° units** — StackChan-BSP uses `deg * 10` for servo positioning.
+
+8. **Reuse-first principle** — wrap proven Stack-chan libraries via Arduino-ESP32 component. Don't reinvent servo/camera/LED drivers that already work. Adversarial review should catch "should this code exist?" not just "are there bugs?"
 
 ## References
 

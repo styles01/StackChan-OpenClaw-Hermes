@@ -65,7 +65,7 @@ This is inspired by two reference repos:
 |-----------|------|----------------|
 | MCU | ESP32-S3 | 16MB flash, 8MB PSRAM — enough for dual-OTA + wake word models |
 | Speaker | AW88298 | I2S STD — ⚠️ `esp_codec_dev_write()` may silently fail, bypass to `i2s_channel_write()` |
-| Mic | ES7210 | TDM I2S, 4-slot, MIC1+MIC3 for AEC — enables full-duplex (others are half-duplex) |
+| Mic | ES7210 | STD I2S stereo, MIC1+MIC3 for AEC — enables full-duplex (others are half-duplex) |
 | Display | ILI9342 | 320×240 SPI, needs BGR color correction |
 | Servos | SCSCL ×2 | UART1, yaw ±128° / pitch 5-85°, BSP uses 0.1° units |
 | Camera | GC0308 | 320×240, RGB565→JPEG (no hardware JPEG), shares I2C with system — ⚠️ pin mapping controversy between reference repos |
@@ -96,12 +96,12 @@ Full analyses in [`analysis/`](analysis/) — 6 reference repos + 1 community th
 - **Flash to hardware + Talk voice test** ← WE ARE HERE
 - Face + expression rendering
 
-### Phase 2 — Robot Layer
-- Servo control + gestures (nod, shake, look)
-- Camera capture (snapshot + vision)
+### Phase 2 — Robot Layer (reuse-first: wrap proven Stack-chan libraries via Arduino-ESP32 component)
+- Servo control + gestures → wrap `M5StackChan.Motion` BSP (from stackchan-mcp)
+- Camera capture → adapt `esp_camera` init + I2C release pattern (from stackchan-mcp)
 - Touch sensor (head-pet push-to-talk)
-- LED control (status indicators)
-- Full face animation system
+- LED control + emotion states → adapt gemini-firmware's 10-mode state machine
+- Full face animation system (v2 — port StackChan avatar)
 
 ### Phase 3 — Dual-Target + Release
 - Hermes agent connection layer
@@ -110,13 +110,37 @@ Full analyses in [`analysis/`](analysis/) — 6 reference repos + 1 community th
 - Documentation
 - Open source publication
 
+## Design Principle: Reuse First
+
+**Reuse proven code from reference repos unless we have a specific architectural reason to rewrite.** The Stack-chan community has already solved servo control, camera init, LED emotion states, and face rendering on CoreS3. We wrap their proven implementations, not reinvent them.
+
+**Architecture decision: Add Arduino-ESP32 as an ESP-IDF managed component.**
+
+- stackchan-mcp and plaipin are Arduino/PlatformIO projects using `M5StackChan.Motion`, `M5Unified`, `StackChan-BSP`, `esp_camera`
+- Arduino-ESP32 v3.3.6 is built on ESP-IDF v5.5.2 (matches our v5.5.4) and is officially supported as an ESP-IDF component
+- Adding it gives us direct access to all proven Stack-chan libraries without porting
+- This is the fastest path to working hardware with minimum reinvention
+- We can always strip the Arduino dependency later if binary size becomes an issue
+
+**What we reuse directly (thin wrappers, not rewrites):**
+- Servo control → `M5StackChan.Motion` BSP (proven on CoreS3 by stackchan-mcp)
+- Camera → `esp_camera` + stackchan-mcp's init/I2C-release pattern
+- LED/Emotion → stackchan-gemini-firmware's 10-mode emotion state machine pattern
+- Face → room-node built-in procedural face for v1 (already wired to Talk state)
+
+**What we legitimately write ourselves:**
+- Audio board port → room-node contract is ESP-IDF, AW88298/ES7210 codecs are CoreS3-specific (Waveshare reference uses different chips)
+- Display board port → room-node contract is ESP-IDF, ILI9342 SPI is CoreS3-specific
+- Connection layer → our dual-target OpenClaw/Hermes architecture is novel
+- Services hooks → `prepare_runtime`, `register_commands` are our custom robot commands
+
 ## Non-Goals
 
 - NOT building a cloud broker
 - NOT building a proxy server
 - NOT building a Python bridge (robot-bridge already did that — we're going native)
 - NOT modifying stock XiaoZhi firmware
-- NOT supporting Arduino/PlatformIO (ESP-IDF only)
+- NOT reinventing servo/camera/LED drivers that already work (reuse them)
 - NOT a closed-source project — this goes open source
 
 ## Success Criteria

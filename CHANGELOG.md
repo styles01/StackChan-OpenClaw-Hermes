@@ -30,12 +30,25 @@ All notable changes to the StackChan-OpenClaw-Hermes project.
   - `analysis/stackchan-firmware-analysis.md` (336 lines)
 
 ### Adversarial Review
-- `analysis/adversarial-review.md` (198 lines) — Thomas verified every claim against actual source code
-- Found 3 factual errors: wrong Gateway port (18789 not 19001), missing auth setup, overstated board port reuse
-- Resolved 4 open questions: UART1 (no conflict), ESP-IDF version (5.5.4), wake word generator (doesn't exist), Gateway connection (port + auth)
-- Flagged 8 risks: Talk capability unproven, version skew, dependency chain, face system collision, camera contention, denyCommands, no OTA plan, MCP fallback trap
-- Revised effort: ~2.5-3 weeks (not ~1 week)
-- BUILD_PLAN.md and TODO.md updated with all corrections
+- `analysis/adversarial-code-review.md` (244 lines) — adversarial review of actual firmware code against esp-openclaw-room-node contract
+- Found 6 bugs: critical TDM/STD I2S mode mismatch, missing TX/RX pair validation, TDM slot over-allocation, display brightness no-op, PSRAM DMA risk, shared I2C bus (not actually a bug)
+- Found 3 missing config fields: services port, storage port, display/audio ctx
+- Fixed audio driver: rewrote `cores3_audio.c` from TDM to STD I2S (matching Waveshare reference pattern)
+- Added TX/RX pair validation from Waveshare reference
+- Created Phase 2 skeleton files: `cores3_servo.c/h`, `cores3_camera.c/h`, `cores3_led.c/h`
+- Updated `main.c` with services port callbacks (prepare_runtime, prepare_network, register_commands)
+
+### Reuse-First Principle (James's callout)
+- James caught that I was reinventing the wheel — writing servo/camera/LED drivers from scratch when proven implementations exist in stackchan-mcp and plaipin
+- Adversarial review should have caught "should this code exist?" not just "are there bugs in this code?" — process failure noted
+- **New principle: Reuse proven code unless we have a specific architectural reason to rewrite**
+- **Architecture decision: Add Arduino-ESP32 (v3.3.6, built on ESP-IDF v5.5.2) as a managed component**
+  - Gives direct access to `M5StackChan.Motion`, `M5Unified`, `StackChan-BSP`, `esp_camera`
+  - These are already proven on CoreS3 by stackchan-mcp and plaipin
+  - Maximum reuse, minimum reinvention
+  - Can strip Arduino dependency later if binary size becomes an issue
+- Updated BRIEF, BUILD_PLAN, TODO, README with reuse-first principle and Arduino-as-component decision
+- From-scratch servo/camera/LED files will be replaced with thin wrappers around proven libraries
 
 ### Decisions
 - ADR-001: Use esp-openclaw-node as firmware core

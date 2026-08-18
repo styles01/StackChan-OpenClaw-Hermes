@@ -11,10 +11,47 @@
 
 #include "cores3_board.h"
 #include "esp_openclaw_room_node.h"
+#include "esp_openclaw_node.h"
 #include "esp_log.h"
 #include "esp_err.h"
 
 #define TAG "stackchan_node"
+
+// --- Services port callbacks (Phase 2 stubs) ---
+
+// prepare_runtime: called early in startup, before media/Wi-Fi.
+// Phase 2: init AW9523 IO expander for display backlight + LED control
+static esp_err_t cores3_prepare_runtime(void *ctx)
+{
+    (void)ctx;
+    ESP_LOGI(TAG, "prepare_runtime: AW9523 IO expander init (Phase 2 TODO)");
+    // TODO Phase 2: init AW9523 for backlight PWM + WS2812 LED enable
+    return ESP_OK;
+}
+
+// prepare_network: called before Wi-Fi init.
+// CoreS3 has no Wi-Fi coprocessor — nothing to do here.
+static esp_err_t cores3_prepare_network(void *ctx)
+{
+    (void)ctx;
+    ESP_LOGI(TAG, "prepare_network: no Wi-Fi coprocessor on CoreS3");
+    return ESP_OK;
+}
+
+// register_commands: called to register custom robot commands.
+// Phase 2: register rosie.look, rosie.emote, rosie.led, rosie.gesture
+static esp_err_t cores3_register_commands(void *ctx, esp_openclaw_node_handle_t node)
+{
+    (void)ctx;
+    (void)node;
+    ESP_LOGI(TAG, "register_commands: robot commands (Phase 2 TODO)");
+    // TODO Phase 2: register custom commands:
+    //   rosie.look <x> <y>    — servo lookAt
+    //   rosie.emote <emotion> — set emotion state
+    //   rosie.led <state>     — LED state machine
+    //   rosie.gesture <name>  — servo gesture (nod/shake/look-around)
+    return ESP_OK;
+}
 
 void app_main(void)
 {
@@ -23,8 +60,8 @@ void app_main(void)
     // Fill the board port config struct
     // This is the contract between esp-openclaw-room-node and our CoreS3 board
     const esp_openclaw_room_node_config_t config = {
-        .display_name = "Rosie Node",
-        .model_identifier = "m5stack-cores3-rosie",
+        .display_name = "Stack-chan",
+        .model_identifier = "m5stack-cores3-stackchan",
 
         // Display: ILI9342 320x240 SPI
         .display = {
@@ -40,7 +77,7 @@ void app_main(void)
             .animation_frame_ms = 16,  // 60 Hz refresh
         },
 
-        // Audio: AW88298 speaker + ES7210 mic with TDM I2S for AEC
+        // Audio: AW88298 speaker + ES7210 mic with STD I2S for AEC
         .audio = {
             .open = cores3_audio_open,
             // "MR" = mic + reference layout (AEC with speaker reference on MIC3)
@@ -51,6 +88,16 @@ void app_main(void)
             .configure_input_gain = true,
             .input_gain_db = CORES3_AUDIO_INPUT_GAIN_DB,
         },
+
+        // Services: board-specific runtime/network/command hooks
+        .services = {
+            .prepare_runtime = cores3_prepare_runtime,
+            .prepare_network = cores3_prepare_network,
+            .register_commands = cores3_register_commands,
+        },
+
+        // Storage: no file commands for Phase 1 (add SD card in Phase 3)
+        .storage = { 0 },
     };
 
     // Start the room node — this handles everything:
@@ -61,5 +108,5 @@ void app_main(void)
         return;
     }
 
-    ESP_LOGI(TAG, "Rosie Node is live. Say 'Hi ESP' to wake, then talk to Rosie.");
+    ESP_LOGI(TAG, "Stack-chan is live. Say 'Hi ESP' to wake, then talk to your agent.");
 }

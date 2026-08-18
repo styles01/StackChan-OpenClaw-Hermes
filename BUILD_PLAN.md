@@ -178,24 +178,37 @@ Replace the default Stack-chan chatbot (xiaozhi cloud brain) with a native AI ag
 - [ ] Set up dual-OTA partition table + rollback from the start
 
 ### Phase 2: Robot Layer Integration (3-5 days)
-NOTE: StackChan robot layer is NOT cleanly separable — display inherits from xiaozhi's LvglDisplay, camera depends on xiaozhi's mcp_server/board/display. Extract only the portable pieces.
+**REUSE-FIRST PRINCIPLE: Wrap proven Stack-chan libraries, don't reinvent them.**
+Add `espressif/arduino-esp32` (v3.3.6, built on ESP-IDF v5.5.2) as a managed component to get direct access to `M5StackChan.Motion`, `M5Unified`, `StackChan-BSP`, `esp_camera`. These are already proven on CoreS3 by stackchan-mcp and plaipin.
 
-- [ ] **Servo + motion (HIGH VALUE, LOW RISK — genuinely portable):**
-  - [ ] Extract `stackchan/motion/` + `hal/hal_servo.cpp` + `drivers/FTServo_Arduino/`
-  - [ ] Add deps: `smooth_ui_toolkit` (v2.12.0), `ArduinoJson` (v7.4.2) as managed components
-  - [ ] Yaw + pitch control, lookAtNormalized / lookAtPoint 3D IK
-  - [ ] Spring-damper motion model, NVS zero-calibration
-  - [ ] UART1 @ 1Mbps GPIO6/7 (NO CONFLICT — console is on USB Serial/JTAG)
+- [ ] **Add Arduino-ESP32 as managed component:**
+  - [ ] Add `espressif/arduino-esp32` to `idf_component.yml`
+  - [ ] Add `m5stack/M5Unified`, `m5stack/StackChan-BSP` as Arduino library deps
+  - [ ] Verify build still compiles with Arduino component added
+  - [ ] If binary size becomes an issue later, strip Arduino and port to pure ESP-IDF
+
+- [ ] **Servo + motion (WRAP M5StackChan.Motion — proven by stackchan-mcp):**
+  - [ ] Thin wrapper around `M5StackChan.Motion.move()`, `.goHome()`, `.moveX()`, `.moveY()`
+  - [ ] Adapt stackchan-mcp's `servo_service.cpp` gesture patterns (nod, shake, look_around)
+  - [ ] BSP handles torque enable, VM_EN power, safe ranges, acceleration curves — don't reimplement
+  - [ ] UART1 @ 1Mbps GPIO6/7 (NO CONFLICT — console on USB Serial/JTAG)
   - [ ] Wire as board `services.register_commands` hook
+
+- [ ] **Camera (ADAPT stackchan-mcp's camera_service.cpp — proven GC0308 driver):**
+  - [ ] Use stackchan-mcp's `camera_service.cpp` init/capture/deinit pattern directly
+  - [ ] `M5.In_I2C.release()` before `esp_camera_init()`, `esp_camera_deinit()` after capture
+  - [ ] GC0308 pins: SDA=GPIO12, SCL=GPIO11 (2-repo consensus), XCLK=external 20MHz (NOT LEDC)
+  - [ ] Wire through room-node's `try_acquire_camera()` / `release_camera()` to avoid media contention with Talk
+  - [ ] Use custom command name `rosie.vision` (gateway blocks `camera.snap`/`camera.clip`)
+
+- [ ] **LED + Emotion (ADAPT gemini-firmware's 10-mode state machine):**
+  - [ ] Port emotion states: neutral/listening/speaking/thinking/looking/happy/angry/found/error/sleep
+  - [ ] LED state machine: idle=off, wake=green, think=rainbow chase, reply=blue (from robot-bridge)
+  - [ ] WS2812C ×12 LEDs via AW9523 IO expander
 
 - [ ] **Face (USE ROOM-NODE BUILT-IN for v1):**
   - [ ] v1: Use esp-openclaw-node's built-in procedural LVGL face (`room_face.c`) — zero work, already wired to Talk state
-  - [ ] v2 (later): Re-parent StackChan avatar widget tree onto room-node display (NOT a direct port — `StackChanAvatarDisplay` inherits from xiaozhi's `LvglDisplay`)
-
-- [ ] **Camera (SEPARATE, LATER — deeply coupled to xiaozhi):**
-  - [ ] Rewrite as standalone `esp_video` capture → JPEG → POST (NOT a port of StackChan camera)
-  - [ ] Wire through room-node's `try_acquire_camera()` / `release_camera()` to avoid media contention with Talk
-  - [ ] Note: gateway's `denyCommands` blocks `camera.snap`/`camera.clip` — use custom command name (e.g. `rosie.vision`)
+  - [ ] v2 (later): Re-parent StackChan avatar widget tree onto room-node display
 
 - [ ] **Sensors (OPTIONAL, DEFER):**
   - [ ] BMI270 IMU, Si12T touch — drivers are portable, gesture recognizers in `stackchan/modifiers/` are self-contained
@@ -269,11 +282,14 @@ NOTE: There is NO self-service online wake word generator. It's a submission to 
 └── CHANGELOG.md
 ```
 
-## Resolved Decisions (from adversarial review)
+## Resolved Decisions (from adversarial review + James's reuse-first callout)
 1. ~~Wake word model generation~~ → RESOLVED: No self-service generator exists. Ship stock model, submit "Hey Rosie" to Espressif as parallel track.
 2. ~~Gateway connection~~ → RESOLVED: Port is 18789 (not 19001). Protocol supported. Must set `gateway.nodes.commands.allow`.
 3. ~~ESP-IDF version~~ → RESOLVED: Pick 5.5.4 (matches StackChan's tested env, satisfies `>=5.3`).
 4. ~~Servo UART conflict~~ → RESOLVED: No conflict. Servos on UART1, console on USB Serial/JTAG.
+5. ~~Arduino vs ESP-IDF for robot layer~~ → RESOLVED: Add Arduino-ESP32 as managed component (Path A). Reuse `M5StackChan.Motion`, `esp_camera`, `M5Unified` directly. Don't reinvent servo/camera/LED drivers that already work.
+6. ~~Audio I2S mode~~ → RESOLVED: STD I2S for both TX and RX (not TDM). Waveshare reference proves STD works with ES7210 for 2-channel AEC. Mixed STD+TDM on same port doesn't work.
+7. ~~Reinventing the wheel~~ → RESOLVED: James called this out. Adversarial review should have caught "should this code exist?" not just "are there bugs?" Reuse-first principle now enforced.
 
 ## Open Risks (from adversarial review)
 1. **`gateway-control-v1` Talk capability** — NOT found in gateway dist. Must verify with real device in Phase 1. If it fails, fall back to interim MCP server (separate system, not a drop-in).

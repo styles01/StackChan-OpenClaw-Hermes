@@ -4,6 +4,9 @@ idf_component_register(
         "board_cores3/cores3_display.c"
         "board_cores3/cores3_audio.c"
         "board_cores3/cores3_touch.c"
+        "board_cores3/cores3_servo.c"
+        "board_cores3/cores3_camera.c"
+        "board_cores3/cores3_led.c"
     INCLUDE_DIRS
         "."
         "board_cores3"
