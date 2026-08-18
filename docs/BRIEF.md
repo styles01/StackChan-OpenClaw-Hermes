@@ -1,189 +1,200 @@
-# Project Brief — StackChan-OpenClaw-Hermes
+# Project Brief — Stack-chan Thin Audio Client
 
 ## Vision
 
-**Build a thin audio client pipeline for ESP32 robots — piloted on Stack-chan, designed for reuse on Larry the Elephant.**
+**Give Stack-chan a smart brain with zero API keys on the device.**
 
-Stack-chan has a polished body (cute face, servo gestures, camera, LED, touch). Larry the Elephant has a working V2 architecture (RPi thin client → Mac server → STT/LLM/TTS → WAV back). We're combining them: ESP32 becomes a thin audio client like Larry's Pi, but with a robot body attached.
+The ESP32 records audio, sends it to the mini, the mini does STT → LLM → TTS, and returns audio. Stack-chan plays it back. The robot's body (face, servos, LED, touch) stays untouched. The ESP32 is a dumb audio terminal — your server does all the thinking.
 
 **Two robots, one pipeline:**
-- **Pilot:** Stack-chan on ESP32 → mini does STT/LLM/TTS → ESP32 plays WAV
+- **Pilot:** Stack-chan on ESP32 → mini does STT/LLM/TTS → ESP32 plays audio back
 - **Follow-on:** Larry the Elephant on ESP32 → same mini, same pipeline, different plush
 
-This is a dry run. We prove the thin audio client on Stack-chan first because it has a screen, servos, and a mature firmware base (plaipin's PlatformIO fork). Then we port Larry's Pi Python code to the same ESP32 pattern.
+## Architecture — v1 Swap-Backends, v1.1 Thin Audio Client
 
-## Architecture — "Larry V2 Thin Audio Client"
+### v1: Swap Backends (keep plaipin's pipeline, change where it sends requests)
+
+The simplest path to a working robot. We keep plaipin's existing `STTBase`/`LLMBase`/`TTSBase` interfaces and robot orchestration (`Robot.cpp`, `AiStackChanMod.cpp`, `main.cpp` lipSync) completely intact. We just change WHERE the backends send their requests — to the mini instead of cloud APIs.
 
 ```
-┌──────────────────────────────────────────────┐
-│  ESP32 (Stack-chan OR Larry) — THIN CLIENT   │
-│                                              │
-│  ┌────────────────────────────────────────┐  │
-│  │ Body (STAYS AS-IS for Stack-chan)      │  │
-│  │  m5avatar face + expressions           │  │
-│  │  SCSCL servos (yaw + pitch)            │  │
-│  │  GC0308 camera                         │  │
-│  │  WS2812 LED ×12                        │  │
-│  │  FT6336 touch (head-pet)               │  │
-│  │  M5.Speaker / M5.Mic (half-duplex)     │  │
-│  └────────────────────────────────────────┘  │
-│                                              │
-│  ┌────────────────────────────────────────┐  │
-│  │ Thin Audio Client (OUR FIRMWARE)       │  │
-│  │  1. Record audio (M5.Mic, VAD/button)  │  │
-│  │  2. HTTP POST WAV to mini              │  │
-│  │  3. Receive WAV response               │  │
-│  │  4. Play WAV (M5.Speaker)              │  │
-│  │  5. Parse body commands from response  │  │
-│  │  6. Drive face/servo/LED from commands │  │
-│  └────────────────────────────────────────┘  │
-└──────────────────────────────────────────────┘
-          │ HTTP POST (WAV audio + metadata)
+┌──────────────────────────────────────────────────┐
+│  ESP32 (Stack-chan) — SWAPPED BACKENDS           │
+│                                                  │
+│  ┌────────────────────────────────────────────┐  │
+│  │ Body (STAYS AS-IS — plaipin's code)        │  │
+│  │  m5avatar face + expressions + lip sync    │  │
+│  │  SCSCL servos (yaw + pitch)                │  │
+│  │  WS2812 LED ×12                            │  │
+│  │  FT6336 touch (screen regions)             │  │
+│  │  M5.Speaker / M5.Mic (half-duplex)         │  │
+│  └────────────────────────────────────────────┘  │
+│                                                  │
+│  ┌────────────────────────────────────────────┐  │
+│  │ Existing pipeline (KEPT — just retargeted) │  │
+│  │  STTBase → sends WAV to mini (not Google)  │  │
+│  │  LLMBase → OpenClawClient (already works)  │  │
+│  │  TTSBase → sends text to mini (not cloud)  │  │
+│  │  Robot.cpp / AiStackChanMod → UNCHANGED    │  │
+│  │  lipSync (tts->getLevel) → UNCHANGED       │  │
+│  └────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────┘
+          │ STT: HTTP POST WAV → mini
+          │ LLM: already via OpenClawClient → proxy → gateway
+          │ TTS: HTTP POST text → mini → WAV back
           ▼
-┌──────────────────────────────────────────────┐
-│  Clawdio-Mini — THE SERVER (Larry V2 style)  │
-│                                              │
-│  ┌────────────────────────────────────────┐  │
-│  │ Audio Pipeline Server (Node.js/Python) │  │
-│  │  Receives WAV from ESP32               │  │
-│  │  ┌─ STT (Whisper/Parakeet) ─────────┐  │  │
-│  │  ├─ Route text to OpenClaw Gateway ─┤  │  │
-│  │  ├─ Get text response ──────────────┤  │  │
-│  │  ├─ TTS (Kokoro, 24kHz) ────────────┤  │  │
-│  │  └─ Return WAV + body commands ─────┘  │  │
-│  └────────────────────────────────────────┘  │
-│                                              │
-│  ┌────────────────────────────────────────┐  │
-│  │ OpenClaw Gateway (port 18789)          │  │
-│  │  Rosie agent (Stack-chan)              │  │
-│  │  Larry agent (separate session)        │  │
-│  │  Tools, memory, personality, MCP       │  │
-│  └────────────────────────────────────────┘  │
-└──────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  Clawdio-Mini — AUDIO PIPELINE SERVER            │
+│                                                  │
+│  ┌────────────────────────────────────────────┐  │
+│  │ /stt endpoint                               │  │
+│  │  Receives WAV → STT (Whisper/Parakeet)      │  │
+│  │  Returns text + confidence                  │  │
+│  ├────────────────────────────────────────────┤  │
+│  │ /tts endpoint                               │  │
+│  │  Receives text → TTS (Kokoro, 24kHz)        │  │
+│  │  Returns WAV audio                          │  │
+│  │  Strips body command markers before TTS     │  │
+│  │  Returns body commands in JSON              │  │
+│  ├────────────────────────────────────────────┤  │
+│  │ Body command parser                         │  │
+│  │  Regex-parses [expression:happy] etc.       │  │
+│  │  from agent response text                   │  │
+│  │  Returns clean text + body JSON             │  │
+│  └────────────────────────────────────────────┘  │
+│                                                  │
+│  ┌────────────────────────────────────────────┐  │
+│  │ OpenClaw Gateway (port 18789)              │  │
+│  │  Rosie agent (Stack-chan session)          │  │
+│  │  Larry agent (future — separate session)   │  │
+│  │  Tools, memory, personality, MCP           │  │
+│  └────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────┘
 ```
 
-**Key principle:** The ESP32 knows NOTHING about STT, LLM, TTS, API keys, WebSocket protocols, or gateway internals. It records audio, sends it to the mini, and plays back what the mini sends. The mini does ALL the heavy lifting — exactly like Larry's Mac server does for the Pi today.
+**Why swap-backends for v1:**
+- **Smallest change:** ~100-200 LOC of new backend code vs ~500+ LOC for a full ThinAudioClient rewrite
+- **Nothing breaks:** lipSync, conversation mod, trigger logic, async TTS task all stay intact
+- **Faster to ship:** retarget existing classes instead of writing new ones
+- **The server is identical:** the mini's audio pipeline server is the same regardless of client approach
 
-## Why This Architecture (Larry V2 Pattern)
+### v1.1: Thin Audio Client (collapse 3 round-trips to 1)
 
-1. **Proven on Larry the Elephant.** Larry V2 runs this exact pattern: Pi records audio → sends WAV to Mac → Mac does Whisper STT → LLM → Kokoro TTS → returns WAV → Pi plays it. We're porting this from Pi→Mac to ESP32→Mini. Same architecture, different hardware.
+Once swap-backends proves the server works, optimize the firmware:
+- Replace the 3-step pipeline (STT → LLM → TTS separate calls) with a single `ThinAudioClient`
+- One HTTP POST: WAV in → mini does STT → LLM → TTS → WAV out
+- Delete plaipin's STT/TTS/LLM classes (now safe — we've validated the server)
+- Add VAD, streaming, local error samples
 
-2. **No API keys on the device.** ESP32 has zero cloud credentials. No Google STT key, no OpenAI key, no Groq key. Everything routes through the mini. This is critical for Larry (kids' toy with no security) and clean for Stack-chan.
+### Shared Architecture Insight
 
-3. **Thin client = less firmware.** We DELETE plaipin's STT classes (CloudSpeechClient, Whisper, ModuleLLMASR), TTS classes (WebVoiceVox, ElevenLabs, OpenAITTS, AquesTalk), and LLM client — replacing ALL of them with a single HTTP POST that sends WAV and gets WAV back. ~300-400 lines of new firmware vs. maintaining ~2000 lines of plaipin's STT/TTS/LLM pipeline.
+This same pattern (audio in → STT → LLM → TTS → audio out) is what ChatGPT-live, OpenClaw, and Hermes all do with slight variations in transport, streaming, and interruption handling. Our server is a **generic audio agent gateway** — the same skeleton serves all of these harnesses.
 
-4. **Stack-chan body stays untouched.** Face, servo, camera, LED, petting, scanning — all stay as-is. We only replace the brain (STT/LLM/TTS pipeline) with the thin audio client.
+## Why This Architecture
 
-5. **Dual-robot reuse.** The mini's audio pipeline server handles both Stack-chan and Larry. Different agents (Rosie vs. Larry), different system prompts, different voices — same STT/TTS infrastructure. Add a new robot = add a new agent session on the gateway.
+1. **Proven pattern.** Larry V2 runs this exact flow: Pi records audio → sends to Mac → STT → LLM → TTS → returns audio → Pi plays it. We're porting from Pi→Mac to ESP32→Mini.
 
-6. **Half-duplex is fine.** Larry V2, Stack-chan, and robot-bridge all ship half-duplex. The ESP32 records OR plays, never both. No AEC needed.
+2. **No API keys on the device.** ESP32 has zero cloud credentials. No Google STT key, no OpenAI key, no Groq key. Everything routes through the mini. The robot can't leak what it doesn't have.
 
-## Larry V2 → Stack-chan Mapping
+3. **Minimal firmware changes (v1).** We keep plaipin's pipeline structure and just retarget the backends. The body code (face, servo, LED, touch, lip sync) stays 100% intact.
 
-| Larry V2 (Pi → Mac) | Stack-chan (ESP32 → Mini) | Notes |
-|---|---|---|
-| Pi records audio (sounddevice, 44.1kHz) | ESP32 records (M5.Mic, 16kHz) | M5.Mic outputs 16kHz directly — no resampling needed |
-| WebRTC VAD (Python, webrtcvad) | VAD in C++ or button trigger | Stack-chan already has button/head-pet triggers; VAD is a nice-to-have |
-| Noise filtering (energy threshold, voice ratio) | Simple energy threshold in C++ | Pi's calibration logic can be simplified for ESP32 |
-| HTTP POST WAV to Mac (requests library) | HTTP POST WAV to mini (HTTPClient) | Same pattern, different HTTP library |
-| Mac does Whisper STT (faster-whisper subprocess) | Mini does STT (Whisper or Parakeet) | Mini is more powerful than Mac was for Larry |
-| Mac calls LM Studio (OpenAI-compatible API) | Mini calls OpenClaw Gateway | Upgrade from LM Studio to real agentic gateway |
-| Mac does Kokoro TTS → WAV | Mini does Kokoro TTS → WAV | Same Kokoro pipeline, already on mini |
-| Mac returns WAV to Pi | Mini returns WAV to ESP32 | Same |
-| Pi plays WAV (sounddevice, ALSA) | ESP32 plays WAV (M5.Speaker) | Different audio API but same concept |
-| Pi plays local samples (greeting, trumpet) | ESP32 plays local samples | Stack-chan already has core sounds |
-| Larry effect markers `[trumpet]` | Stack-chan body commands `[expression:happy]` | Same pattern — markers in LLM response, parsed client-side |
-| Session manager (MAX_TURNS, memory file) | OpenClaw handles sessions + memory | Upgrade — gateway does what Larry's Python did |
+4. **Stack-chan body stays untouched.** Face, servo, LED, touch all stay as-is. Camera is NOT compiled in by default (ENABLE_CAMERA undefined) — enabling it is future work, not a preserved feature.
 
-## What We Reuse from Larry V2
+5. **Dual-robot reuse.** The mini's audio pipeline server handles both Stack-chan and Larry. Different agents, different system prompts, different voices — same STT/TTS infrastructure.
 
-| Larry component | Reuse? | How |
-|---|---|---|
-| Server architecture (WAV in → STT → LLM → TTS → WAV out) | **Reuse pattern directly** | Identical flow — port to Node.js or keep Python |
-| `transcribe_respond_and_speak` endpoint | **Reuse concept** | Our `/audio` endpoint does the same thing |
-| `transcribe_respond_and_speak_stream` (SSE streaming) | **Defer to v1.1** | Same as plaipin — ship non-streaming first |
-| Whisper worker subprocess | **Reuse concept** | Parakeet or OpenClaw's built-in Whisper on mini |
-| Kokoro TTS pipeline | **Reuse directly** | Already on mini, British voice for Rosie |
-| Session manager (history + memory file) | **Adapt** | OpenClaw handles sessions, but session pattern is useful |
-| Latency logging (NTP-style two-clock) | **Reuse** | Useful for tuning ESP32 ↔ mini round-trip |
-| Gibberish detection (confidence threshold) | **Reuse** | Same — low confidence → play local sample instead |
-| Effect markers `[trumpet]` | **Evolve into body commands** | `[expression:happy] [gesture:nod] [led:blue]` |
-| VAD + noise filtering (Python) | **Port concept to C++** | Pi does this in Python; ESP32 needs C++ equivalent |
+6. **Half-duplex is fine.** Larry V2, Stack-chan, and robot-bridge all ship half-duplex. No AEC needed.
+
+## What We're Building (3 pieces)
+
+### Piece 1: Retargeted Backends (ESP32, ~100-200 LOC)
+- Keep plaipin's `STTBase`/`LLMBase`/`TTSBase` abstract interfaces
+- Keep `Robot.cpp`, `AiStackChanMod.cpp`, `main.cpp` (lipSync, triggers, conversation flow) unchanged
+- **New STT backend:** sends WAV to mini's `/stt` endpoint → gets text + confidence back
+- **LLM backend:** already works (plaipin's `OpenClawClient` → proxy → gateway)
+- **New TTS backend:** sends text to mini's `/tts` endpoint → gets WAV back → play through M5.Speaker
+- **Body command parser:** new class that parses `[expression:happy]` markers from agent response → drives face/servo/LED
+
+### Piece 2: Audio Pipeline Server (on mini, ~400-500 LOC)
+- Larry V2-style server with two endpoints:
+  - `/stt` — receives WAV, does Whisper/Parakeet STT, returns text + confidence
+  - `/tts` — receives text, strips body command markers, does Kokoro TTS, returns WAV + body commands JSON
+- Body command marker parsing (regex, like Larry's `parse_effects`)
+- Runs as systemd service on Clawdio-Mini
+- Python for v1 (reuse Larry's server patterns directly)
+
+### Piece 3: Agent Configuration (on gateway)
+- Configure a "rosie-robot" agent session on OpenClaw Gateway
+- System prompt includes Rosie's personality + body command format
+- Tools wired up (household, printer, fridge, memory, Telegram)
+- Voice: Kokoro British voice for consistency
 
 ## What We're NOT Doing (v1)
 
-- ❌ NOT building ESP-IDF firmware from scratch (rosie-node is throwaway)
-- ❌ NOT using plaipin's STT/TTS classes (replaced by thin audio client)
-- ❌ NOT using WebRTC (half-duplex is fine, no AEC needed)
-- ❌ NOT using LVGL (Stack-chan's m5avatar face stays)
-- ❌ NOT reinventing servo/camera/LED drivers (Stack-chan already has them)
-- ❌ NOT streaming audio (defer to v1.1 — ship `stream: false` first)
-- ❌ NOT building Hermes routing (defer to v2 — ship OpenClaw-only first)
-- ❌ NOT a closed-source project — goes open source
+- ❌ NOT deleting plaipin's STT/TTS/LLM classes (that's v1.1)
+- ❌ NOT writing a ThinAudioClient (that's v1.1)
+- ❌ NOT building ESP-IDF firmware from scratch
+- ❌ NOT using WebRTC (half-duplex is fine)
+- ❌ NOT enabling camera/vision (ENABLE_CAMERA undefined — future work)
+- ❌ NOT streaming audio (defer to v1.1)
+- ❌ NOT building Hermes routing (defer to v2)
+- ❌ NOT adding VAD (button trigger is fine for v1)
+- ❌ NOT creating local error audio samples (text-on-avatar is the v1 fallback)
 
-## What We ARE Doing
+## What We ARE Doing (v1)
 
-1. **Fork plaipin's Stack-chan firmware** — for the body code (face, servo, camera, LED, touch, MainLoop)
-2. **Replace the STT/LLM/TTS pipeline with a thin audio client** — one HTTP POST, WAV in, WAV out
-3. **Run an audio pipeline server on the mini** — Larry V2 style: receive WAV → STT → OpenClaw → TTS → return WAV
-4. **Add body command parsing** — agent appends `[expression:happy] [gesture:nod] [led:blue]`, ESP32 parses and drives the body
-5. **Configure the agent** — Rosie's system prompt on the gateway, with body command format in the system prompt
-6. **Design for Larry reuse** — the audio pipeline server and thin client pattern will be reused for Larry the Elephant on ESP32
+1. **Retarget STT backend** → mini's `/stt` endpoint instead of Google/Groq
+2. **Keep LLM backend** → plaipin's OpenClawClient already works
+3. **Retarget TTS backend** → mini's `/tts` endpoint instead of ElevenLabs/OpenAI
+4. **Build mini server** → two endpoints (STT, TTS) + body command parser
+5. **Add body command parser** → parse `[expression:happy]` markers → drive face/servo/LED
+6. **Configure agent** → Rosie's system prompt on gateway with body command format
 
-## The Thin Audio Client (what the ESP32 does)
+## Response Format — Markers-in-Text (FINAL)
 
+The agent appends body command markers to its text response. The mini server parses them out before TTS and returns them as JSON.
+
+**Agent response (raw):**
 ```
-1. TRIGGER: Button press, head-pet, or VAD detects speech
-2. RECORD: M5.Mic records 16kHz mono PCM (fixed duration or VAD-stopped)
-3. ENCODE: Wrap PCM as WAV header (simple, no encoding needed)
-4. SEND: HTTP POST WAV to mini:18790/audio
-5. RECEIVE: WAV response (TTS audio) + JSON metadata (body commands)
-6. PLAY: M5.Speaker plays the WAV
-7. ACT: Parse body commands, drive face/servo/LED
+The printer is 40% done with the benchy! [expression:happy] [gesture:nod] [led:blue]
 ```
 
-That's it. No STT, no LLM, no TTS, no API keys on the ESP32. Seven steps, one HTTP call.
-
-## The Audio Pipeline Server (what the mini does)
-
-```
-1. RECEIVE: HTTP POST with WAV audio from ESP32
-2. STT: Transcribe WAV (Whisper, Parakeet, or OpenClaw's built-in STT)
-3. LLM: Send transcribed text to OpenClaw Gateway (WebSocket)
-4. RESPONSE: Get text response from agent (with body command markers)
-5. TTS: Convert text to speech (Kokoro, 24kHz, British voice)
-6. RETURN: WAV audio + body commands JSON to ESP32
-```
-
-This is Larry V2's `transcribe_respond_and_speak` endpoint, adapted for OpenClaw Gateway instead of LM Studio.
-
-## Response Format (agent → robot)
-
-The server returns multipart or JSON with WAV audio + body commands:
-
+**Server parses → strips markers → TTS clean text → returns:**
 ```json
 {
-  "audio": "<base64-encoded WAV or multipart attachment>",
+  "audio": "<WAV bytes or multipart>",
   "transcript": "what the user said",
-  "response_text": "what the agent said (with markers stripped)",
+  "response_text": "The printer is 40% done with the benchy!",
   "body": {
     "expression": "happy",
-    "servo": { "yaw": -30, "pitch": 45, "speed": 50 },
     "gesture": "nod",
     "led": "blue"
   }
 }
 ```
 
-- `audio` — WAV audio for M5.Speaker playback
-- `body.expression` — m5avatar expression: neutral/happy/sad/angry/sleepy/doubt
-- `body.servo` — optional servo command (yaw ±90°, pitch 10-70°, speed 0-100)
-- `body.gesture` — optional gesture: nod/shake/look_around
-- `body.led` — optional LED state: off/green/blue/rainbow
+**Body command markers:**
+- `[expression:happy]` → m5avatar expression: neutral/happy/sad/angry/sleepy/doubt
+- `[gesture:nod]` → gesture: nod/shake/look_around
+- `[led:blue]` → LED: off/green/blue/rainbow
+- `[servo:yaw:-30,pitch:45]` → direct servo command (optional)
 
-The `body` field is optional. If absent, robot just plays the audio with neutral expression.
+This matches Larry V2's `parse_effects` pattern and plaipin's existing emoji stripping. ONE format, not two.
 
-Body commands are generated by the agent via system prompt markers — agent appends `[expression:happy] [gesture:nod]` to its response, the server parses them out before TTS and includes them in the JSON.
+## Triggers (what starts a conversation)
+
+Plaipin's existing trigger logic stays UNCHANGED:
+- **Button A press** → `STT_ChatGPT()` → `robot->listen()` → `robot->chat()` → `robot->speech()`
+- **Screen touch** (top-right region) → same flow
+- **Wake word** (cores3 build, `ENABLE_WAKEWORD`) → same flow
+- ~~Head-pet~~ → **does not exist in plaipin's code** (screen touch is the actual trigger, not petting)
+
+The trigger logic lives in `AiStackChanMod.cpp`, not in the STT/TTS/LLM classes. Retargeting backends doesn't touch triggers at all.
+
+## Auth Model
+
+- WiFi credentials: stored on device (unavoidable, not a security issue)
+- `/stt` and `/tts` endpoints: no auth for v1 (LAN-only, bind to local network)
+- OpenClaw bearer token: currently in plaipin's config — can be removed if the proxy doesn't require it, or kept if the gateway needs it
+- "Zero API keys" means zero CLOUD API keys — WiFi + optional LAN token are fine
 
 ## Hardware Target
 
@@ -192,53 +203,86 @@ Body commands are generated by the agent via system prompt markers — agent app
 | Component | Chip | Status |
 |-----------|------|--------|
 | MCU | ESP32-S3 | 16MB flash, 8MB PSRAM |
-| Speaker | AW88298 | M5.Speaker — plays WAV from mini |
+| Speaker | AW88298 | M5.Speaker — plays audio from mini |
 | Mic | ES7210 | M5.Mic — records audio for mini |
 | Display | ILI9342 | m5avatar face — works as-is |
 | Servos | SCSCL ×2 | M5StackChan.Motion — works as-is |
-| Camera | GC0308 | esp_camera — works as-is |
-| Touch | FT6336/Si12T | Head-pet — works as-is |
+| Camera | GC0308 | NOT compiled in by default (future work) |
+| Touch | FT6336/Si12T | Screen regions — works as-is |
 | LED | WS2812C ×12 | Works as-is |
 
-**Nothing changes on the hardware side.** We're swapping the brain, not the body.
+## License Strategy
+
+**Fork from Stack-chan (MIT-licensed), not plaipin (no license).**
+
+Plaipin's repo has NO license file — under copyright law, that's "all rights reserved." We cannot legally add MIT to a fork of unlicensed code. Instead:
+- Fork from Stack-chan directly (MIT-licensed, clean)
+- Port plaipin's *concepts* (REST proxy, OpenClaw integration) as reference — write our own code
+- Credit plaipin in the README as inspiration
+- Add MIT license to our new code
+- Keep Larry's HEART.md/MEMORY.md and Rosie's actual system prompt PRIVATE (ship an `agent-template.md` instead)
+
+## Open Source Framing
+
+**Lead with the platform, not the personal project.**
+- README headline: "The ESP32 is a dumb audio terminal. No API keys on the device."
+- Stack-chan is the demonstration platform
+- Larry the Elephant is a charming footnote, not the headline
+- "No API keys on the ESP32" is our strongest differentiator — no other Stack-chan fork does this
+- Ship `agent-template.md` (personality format), not actual personalities
+- The thin audio client pattern IS the contribution — a new way to build a robot brain
 
 ## Reference Repos & Code
 
 | Source | Role | What we take |
 |------|------|-------------|
-| [PlaiPin/plaipin-openclaw-stackchan](https://github.com/PlaiPin/plaipin-openclaw-stackchan) | **FORK BASE** | Body code, MainLoop, config, platformio.ini, partition table. We DELETE their STT/TTS/LLM classes and replace with thin audio client. |
-| **Larry V2** (`lobster_audio.py`, `lobster_audio_server.py`) | **ARCHITECTURE BLUEPRINT** | Thin audio client pattern — WAV in, WAV out. Server does STT → LLM → TTS. This is the reference for both Stack-chan AND future Larry ESP32 port. |
+| [m5stack/AiStackChan](https://github.com/m5stack/AiStackChan) | **FORK BASE (MIT)** | Body code, MainLoop, config, platformio.ini |
+| [PlaiPin/plaipin-openclaw-stackchan](https://github.com/PlaiPin/plaipin-openclaw-stackchan) | **CONCEPT REFERENCE** | OpenClawClient pattern, REST proxy, partition table concepts |
+| **Larry V2** (`lobster_audio.py`, `lobster_audio_server.py`) | **ARCHITECTURE BLUEPRINT** | Server pattern — WAV in → STT → LLM → TTS → WAV out |
 | [migratorywhale/stackchan-mcp](https://github.com/migratorywhale/stackchan-mcp) | Hardware reference | GC0308 pins, servo patterns, camera I2C release |
 | [waynecc-at/robot-bridge](https://github.com/waynecc-at/robot-bridge) | Hermes reference | LED state machine, face tracking, Opus params (for v2) |
-| [taranton/stackchan-gemini-firmware](https://github.com/taranton/stackchan-gemini-firmware) | Hardware patterns | Emotion states, servo gestures, XCLK gotcha |
 
 ## Success Criteria
 
-1. **Stack-chan talks to Rosie** — press button / pet head → speak → Rosie responds through the robot's speaker with her personality, tools, and memory
-2. **No API keys on the ESP32** — zero cloud credentials stored on the device
+1. **Stack-chan talks to Rosie** — press button → speak → Rosie responds through the robot's speaker with her personality, tools, and memory
+2. **No cloud API keys on the ESP32** — zero cloud credentials stored on the device (WiFi + optional LAN token are fine)
 3. **Body commands work** — agent can say "look left", "act happy", "turn LED green" and the robot does it
-4. **Larry V2 pattern proven on ESP32** — the thin audio client works on ESP32, paving the way for Larry's Pi → ESP32 port
+4. **Pipeline proven on ESP32** — the swap-backends approach works, paving the way for v1.1 thin client and Larry's ESP32 port
 5. **Community adoption** — people on r/StackChan link to our repo instead of asking "is there a GitHub link?"
 
-## Future: Larry the Elephant on ESP32
+## Future
 
-This project is the dry run. Once the thin audio client pipeline works on Stack-chan:
+### v1.1: Thin Audio Client
+- Collapse 3 round-trips to 1 (ThinAudioClient replaces STT/TTS/LLM pipeline)
+- Delete plaipin's STT/TTS/LLM classes (now safe — server validated)
+- Add VAD (energy threshold or WebRTC-style in C++)
+- Add streaming audio (SSE — like Larry V2's `transcribe_respond_and_speak_stream`)
+- Add local error audio samples
+- Add noise calibration
 
-1. **Same firmware pattern, different body** — Larry doesn't have a screen or servos, but has LED, speaker, mic, and plush body
-2. **Same mini server** — audio pipeline server already handles STT/TTS, just needs a Larry agent session on the gateway
-3. **Port Larry's Python client logic to C++** — VAD, noise calibration, local sample playback, effect markers
-4. **Larry's HEART.md + MEMORY.md** → agent system prompt on gateway (same as Larry V2 does today)
-5. **Replace Pi with ESP32** — cheaper, lower power, smaller form factor for a kids' toy
+### v2: Hermes Routing
+- Proxy routes to OpenClaw OR Hermes based on config
+- Dual-gateway switching without firmware change
 
-The win: we build the pipeline once, use it for two robots. Stack-chan gets a smart brain, Larry gets off the Pi.
+### v3: Real-time Streaming with Interruption
+- Borrow patterns from ChatGPT-live and OpenClaw/Hermes live modes
+- Streaming audio chunks with interruption handling
+- Same architecture skeleton (audio in → STT → LLM → TTS → audio out), different transport
+
+### Phase 6: Larry the Elephant on ESP32
+- Same mini server — just a different agent session
+- Larry's HEART.md + MEMORY.md → agent system prompt on gateway
+- Larry ESP32 firmware uses the thin audio client pattern (v1.1), not swap-backends
+- Replace Pi with ESP32 — cheaper, lower power, smaller form factor
 
 ## Hard Rules
 
 1. **Backup stock firmware BEFORE flashing** — full 16MB dump via esptool first
 2. **Stack-chan firmware stays PlatformIO/Arduino** — no ESP-IDF conversion
-3. **Don't touch the body** — face, servo, camera, LED, petting, scanning all stay as-is
-4. **The mini is the middleman** — ESP32 never talks directly to the gateway, never has API keys
-5. **No API keys on the ESP32** — all cloud calls go through the mini
+3. **Don't touch the body** — face, servo, LED, touch all stay as-is
+4. **The mini is the middleman** — ESP32 never talks directly to cloud APIs
+5. **No cloud API keys on the ESP32** — all cloud calls go through the mini
+6. **Fork from Stack-chan (MIT), not plaipin (no license)** — credit plaipin as inspiration
 
 ## Team
 
