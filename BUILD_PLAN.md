@@ -120,6 +120,23 @@ Replace the default Stack-chan chatbot (xiaozhi cloud brain) with a native AI ag
 - Full analysis: `analysis/stackchan-atoms3r-repo-analysis.md`
 - Key insight: their core/platform separation pattern directly enables our OpenClaw + Hermes dual-target architecture — swap the connection layer without touching core firmware
 
+### 10. taranton/stackchan-gemini-firmware (CoreS3 hardware patterns — Gemini Live backend)
+- **PlatformIO/Arduino** firmware for CoreS3 with Google Gemini Live API via WebSocket
+- **NOT our architecture** — Gemini Live is a cloud AI backend, not OpenClaw/Hermes
+- **VERY useful hardware patterns** — same CoreS3 hardware:
+  - GC0308 pin config CONFIRMS stackchan-mcp mapping (SDA=GPIO12, SCL=GPIO11) — second repo to agree, robot-bridge is the outlier
+  - ⚠️ CRITICAL: XCLK via LEDC causes audio choppy — must use external 20MHz clock (XCLK=-1, GPIO_NUM_NC)
+  - Camera I2C release pattern confirmed again: `M5.In_I2C.release()` before init, deinit after capture
+  - Non-blocking servo gesture queue (max 16 steps, BSP angle units 10=1°, anchor tracking)
+  - 10-mode emotion state machine (neutral/listening/speaking/thinking/looking/happy/angry/found/error/sleep) — more granular than robot-bridge's 4-state LED
+  - SD-backed config + setup AP fallback (`192.168.4.1`) — borrowable for Phase 3 provisioning
+  - Boot/wake procedural sound effects (R2-D2 whistle, separate audio channel from voice)
+  - VAD defaults: prefix padding 800ms, silence duration 900ms — useful for WebRTC audio path
+  - HTTP API surface reference (status/config/voice/camera/servo/emotion/memory/gateway/sensors)
+  - Gemini Live WebSocket protocol architecturally similar to OpenClaw WS flow (setup → bidirectional audio → tool calls)
+- Full analysis: `analysis/stackchan-gemini-firmware-repo-analysis.md`
+- Key insight: GC0308 pin mapping consensus is now 2-to-1 in favor of stackchan-mcp (GPIO12/GPIO11). XCLK must be external, NOT LEDC-generated.
+
 ### 9. waynecc-at/robot-bridge (MOST DIRECTLY RELEVANT — working Hermes + Stack-chan bridge)
 - **PRODUCTION-DEPLOYED** Stack-chan → Hermes Agent bridge — 21 features, 15 bug fixes, 11 E2E tests
 - Python FastAPI bridge on :8081 — XiaoZhi WebSocket protocol + Opus audio + ASR/TTS + vision

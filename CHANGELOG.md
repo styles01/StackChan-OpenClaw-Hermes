@@ -112,6 +112,16 @@ All notable changes to the StackChan-OpenClaw-Hermes project.
 - Frames project as the open-source reference firmware for Stack-chan + AI agent integration
 - Dual-target architecture (OpenClaw + Hermes) front and center
 
+### stackchan-gemini-firmware Repo Analysis
+- Cloned `taranton/stackchan-gemini-firmware` — PlatformIO/Arduino CoreS3 firmware with Google Gemini Live API
+- `analysis/stackchan-gemini-firmware-repo-analysis.md` (244 lines) — full investigation
+- GC0308 pin mapping CONFIRMS stackchan-mcp (SDA=GPIO12, SCL=GPIO11) — second repo to agree, robot-bridge is outlier
+- ⚠️ CRITICAL: XCLK via LEDC causes audio choppy — must use external 20MHz clock (XCLK=-1). Third repo to warn about camera/audio interference.
+- Camera I2C release pattern confirmed again (`M5.In_I2C.release()` before init, deinit after)
+- Borrowable patterns: non-blocking servo gesture queue (16-step, anchor tracking), 10-mode emotion state machine, SD-backed config + setup AP, boot/wake sound effects, VAD defaults (800ms/900ms)
+- Gemini Live WebSocket protocol architecturally similar to OpenClaw WS flow (setup → bidirectional audio → tool calls)
+- Verdict: 6/10 — hardware patterns useful, AI backend not reusable
+
 ### Backup Rule
 - HARD RULE added to TODO.md: backup stock firmware before flashing
 - `backups/` directory created on 1TB SSD

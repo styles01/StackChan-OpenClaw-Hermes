@@ -16,7 +16,9 @@ Every existing Stack-chan + AI agent solution has a fatal flaw:
 
 3. **waynecc-at/robot-bridge** — the closest to production (21 features, 11 E2E tests, actually deployed), but still uses a Python FastAPI bridge as a middleman. Their own REFACTOR-PLAN.md admits the bridge is "too thick" and should be thinner. We eliminate the bridge entirely.
 
-4. **Reddit community efforts** — people modifying the stock XiaoZhi firmware, hitting `esp_codec_dev_write()` silent failures, fighting mic quality issues, and posting "is there a GitHub link?" when they get stuck.
+4. **taranton/stackchan-gemini-firmware** — solid CoreS3 hardware work (GC0308 pin config, servo gestures, emotion states, SD-backed provisioning) but locked to Google Gemini Live API. Useful hardware patterns, not reusable AI backend.
+
+5. **Reddit community efforts** — people modifying the stock XiaoZhi firmware, hitting `esp_codec_dev_write()` silent failures, fighting mic quality issues, and posting "is there a GitHub link?" when they get stuck.
 
 **Nobody has shipped a clean, native, no-proxy solution.** That's the gap we fill.
 
@@ -78,9 +80,10 @@ This is inspired by two reference repos:
 | [kkdev92/stackchan-atoms3r](https://github.com/kkdev92/stackchan-atoms3r) | — | ⭐⭐⭐⭐ | Best architecture reference — core/platform separation, port abstractions, host tests |
 | [waynecc-at/robot-bridge](https://github.com/waynecc-at/robot-bridge) | — | ⭐⭐⭐⭐⭐ | Best Hermes integration reference — production-deployed, 11 MCP tools, 21 features, validates our native approach |
 | [PlaiPin/plaipin-openclaw-stackchan](https://github.com/PlaiPin/plaipin-openclaw-stackchan) | 2 | ⭐⭐ | Concept validation — coredump partition, emoji stripping |
+| [taranton/stackchan-gemini-firmware](https://github.com/taranton/stackchan-gemini-firmware) | — | ⭐⭐⭐ | CoreS3 hardware patterns — GC0308 pin confirmation, XCLK/LEDC audio gotcha, servo gestures, emotion states, SD provisioning |
 | [Reddit r/StackChan](https://www.reddit.com/r/StackChan/comments/1tey028/) | — | ⭐⭐⭐ | Real-world findings — codec write bug, mic quality issues, community demand |
 
-Full analyses in [`analysis/`](analysis/).
+Full analyses in [`analysis/`](analysis/) — 6 reference repos + 1 community thread.
 
 ## Build Phases
 

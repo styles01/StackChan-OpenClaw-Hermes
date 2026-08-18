@@ -51,7 +51,14 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [ ] Study robot-bridge's 11 MCP tool definitions for our Hermes target tool list
 - [ ] Borrow robot-bridge's LED state machine (idle=off, wake=green, think=rainbow, reply=blue) for Phase 2
 - [ ] Borrow robot-bridge's face tracking algorithm (EMA 0.25, dead zone 6%, rate limit 12°/0.5s) for Phase 2 servos
-- [ ] ⚠️ CRITICAL: Verify GC0308 camera pin mapping — stackchan-mcp and robot-bridge have DIFFERENT pin configs. Test both during Phase 2 camera bring-up.
+- [ ] ⚠️ CRITICAL: Verify GC0308 camera pin mapping — stackchan-mcp and gemini-firmware agree on SDA=GPIO12/SCL=GPIO11, robot-bridge is the outlier (GPIO4/GPIO5). Use GPIO12/GPIO11 unless testing proves otherwise. Test all configs during Phase 2 camera bring-up.
+- [ ] ⚠️ CRITICAL: Camera XCLK must use external 20MHz clock (XCLK=-1), NOT LEDC-generated — 3 repos warn this causes audio choppyness. (From gemini-firmware analysis)
+- [ ] Camera init pattern: `M5.In_I2C.release()` before `esp_camera_init()`, deinit after capture — don't leave camera always-on (confirmed by stackchan-mcp + gemini-firmware)
+- [ ] Borrow gemini-firmware's non-blocking servo gesture queue pattern (max 16 steps, anchor tracking, BSP 0.1° units) for Phase 2 servos
+- [ ] Borrow gemini-firmware's 10-mode emotion state machine (neutral/listening/speaking/thinking/looking/happy/angry/found/error/sleep) — more granular than robot-bridge's 4-state LED
+- [ ] Borrow gemini-firmware's SD-backed config + setup AP fallback pattern for Phase 3 provisioning
+- [ ] Consider gemini-firmware's boot/wake procedural sound effects (R2-D2 whistle on separate audio channel) for UX polish
+- [ ] Study gemini-firmware's Gemini Live WebSocket protocol (setup → bidirectional audio → tool calls) — architecturally similar to our OpenClaw WS flow
 - [ ] Study robot-bridge's LLM→TTS streaming pipeline (sentence-level, barge-in, emotion before LLM) for Talk voice path optimization
 - [ ] Consider robot-bridge's natural stranger registration pattern (LLM-driven, no regex) for Phase 3
 

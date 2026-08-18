@@ -51,7 +51,7 @@ Stack-chan becomes a first-class AI agent node:
 | `m5stack/StackChan` | `firmware/StackChan/` | Robot layer — servo/face/camera/sensor drivers |
 | `78/xiaozhi-esp32` | `firmware/xiaozhi-esp32/` | Reference — what we're replacing |
 
-## Analysis Reports (5 reference repos)
+## Analysis Reports (6 reference repos + 1 community thread)
 - `analysis/zclaw-analysis.md` — zclaw technical analysis
 - `analysis/esp-openclaw-node-analysis.md` — esp-openclaw-node technical analysis
 - `analysis/xiaozhi-firmware-analysis.md` — xiaozhi-esp32 firmware analysis
@@ -60,6 +60,7 @@ Stack-chan becomes a first-class AI agent node:
 - `analysis/stackchan-mcp-repo-analysis.md` — Best hardware reference (CoreS3)
 - `analysis/stackchan-atoms3r-repo-analysis.md` — Best architecture reference (core/platform separation)
 - `analysis/robot-bridge-repo-analysis.md` — Best Hermes integration reference (production-deployed)
+- `analysis/stackchan-gemini-firmware-repo-analysis.md` — CoreS3 hardware patterns + GC0308 pin confirmation
 - `analysis/reddit-openclaw-stackchan-thread.md` — Real-world community findings
 - `analysis/adversarial-review.md` — Adversarial review of all claims
 

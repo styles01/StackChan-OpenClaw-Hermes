@@ -24,10 +24,11 @@ The Stack-chan community wants AI agent integration. We analyzed every existing 
 | [PlaiPin/plaipin-openclaw-stackchan](https://github.com/PlaiPin/plaipin-openclaw-stackchan) | Needs a Node.js proxy server running 24/7 |
 | [migratorywhale/stackchan-mcp](https://github.com/migratorywhale/stackchan-mcp) | Needs a Python MCP server + HTTP REST |
 | [waynecc-at/robot-bridge](https://github.com/waynecc-at/robot-bridge) | Needs a Python FastAPI bridge — closest to production, but still a middleman |
+| [taranton/stackchan-gemini-firmware](https://github.com/taranton/stackchan-gemini-firmware) | Arduino/PlatformIO + Google Gemini Live — useful hardware patterns, wrong AI backend |
 | [Reddit community efforts](https://www.reddit.com/r/StackChan/comments/1tey028/) | Modifying stock XiaoZhi firmware, hitting codec bugs |
 | **StackChan-OpenClaw-Hermes (this project)** | **Native ESP-IDF, direct WebSocket+WebRTC, no proxy, dual-target** |
 
-Full analyses in [`analysis/`](analysis/).
+Full analyses in [`analysis/`](analysis/) — 6 reference repos + 1 community thread.
 
 ## Architecture
 
@@ -201,11 +202,12 @@ StackChan-OpenClaw-Hermes/
 │           ├── cores3_audio.c  # AW88298 + ES7210 TDM I2S
 │           ├── cores3_display.c # ILI9342 320×240
 │           └── cores3_touch.c  # BOOT button (Phase 1)
-├── analysis/                  # Reference repo analyses (5 repos)
+├── analysis/                  # Reference repo analyses (6 repos + 1 community thread)
 │   ├── plaipin-repo-analysis.md
 │   ├── stackchan-mcp-repo-analysis.md
 │   ├── stackchan-atoms3r-repo-analysis.md
 │   ├── robot-bridge-repo-analysis.md
+│   ├── stackchan-gemini-firmware-repo-analysis.md
 │   └── reddit-openclaw-stackchan-thread.md
 ├── docs/
 │   ├── BRIEF.md              # Project brief
@@ -222,11 +224,13 @@ StackChan-OpenClaw-Hermes/
 
 2. **GC0308 camera shares I2C with system** — must release M5Unified's I2C before camera init. ([Source: stackchan-mcp repo](analysis/stackchan-mcp-repo-analysis.md))
 
-3. **GC0308 pin mapping controversy** — stackchan-mcp and robot-bridge have **completely different** GPIO pin configs for the same camera on the same board. Must verify which is correct for your CoreS3 board revision before camera init. ([Source: robot-bridge analysis](analysis/robot-bridge-repo-analysis.md))
+3. **GC0308 pin mapping controversy** — stackchan-mcp and robot-bridge have **completely different** GPIO pin configs for the same camera on the same board. Two repos (stackchan-mcp + stackchan-gemini-firmware) agree on SDA=GPIO12/SCL=GPIO11; robot-bridge is the outlier. **Use GPIO12/GPIO11.** ([Source: robot-bridge analysis](analysis/robot-bridge-repo-analysis.md), [gemini-firmware analysis](analysis/stackchan-gemini-firmware-repo-analysis.md))
 
 4. **ILI9342 needs BGR color correction** — RGB565 R/B channels are swapped. Formula: `color = ((c & 0x1F) << 11) | (c & 0x07E0) | (c >> 11)`.
 
 5. **Mic quality is a known challenge** — ES7210 may need gain tuning. Plan for AGC early.
+
+6. **Camera XCLK via LEDC causes audio choppy** — must use external 20MHz clock (XCLK=-1), not LEDC-generated. Third repo to confirm this. ([Source: gemini-firmware analysis](analysis/stackchan-gemini-firmware-repo-analysis.md))
 
 6. **Servo angles use 0.1° units** — StackChan-BSP uses `deg * 10` for servo positioning.
 
@@ -255,5 +259,6 @@ TBD — will be open source on release.
 - [migratorywhale](https://github.com/migratorywhale) — stackchan-mcp hardware reference
 - [kkdev92](https://github.com/kkdev92) — stackchan-atoms3r architecture reference
 - [waynecc-at](https://github.com/waynecc-at) — robot-bridge Hermes integration reference (production-deployed)
+- [taranton](https://github.com/taranton) — stackchan-gemini-firmware CoreS3 hardware patterns
 - [PlaiPin](https://github.com/PlaiPin) — plaipin-openclaw-stackchan concept validation
 - The r/StackChan community — for proving people want this
