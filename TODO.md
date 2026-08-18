@@ -19,20 +19,22 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [ ] Restart gateway after config changes
 
 ## Phase 1: Core Bring-Up + Voice Verification (2-3 days)
-- [ ] Set up ESP-IDF v5.5.4 build environment on Clawdio-Mini
-- [ ] Study the Waveshare ESP32-S3 example in esp-openclaw-node (NOT our hardware — just a reference for how to structure a board port)
+- [x] Set up ESP-IDF v5.5.4 build environment on Clawdio-Mini
+- [x] Study the Waveshare ESP32-S3 example in esp-openclaw-node (NOT our hardware — just a reference for how to structure a board port)
 - [ ] Write CoreS3 board port from scratch (M5Stack Stack-chan hardware):
-  - [ ] AW88298 speaker codec (CoreS3 chip — Waveshare uses ES8311, different)
-  - [ ] ES7210 mic with TDM I2S (CoreS3 needs TDM for AEC reference — Waveshare uses STD)
-  - [ ] ILI9342 SPI display init (CoreS3 display — Waveshare uses SH8601 QSPI AMOLED, different)
+  - [x] AW88298 speaker codec (CoreS3 chip — Waveshare uses ES8311, different)
+  - [x] ES7210 mic with TDM I2S (CoreS3 needs TDM for AEC reference — Waveshare uses STD)
+  - [x] ILI9342 SPI display init (CoreS3 display — Waveshare uses SH8601 QSPI AMOLED, different)
   - [ ] AXP2101 PMIC config
-  - [ ] FT6336 touch driver
-- [ ] Create `rosie-node/` firmware project structure
-- [ ] Set up dual-OTA partition table + rollback from the start
+  - [ ] FT6336 touch driver (deferred to Phase 2 — BOOT button for v1)
+- [x] Create `rosie-node/` firmware project structure
+- [x] Set up dual-OTA partition table + rollback from the start
 - [ ] Configure WebSocket target to OpenClaw Gateway on port 18789
 - [ ] Verify WebSocket handshake + Ed25519 pairing
 - [ ] **CRITICAL: Verify Talk voice path** (`gateway-control-v1` capability) — run `wake` console command, confirm gateway returns offer URL + clientSecret. Make-or-break test.
 - [ ] First voice test: talk to Stack-chan → audio routes through Gateway → Rosie responds
+- [ ] Add coredump partition (64KB at end of flash) — pattern from PlaiPin repo
+- [ ] Add emoji-stripping filter before TTS output — pattern from PlaiPin repo
 
 ## Phase 2: Robot Layer Integration (3-5 days)
 NOTE: StackChan robot layer is NOT cleanly separable. Extract only portable pieces.

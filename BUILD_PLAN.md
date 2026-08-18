@@ -70,6 +70,16 @@ Replace the default Stack-chan chatbot (xiaozhi cloud brain) with a real OpenCla
 ### 4. zclaw (smallest contributor)
 - Agent loop pattern — marginal, since the agent loop lives on the Gateway in this architecture
 
+### 5. PlaiPin/plaipin-openclaw-stackchan (reference — different architecture)
+- **NOT our architecture** — they use HTTP REST proxy (Node.js middleman) instead of native WebSocket+WebRTC
+- **Worth borrowing:**
+  - Emoji-stripping code for TTS (ESP32 TTS engines choke on 4-byte emoji — strip before sending)
+  - Coredump partition in partition table (64KB at end of flash — good for crash debugging)
+  - Servo API pattern: `moveToGaze(gazeX, gazeY)` confirms our servo abstraction shape
+- **NOT useful:** REST proxy architecture, SimpleVox wake word, LLM/TTS/STT abstraction layers
+- Full analysis: `analysis/plaipin-repo-analysis.md`
+- Repo cloned to `repos/plaipin-openclaw-stackchan/` (excluded from git tracking)
+
 ## Build Phases
 
 ### Phase 0: Gateway Prep (0.5 day)

@@ -42,3 +42,24 @@ All notable changes to the Stack-chan → Rosie Node project.
 - ADR-002: Port StackChan robot layer (servos/face/camera) on top
 - ADR-003: Custom "Hey Rosie" wake word via ESP-SR/WakeNet
 - ADR-004: xiaozhi.me MCP server approach deferred in favor of full OpenClaw node
+
+### Phase 1 Progress
+- ESP-IDF v5.5.4 installed on 1TB SSD at `/Volumes/1TBSSDClawd/esp-idf/`
+- CoreS3 board port written: `cores3_audio.c` (AW88298+ES7210 TDM I2S), `cores3_display.c` (ILI9342 SPI), `cores3_touch.c` (BOOT button)
+- `rosie-node/` firmware project created with CMakeLists.txt, idf_component.yml, partitions.csv, sdkconfig.defaults
+- First successful build: `rosie_node.bin` (3.4MB, 46% free in 6MB OTA partition)
+- All 80+ components resolved: WebRTC, LVGL, esp-sr (wn9_hiesp wake word), esp_codec_dev, esp_lcd_ili9341
+- Dual-OTA partition table (6MB each) + 2MB SPIFFS model partition
+
+### PlaiPin Repo Analysis
+- Cloned `PlaiPin/plaipin-openclaw-stackchan` — Stack-chan + OpenClaw via REST proxy (different architecture)
+- `analysis/plaipin-repo-analysis.md` (118 lines) — full investigation
+- Worth borrowing: emoji-stripping for TTS, coredump partition, servo API pattern
+- NOT useful: REST proxy architecture, SimpleVox wake word, LLM/TTS/STT abstraction layers
+- Key insight: validates Stack-chan → OpenClaw is viable; our native approach is harder but better
+
+### Backup Rule
+- HARD RULE added to TODO.md: backup stock firmware before flashing
+- `backups/` directory created on 1TB SSD
+- Procedure: full 16MB `esptool read_flash` dump + partition table save + size verify BEFORE any flash
+- Restore: `esptool write_flash 0x0 backup_stackchan_stock.bin`
