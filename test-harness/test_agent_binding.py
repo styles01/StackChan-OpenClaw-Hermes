@@ -556,6 +556,199 @@ def test_hermes_session_persistence(hermes_url, hermes_key, profile="venus"):
 
 
 # ============================================================================
+# WORKSPACE FILE I/O TESTS
+# ============================================================================
+
+# Rosie's workspace root (where she writes files via the OpenClaw HTTP API)
+ROSIE_WORKSPACE_DIR = "/Users/clawdio/openclaw-workspaces/rosie"
+
+# Venus's workspace root (where she writes files via the Hermes HTTP API)
+VENUS_WORKSPACE_DIR = "/Users/clawdio/.hermes/profiles/venus/workspace"
+
+
+def _read_file_or_none(path):
+    """Read a file from disk, returning its content or None on any error."""
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception:
+        return None
+
+
+def _remove_file(path):
+    """Best-effort delete of a file. Returns True if gone (or never existed)."""
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+        return not os.path.exists(path)
+    except Exception:
+        return False
+
+
+def test_openclaw_workspace_write(oc_url, oc_key):
+    """Test that Rosie can write and read files in her workspace via the HTTP API."""
+    header("TEST: OpenClaw Workspace File I/O (Rosie)")
+
+    ts = int(time.time())
+    filename = f"stackchan_test_{ts}.txt"
+    filepath = os.path.join(ROSIE_WORKSPACE_DIR, filename)
+    content_initial = f"Hello from Stack-chan! Test ID: {ts}"
+    content_updated = f"Updated by Stack-chan! Test ID: {ts}"
+
+    session_key = f"agent:rosie:stackchan:workspace-test-{ts}"
+    headers = build_openclaw_headers(oc_key, "rosie", "stackchan", f"workspace-test-{ts}")
+    # build_openclaw_headers builds the session key as agent:rosie:stackchan:<device_id>,
+    # which matches our intended session key exactly.
+
+    all_pass = True
+
+    # --- Write ---
+    step(f"Write: asking Rosie to create {filename}")
+    body = {
+        "model": "openclaw/rosie",
+        "messages": [{"role": "user", "content": f"Create a file called {filename} in your workspace with the exact content: {content_initial}"}]
+    }
+    status, resp, error = http_post_json(oc_url, body, headers, timeout=120)
+    if error or status != 200:
+        fail(f"Write request failed: {error or status}")
+        all_pass = False
+    else:
+        content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
+        info(f"Rosie replied: \"{content[:120]}...\"")
+        ok("Write request accepted (HTTP 200)")
+
+    # --- Verify write on disk ---
+    step(f"Verify write: reading {filepath} from disk")
+    disk_content = _read_file_or_none(filepath)
+    if disk_content is None:
+        fail(f"File not found on disk: {filepath}")
+        all_pass = False
+    elif disk_content.strip() == content_initial:
+        ok(f"File content matches exactly: \"{disk_content.strip()}\"")
+    else:
+        fail(f"File content mismatch. Expected \"{content_initial}\", got \"{disk_content.strip()}\"")
+        all_pass = False
+
+    # --- Update ---
+    step(f"Update: asking Rosie to update {filename}")
+    body = {
+        "model": "openclaw/rosie",
+        "messages": [{"role": "user", "content": f"Update the file {filename} to say: {content_updated}"}]
+    }
+    status, resp, error = http_post_json(oc_url, body, headers, timeout=120)
+    if error or status != 200:
+        fail(f"Update request failed: {error or status}")
+        all_pass = False
+    else:
+        content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
+        info(f"Rosie replied: \"{content[:120]}...\"")
+        ok("Update request accepted (HTTP 200)")
+
+    # --- Verify update on disk ---
+    step(f"Verify update: reading {filepath} from disk")
+    disk_content = _read_file_or_none(filepath)
+    if disk_content is None:
+        fail(f"File not found on disk after update: {filepath}")
+        all_pass = False
+    elif disk_content.strip() == content_updated:
+        ok(f"File content updated correctly: \"{disk_content.strip()}\"")
+    else:
+        fail(f"File content not updated. Expected \"{content_updated}\", got \"{disk_content.strip()}\"")
+        all_pass = False
+
+    # --- Cleanup ---
+    step(f"Cleanup: deleting {filepath}")
+    if _remove_file(filepath):
+        ok(f"Test file removed: {filepath}")
+    else:
+        warn(f"Could not remove test file: {filepath}")
+
+    print()
+    return all_pass
+
+
+def test_hermes_workspace_write(hermes_url, hermes_key, profile="venus"):
+    """Test that Venus can write and read files in her workspace via the HTTP API."""
+    header(f"TEST: Hermes Workspace File I/O (Venus, profile={profile})")
+
+    ts = int(time.time())
+    filename = f"stackchan_test_{ts}.txt"
+    filepath = os.path.join(VENUS_WORKSPACE_DIR, filename)
+    content_initial = f"Hello from Stack-chan! Venus test! Test ID: {ts}"
+    content_updated = f"Updated by Stack-chan! Venus test! Test ID: {ts}"
+
+    url = build_hermes_url(hermes_url, profile)
+    session_key = f"venus-workspace-test-{ts}"
+    headers = build_hermes_headers(hermes_key, session_key)
+
+    all_pass = True
+
+    # --- Write ---
+    step(f"Write: asking Venus to create {filename}")
+    body = {
+        "model": "hermes-agent",
+        "messages": [{"role": "user", "content": f"Create a file called {filename} in your workspace with the exact content: {content_initial}"}]
+    }
+    status, resp, error = http_post_json(url, body, headers, timeout=120)
+    if error or status != 200:
+        fail(f"Write request failed: {error or status}")
+        all_pass = False
+    else:
+        content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
+        info(f"Venus replied: \"{content[:120]}...\"")
+        ok("Write request accepted (HTTP 200)")
+
+    # --- Verify write on disk ---
+    step(f"Verify write: reading {filepath} from disk")
+    disk_content = _read_file_or_none(filepath)
+    if disk_content is None:
+        fail(f"File not found on disk: {filepath}")
+        all_pass = False
+    elif disk_content.strip() == content_initial:
+        ok(f"File content matches exactly: \"{disk_content.strip()}\"")
+    else:
+        fail(f"File content mismatch. Expected \"{content_initial}\", got \"{disk_content.strip()}\"")
+        all_pass = False
+
+    # --- Update ---
+    step(f"Update: asking Venus to update {filename}")
+    body = {
+        "model": "hermes-agent",
+        "messages": [{"role": "user", "content": f"Update the file {filename} to say: {content_updated}"}]
+    }
+    status, resp, error = http_post_json(url, body, headers, timeout=120)
+    if error or status != 200:
+        fail(f"Update request failed: {error or status}")
+        all_pass = False
+    else:
+        content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
+        info(f"Venus replied: \"{content[:120]}...\"")
+        ok("Update request accepted (HTTP 200)")
+
+    # --- Verify update on disk ---
+    step(f"Verify update: reading {filepath} from disk")
+    disk_content = _read_file_or_none(filepath)
+    if disk_content is None:
+        fail(f"File not found on disk after update: {filepath}")
+        all_pass = False
+    elif disk_content.strip() == content_updated:
+        ok(f"File content updated correctly: \"{disk_content.strip()}\"")
+    else:
+        fail(f"File content not updated. Expected \"{content_updated}\", got \"{disk_content.strip()}\"")
+        all_pass = False
+
+    # --- Cleanup ---
+    step(f"Cleanup: deleting {filepath}")
+    if _remove_file(filepath):
+        ok(f"Test file removed: {filepath}")
+    else:
+        warn(f"Could not remove test file: {filepath}")
+
+    print()
+    return all_pass
+
+
+# ============================================================================
 # CROSS-SYSTEM ISOLATION TEST
 # ============================================================================
 
@@ -688,7 +881,18 @@ def main():
         results["isolation"] = test_agent_isolation(args.oc_url, args.oc_key, args.hermes_url, args.hermes_key)
     else:
         results["isolation"] = None
-    
+
+    # --- Workspace file I/O tests ---
+    if args.oc_key:
+        results["oc_workspace_write"] = test_openclaw_workspace_write(args.oc_url, args.oc_key)
+    else:
+        results["oc_workspace_write"] = None
+
+    if args.hermes_key:
+        results["hermes_workspace_write"] = test_hermes_workspace_write(args.hermes_url, args.hermes_key, args.hermes_profile)
+    else:
+        results["hermes_workspace_write"] = None
+
     # --- Summary ---
     _print_summary(results)
     
