@@ -144,21 +144,28 @@ backend: 0                 # 0 = OpenClaw, 1 = Hermes
 
 ## Web Config Editor
 
+A standalone HTML page that talks directly to the Stack-chan's `/config` endpoint. No server needed — just open it in a browser.
+
 ```
-config-editor/
-├── server.js           # Node.js server (port 5570)
-├── public/
-│   ├── index.html      # Config editor UI
-│   ├── app.js          # Config fetch/save logic
-│   └── style.css       # Styles
-└── package.json
+test-harness/web-config.html    # Open this file in any browser
 ```
 
-Start it:
-```bash
-cd config-editor && npm start
-# Open http://localhost:5570
-```
+Features:
+- Connect to any Stack-chan by IP address
+- View and edit OpenClaw + Hermes backend settings
+- Switch active backend (0=OpenClaw, 1=Hermes)
+- Test chat endpoint inline
+- View raw config JSON
+
+The ESP32 firmware serves these endpoints on port 80:
+- `GET /config` — returns current config as JSON
+- `POST /config` — updates config and persists to SPIFFS
+- `GET /role_get` — returns current role text
+- `POST /role_set` — sets role text
+- `GET /memory_get` — returns user info
+- `POST /memory_clear` — clears user info
+- `GET /chat?text=<msg>` — sends a chat message to the LLM
+- `GET /speech?say=<text>` — speaks text via TTS
 
 ## Test Harness
 
@@ -173,8 +180,20 @@ python3 test-harness/workspace_write_test.py
 ### Test results
 | Suite | Tests | Passed | Time |
 |---|---|---|---|
-| End-to-end | 8 | 8 ✅ | 40.3s |
-| Workspace write | 5 | 5 ✅ | — |
+| Agent binding (strict) | 12 | 12 ✅ | ~2min |
+
+All 12 tests use strict identity validation: Rosie must say "rosie", Venus must say "venus", session persistence must contain "testbot". No false positives.
+
+```bash
+# Run all tests (requires live OpenClaw + Hermes gateways)
+python3 test-harness/test_agent_binding.py \
+  --oc-key <gateway_password> \
+  --hermes-key <venus_api_key> \
+  --hermes-url http://127.0.0.1:8643
+
+# Unit tests only (no network)
+python3 test-harness/test_agent_binding.py --unit-tests-only
+```
 
 ## Research
 
@@ -201,21 +220,22 @@ Deep research into OpenClaw's channel plugin architecture, session lifecycle, an
 
 ### ✅ Done
 - Firmware extensions (commit `ff2df3a`, pushed to fork)
-- Web config editor (port 5570)
-- End-to-end test harness — 8/8 passed
-- Workspace write test — 5/5 passed, bar met
-- Bug fixes (C1/C2/C4 critical, H1/H2/H3 high) — commit `568c571`
-- Telegram input reaction — commit `d9132fb`
+- Web config page (`test-harness/web-config.html` — browser-based, talks to ESP32 `/config` endpoint)
+- Agent binding test harness — 12/12 passed with strict identity validation
+- Workspace file I/O tests — both agents can write/update/read files via HTTP API
 - Research phase 1 — 5 research docs
+- Research phase 2 — 5 deep code reads
+- API reference — both Option A (multiplex) and Option B (dedicated port) documented
+- Code review V2 — 4 critical, 8 recommended findings (see `CODE_REVIEW_V2.md`)
+- Hermes Venus setup — dedicated port 8643 with own API key (Option B)
 
-### 🔄 In Progress
-- Research phase 2 — deep code reads (channel SDK, HTTP internals, Hermes, session reset, device patterns)
-- Channel surface validation — does `x-openclaw-message-channel: stackchan` + binding config survive 4am reset?
-
-### 📋 TODO
-- Determine v1 vs v2 architecture (HTTP+headers vs channel plugin)
-- Validate channel surface across session reset
-- Update firmware `OpenClawClient::chat()` with correct headers
+### 📋 TODO — Firmware (v1)
+- **C1:** Add session/channel headers to `OpenClawClient::http_post_json()`
+- **C2:** Fix config YAML round-trip (write full struct, not just backend/openclaw/hermes)
+- **C3:** Add auth to web endpoints + mask bot_token in GET /config
+- **C4:** Enlarge `DynamicJsonDocument` buffers to 4096
+- **R1:** Cap `chatHistory` length (prevent unbounded growth)
+- **R2:** Add mutex around chat/speech (thread safety)
 - Test on hardware
 
 ## License

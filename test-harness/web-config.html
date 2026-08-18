@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stack-chan Config</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html { font-size: 18px; }
+    body {
+      font-family: -apple-system, system-ui, sans-serif;
+      margin: 0; padding: 1em;
+      background: #1a1a2e; color: #e0e0e0;
+    }
+    h1 { font-size: 1.4em; margin-top: 0; color: #00d4ff; }
+    h2 { font-size: 1.1em; color: #00d4ff; border-bottom: 1px solid #333; padding-bottom: 0.3em; }
+    label { display: block; margin-bottom: 0.3em; font-weight: bold; color: #aaa; font-size: 0.85em; }
+    input, select {
+      width: 100%; padding: 0.6em; font-size: 0.95em;
+      border-radius: 6px; border: 1px solid #444;
+      background: #16213e; color: #e0e0e0; box-sizing: border-box;
+    }
+    input:focus { border-color: #00d4ff; outline: none; }
+    button {
+      padding: 0.6em 1.5em; font-size: 0.95em;
+      border-radius: 6px; border: none;
+      background: #00d4ff; color: #1a1a2e; cursor: pointer;
+      font-weight: bold; transition: background 0.2s;
+    }
+    button:hover { background: #00a8cc; }
+    button.danger { background: #e74c3c; color: #fff; }
+    button.danger:hover { background: #c0392b; }
+    button.secondary { background: #444; color: #e0e0e0; }
+    button.secondary:hover { background: #555; }
+    #status { margin-top: 1em; padding: 0.7em; border-radius: 6px; }
+    .ok { background: #1a3a1a; color: #4caf50; }
+    .err { background: #3a1a1a; color: #e74c3c; }
+    .container { max-width: 600px; margin: auto; }
+    .section { background: #16213e; padding: 1.2em; border-radius: 10px; margin-bottom: 1em; }
+    .row { display: flex; gap: 1em; margin-bottom: 0.8em; }
+    .row > div { flex: 1; }
+    .actions { display: flex; gap: 0.8em; margin-top: 1em; flex-wrap: wrap; }
+    pre {
+      background: #0d1117; padding: 1em; border-radius: 6px;
+      overflow-x: auto; font-size: 0.8em; color: #8b949e;
+      max-height: 300px; overflow-y: auto;
+    }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; }
+    .badge-oc { background: #00d4ff22; color: #00d4ff; }
+    .badge-hermes { background: #e056dd22; color: #e056dd; }
+    #ip-group { display: flex; gap: 0.5em; align-items: center; }
+    #ip-group input { flex: 1; }
+    #ip-group button { white-space: nowrap; }
+    .hint { color: #666; font-size: 0.8em; margin-top: 0.3em; }
+    @media (max-width: 500px) {
+      .row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 Stack-chan Config</h1>
+
+    <div class="section">
+      <h2>Connection</h2>
+      <div id="ip-group">
+        <input type="text" id="base-url" value="http://192.168.1.100" placeholder="http://<stack-chan-ip>">
+        <button class="secondary" onclick="loadConfig()">Connect</button>
+      </div>
+      <div class="hint">Enter your Stack-chan's IP address, then click Connect to load its current config</div>
+      <div id="status"></div>
+    </div>
+
+    <div class="section" id="config-section" style="display:none;">
+      <h2>Backend</h2>
+      <div class="row">
+        <div>
+          <label for="backend">Active Backend</label>
+          <select id="backend">
+            <option value="0">OpenClaw (0)</option>
+            <option value="1">Hermes (1)</option>
+          </select>
+        </div>
+      </div>
+      <div class="hint">Which LLM backend the robot talks to</div>
+    </div>
+
+    <div class="section" id="openclaw-section" style="display:none;">
+      <h2><span class="badge badge-oc">OpenClaw</span> Settings</h2>
+      <div class="row">
+        <div>
+          <label for="oc-host">Host</label>
+          <input type="text" id="oc-host" placeholder="192.168.1.50">
+        </div>
+        <div>
+          <label for="oc-port">Port</label>
+          <input type="number" id="oc-port" placeholder="18789" value="18789">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="oc-model">Model</label>
+          <input type="text" id="oc-model" placeholder="openclaw/rosie" value="openclaw/rosie">
+        </div>
+        <div>
+          <label for="oc-agent-id">Agent ID</label>
+          <input type="text" id="oc-agent-id" placeholder="rosie">
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="hermes-section" style="display:none;">
+      <h2><span class="badge badge-hermes">Hermes</span> Settings</h2>
+      <div class="row">
+        <div>
+          <label for="hermes-host">Host</label>
+          <input type="text" id="hermes-host" placeholder="192.168.1.50">
+        </div>
+        <div>
+          <label for="hermes-port">Port</label>
+          <input type="number" id="hermes-port" placeholder="8643" value="8643">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="hermes-model">Model</label>
+          <input type="text" id="hermes-model" placeholder="hermes-agent" value="hermes-agent">
+        </div>
+        <div>
+          <label for="hermes-agent-id">Agent ID</label>
+          <input type="text" id="hermes-agent-id" placeholder="venus">
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="actions-section" style="display:none;">
+      <div class="actions">
+        <button onclick="saveConfig()">💾 Save Config</button>
+        <button class="secondary" onclick="loadConfig()">🔄 Reload</button>
+        <button class="secondary" onclick="testChat()">💬 Test Chat</button>
+        <button class="secondary" onclick="showRaw()">📋 Show Raw JSON</button>
+      </div>
+    </div>
+
+    <div class="section" id="chat-section" style="display:none;">
+      <h2>Test Chat</h2>
+      <div class="row">
+        <div>
+          <label for="chat-text">Message</label>
+          <input type="text" id="chat-text" placeholder="What's your name and role?" value="What's your name and role?">
+        </div>
+      </div>
+      <div class="actions">
+        <button onclick="sendChat()">Send</button>
+      </div>
+      <pre id="chat-output"></pre>
+    </div>
+
+    <div class="section" id="raw-section" style="display:none;">
+      <h2>Raw Config JSON</h2>
+      <pre id="raw-output"></pre>
+    </div>
+
+    <div class="section">
+      <h2>API Keys</h2>
+      <div class="hint">API keys are set via the <code>/apikey</code> endpoint on the device. This page only manages the backend config (host, port, model, agent).</div>
+    </div>
+  </div>
+
+  <script>
+    function getBaseUrl() {
+      return document.getElementById('base-url').value.replace(/\/+$/, '');
+    }
+
+    function showStatus(msg, isOk) {
+      const s = document.getElementById('status');
+      s.textContent = msg;
+      s.className = isOk ? 'ok' : 'err';
+      if (!msg) s.className = '';
+    }
+
+    async function loadConfig() {
+      const base = getBaseUrl();
+      showStatus('Connecting...', 'ok');
+      try {
+        const res = await fetch(base + '/config', { method: 'GET' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        showStatus('✅ Connected — config loaded', 'ok');
+
+        // Show sections
+        document.getElementById('config-section').style.display = '';
+        document.getElementById('openclaw-section').style.display = '';
+        document.getElementById('hermes-section').style.display = '';
+        document.getElementById('actions-section').style.display = '';
+
+        // Populate backend
+        document.getElementById('backend').value = String(data.backend || 0);
+
+        // Populate OpenClaw
+        const oc = data.openclaw || {};
+        document.getElementById('oc-host').value = oc.host || '';
+        document.getElementById('oc-port').value = oc.port || 18789;
+        document.getElementById('oc-model').value = oc.model || 'openclaw/rosie';
+        document.getElementById('oc-agent-id').value = oc.agent_id || '';
+
+        // Populate Hermes
+        const h = data.hermes || {};
+        document.getElementById('hermes-host').value = h.host || '';
+        document.getElementById('hermes-port').value = h.port || 8643;
+        document.getElementById('hermes-model').value = h.model || 'hermes-agent';
+        document.getElementById('hermes-agent-id').value = h.agent_id || '';
+
+        // Store raw
+        document.getElementById('raw-output').textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        showStatus('❌ ' + err.message, 'err');
+      }
+    }
+
+    function buildConfigJson() {
+      return {
+        backend: parseInt(document.getElementById('backend').value),
+        openclaw: {
+          host: document.getElementById('oc-host').value,
+          port: parseInt(document.getElementById('oc-port').value),
+          model: document.getElementById('oc-model').value,
+          agent_id: document.getElementById('oc-agent-id').value,
+          bot_token: '',
+          default_model: ''
+        },
+        hermes: {
+          host: document.getElementById('hermes-host').value,
+          port: parseInt(document.getElementById('hermes-port').value),
+          model: document.getElementById('hermes-model').value,
+          agent_id: document.getElementById('hermes-agent-id').value,
+          bot_token: '',
+          default_model: ''
+        }
+      };
+    }
+
+    async function saveConfig() {
+      const base = getBaseUrl();
+      const cfg = buildConfigJson();
+      showStatus('Saving...', 'ok');
+      try {
+        const res = await fetch(base + '/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(cfg)
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + await res.text());
+        const msg = await res.text();
+        showStatus('✅ ' + msg, 'ok');
+        // Reload to verify
+        await loadConfig();
+      } catch (err) {
+        showStatus('❌ Save failed: ' + err.message, 'err');
+      }
+    }
+
+    async function testChat() {
+      document.getElementById('chat-section').style.display = '';
+      const output = document.getElementById('chat-output');
+      output.textContent = 'Sending...';
+      const base = getBaseUrl();
+      const text = document.getElementById('chat-text').value;
+      try {
+        const res = await fetch(base + '/chat?text=' + encodeURIComponent(text));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text_out = await res.text();
+        output.textContent = text_out;
+      } catch (err) {
+        output.textContent = 'Error: ' + err.message;
+      }
+    }
+
+    function showRaw() {
+      const sec = document.getElementById('raw-section');
+      sec.style.display = sec.style.display === 'none' ? '' : 'none';
+      document.getElementById('raw-output').textContent = JSON.stringify(buildConfigJson(), null, 2);
+    }
+
+    // Enter key triggers connect
+    document.getElementById('base-url').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') loadConfig();
+    });
+  </script>
+</body>
+</html>
