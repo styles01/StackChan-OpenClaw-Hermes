@@ -120,6 +120,22 @@ Replace the default Stack-chan chatbot (xiaozhi cloud brain) with a real OpenCla
 - Full analysis: `analysis/stackchan-atoms3r-repo-analysis.md`
 - Key insight: their core/platform separation pattern directly enables our OpenClaw + Hermes dual-target architecture — swap the connection layer without touching core firmware
 
+### 9. waynecc-at/robot-bridge (MOST DIRECTLY RELEVANT — working Hermes + Stack-chan bridge)
+- **PRODUCTION-DEPLOYED** Stack-chan → Hermes Agent bridge — 21 features, 15 bug fixes, 11 E2E tests
+- Python FastAPI bridge on :8081 — XiaoZhi WebSocket protocol + Opus audio + ASR/TTS + vision
+- Hermes Agent on :8642/:8644 — webhook-driven conversation, MCP tools, per-person memory sessions
+- **11 MCP tools**: listen, speak, see, face, face_register, look, track_target, led, emote, status, idle
+- **Multi-user face recognition**: OpenCV local detection + LBPH cache + Hermes Vision fallback + LLM-driven natural stranger registration
+- **Face tracking → servo**: smooth EMA (0.25), dead zone (6%), rate limit (12°/0.5s), multi-person priority, LLM override
+- **LED state machine**: idle=off, wake=green(1.8s), think=rainbow chase, reply=blue
+- **LLM→TTS streaming pipeline**: sentence-level, on_text callback, barge-in, emotion before LLM response
+- **XiaoZhi protocol server-side**: full hello/listen/stt/llm/tts/abort message flow confirmed
+- **Opus params**: 16kHz mono, 60ms frames, complexity=10, soxr resampling, DTX silence detection
+- **GC0308 pin mapping DIFFERENT from stackchan-mcp** — ⚠️ must verify which is correct for our CoreS3 board rev
+- **REFACTOR-PLAN.md**: self-critique — bridge was too thick, should be thinner. Validates our native approach (no bridge at all).
+- Full analysis: `analysis/robot-bridge-repo-analysis.md`
+- Key insight: this IS the Hermes integration blueprint. Our firmware eliminates the Python bridge — ESP32 talks directly to gateway — but tool definitions, conversation flow, and feature set are directly informed by what robot-bridge proved works.
+
 ## Build Phases
 
 ### Phase 0: Gateway Prep (0.5 day)

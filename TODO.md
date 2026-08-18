@@ -44,6 +44,12 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [ ] Adapt stackchan-atoms3r's port abstractions (AudioSource/AudioSink/Face) for backend-agnostic core firmware
 - [ ] Borrow stackchan-atoms3r's SpeechSegmenter for streaming TTS text → sentence boundaries → face expressions
 - [ ] Borrow stackchan-atoms3r's deadline-based audio I/O pattern to prevent hangs on slow gateway responses
+- [ ] Study robot-bridge's 11 MCP tool definitions for our Hermes target tool list
+- [ ] Borrow robot-bridge's LED state machine (idle=off, wake=green, think=rainbow, reply=blue) for Phase 2
+- [ ] Borrow robot-bridge's face tracking algorithm (EMA 0.25, dead zone 6%, rate limit 12°/0.5s) for Phase 2 servos
+- [ ] ⚠️ CRITICAL: Verify GC0308 camera pin mapping — stackchan-mcp and robot-bridge have DIFFERENT pin configs. Test both during Phase 2 camera bring-up.
+- [ ] Study robot-bridge's LLM→TTS streaming pipeline (sentence-level, barge-in, emotion before LLM) for Talk voice path optimization
+- [ ] Consider robot-bridge's natural stranger registration pattern (LLM-driven, no regex) for Phase 3
 
 ## Phase 2: Robot Layer Integration (3-5 days)
 NOTE: StackChan robot layer is NOT cleanly separable. Extract only portable pieces.

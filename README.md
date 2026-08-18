@@ -235,5 +235,6 @@ TBD — will be open source on release.
 - [meganetaaan](https://github.com/meganetaaan) — Stack-chan creator
 - [migratorywhale](https://github.com/migratorywhale) — stackchan-mcp hardware reference
 - [kkdev92](https://github.com/kkdev92) — stackchan-atoms3r architecture reference
+- [waynecc-at](https://github.com/waynecc-at) — robot-bridge Hermes integration reference (production-deployed)
 - [PlaiPin](https://github.com/PlaiPin) — plaipin-openclaw-stackchan concept validation
 - The r/StackChan community — for proving people want this

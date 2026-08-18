@@ -89,6 +89,22 @@ All notable changes to the Stack-chan → Rosie Node project.
 - Acknowledgments section crediting all reference repo authors
 - Known Gotchas section with all 5 critical findings from reference repos
 
+### robot-bridge Repo Analysis
+- Cloned `waynecc-at/robot-bridge` — PRODUCTION-DEPLOYED Stack-chan → Hermes Agent bridge
+- `analysis/robot-bridge-repo-analysis.md` (270 lines) — full investigation
+- THE most directly relevant repo found — someone already built and shipped Stack-chan + Hermes
+- 21 completed features, 15 bug fixes, 11 E2E tests — production-mature
+- 11 MCP tools: listen, speak, see, face, face_register, look, track_target, led, emote, status, idle
+- Multi-user face recognition (OpenCV + LBPH + Hermes Vision + LLM natural registration)
+- Face tracking → servo (smooth EMA, dead zone, rate limit, multi-person priority, LLM override)
+- LED state machine (idle=off, wake=green, think=rainbow, reply=blue)
+- LLM→TTS streaming pipeline (sentence-level, barge-in, emotion before LLM)
+- XiaoZhi protocol server-side confirmed — same message flow as esp-openclaw-node
+- Opus params: 16kHz mono, 60ms frames, complexity=10, soxr resampling
+- ⚠️ GC0308 pin mapping DIFFERENT from stackchan-mcp — must verify correct config for our CoreS3
+- REFACTOR-PLAN.md self-critique validates our native approach (no bridge needed)
+- This IS the Hermes integration blueprint for our dual-target design
+
 ### Backup Rule
 - HARD RULE added to TODO.md: backup stock firmware before flashing
 - `backups/` directory created on 1TB SSD
