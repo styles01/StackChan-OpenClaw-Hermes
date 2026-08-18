@@ -17,53 +17,57 @@ The `rosie-node/` ESP-IDF project is throwaway — Architecture A artifact. Kept
 ## GitHub
 - [x] Rename project to StackChan-OpenClaw-Hermes
 - [x] Create GitHub repo and push
-- [ ] Commit new architecture docs (BRIEF, BUILD_PLAN, TODO)
+- [ ] Commit new architecture docs (BRIEF, BUILD_PLAN, TODO) — Larry V2 thin audio client
 
-## Phase 1: Fork & Flash (1-2 days)
+## Phase 1: Fork & Flash Stock (1 day)
 - [ ] Full 16MB flash backup of stock Stack-chan firmware (HARD RULE)
-- [ ] Fork plaipin repo (`repos/plaipin-openclaw-stackchan/`) as our base
-- [ ] Configure `OpenClawClient` to point to Clawdio-Mini's IP:18790
-- [ ] Copy plaipin's `openclaw-rest-proxy.js` to Clawdio-Mini
-- [ ] Configure proxy: `OPENCLAW_WS_URL=ws://localhost:18789`, gateway token
-- [ ] Set up systemd service for proxy on mini (auto-start, auto-restart)
-- [ ] Set `platformio.ini` LLM backend to `OpenClaw`
-- [ ] Flash plaipin firmware to Stack-chan
-- [ ] **MILESTONE: Stack-chan talks to OpenClaw Gateway through the proxy**
-- [ ] Verify: pet head → record → send to gateway → get response → speak through robot speaker
-- [ ] Test: Rosie's personality comes through (not generic ChatGPT)
+- [ ] Fork plaipin repo as our base
+- [ ] Flash plaipin firmware UNMODIFIED to Stack-chan — verify body works (face, servo, touch)
+- [ ] **MILESTONE: Stack-chan boots with plaipin firmware, body works**
 
-## Phase 2: Improve Adapter (2-3 days)
-- [ ] Add streaming support (`stream: true` — robot speaks first sentence while agent still generating)
-  - [ ] Parse SSE/streaming response format in `OpenClawClient::chat()`
-  - [ ] Feed text to TTS sentence-by-sentence instead of waiting for full response
-  - [ ] Test: noticeable latency reduction vs `stream: false`
-- [ ] Add body-command parsing in `OpenClawClient::chat()` response handler
-  - [ ] Parse `body.expression` → `avatar.setExpression()`
-  - [ ] Parse `body.servo` → `servo->moveToGaze(yaw, pitch, speed)`
-  - [ ] Parse `body.gesture` → trigger gesture state machine (nod/shake/look_around)
-  - [ ] Parse `body.led` → LED state (off/green/blue/rainbow)
-- [ ] Add emoji stripping (copy plaipin's `stripEmoji()` if not already in our fork)
-- [ ] Add response sanitization (strip markdown, cap text at ~200 chars for TTS)
-- [ ] Add error handling (connection errors, timeouts, parse errors, gateway down)
-- [ ] Add retry logic with backoff (gateway temporarily unavailable)
-- [ ] **MILESTONE: Streaming responses + body commands work**
+## Phase 2: Audio Pipeline Server on Mini (1-2 days)
+- [ ] Port Larry V2's `lobster_audio_server.py` pattern to a new server on Clawdio-Mini
+- [ ] Adapt: route to OpenClaw Gateway WebSocket (port 18789) instead of LM Studio
+- [ ] Add body command marker parsing (regex — like Larry's `[trumpet]` effect markers)
+- [ ] Add Kokoro TTS (already on mini, British voice — bm_george or bf_emma)
+- [ ] STT: Parakeet, Whisper, or OpenClaw's built-in STT (decide based on what's on the mini)
+- [ ] Test: `curl -F audio=test.wav http://mini:18790/audio` → get WAV + JSON back
+- [ ] Add latency logging (reuse Larry V2's two-clock NTP-style reconciliation)
+- [ ] Set up systemd service on mini (auto-start, auto-restart)
+- [ ] **MILESTONE: Server works end-to-end with curl — WAV in, WAV + body commands out**
 
-## Phase 3: Hermes Path (1-2 days)
-- [ ] Add Hermes routing to the proxy (same HTTP interface, different gateway endpoint)
-  - [ ] Add config option: `GATEWAY=openclaw|hermes` (or route based on path/header)
-  - [ ] Implement Hermes webhook flow: HTTP from ESP32 → Hermes agent webhook
-  - [ ] Format Hermes response into same OpenAI-shaped JSON + body field
-- [ ] Add Hermes auth/webhook configuration
-- [ ] Test: swap OpenClaw → Hermes by changing one config value on the mini
-- [ ] Verify: same firmware binary, different gateway, same body behavior
-- [ ] **MILESTONE: Dual-gateway switching works without firmware change**
+## Phase 3: Thin Audio Client Firmware (2-3 days)
+- [ ] Write `ThinAudioClient` class (replaces STT/LLM/TTS pipeline)
+  - [ ] M5.Mic recording (16kHz mono, button-triggered for v1 — VAD is v1.1)
+  - [ ] WAV header construction (simple RIFF header, no encoding)
+  - [ ] HTTP POST to mini:18790/audio (HTTPClient)
+  - [ ] Parse JSON response (audio base64 + body commands)
+  - [ ] M5.Speaker WAV playback (decode base64 → WAV → play)
+  - [ ] Body command execution (face/servo/LED via existing plaipin API)
+- [ ] Write `BodyCommandParser` class
+  - [ ] Parse `[expression:happy]` → `avatar.setExpression()`
+  - [ ] Parse `[gesture:nod]` → trigger gesture (nod/shake/look_around)
+  - [ ] Parse `[led:blue]` → LED state (off/green/blue/rainbow)
+  - [ ] Parse `[servo:yaw:-30,pitch:45]` → `servo->moveToGaze()`
+- [ ] Remove/disable plaipin's STT, TTS, LLM classes from the build
+  - [ ] Remove `stt/` directory from build (CloudSpeechClient, Whisper, ModuleLLMASR)
+  - [ ] Remove `tts/` directory from build (WebVoiceVox, ElevenLabs, OpenAITTS, AquesTalk)
+  - [ ] Remove `llm/` directory from build (ChatGPT, Gemini, OpenClawClient, ModuleLLM)
+  - [ ] Or: keep files but exclude from platformio.ini build flags
+- [ ] Update `platformio.ini` (remove STT/TTS API key fields, set backend to thin audio)
+- [ ] Update config (point to mini's IP:18790, no API keys needed)
+- [ ] Update MainLoop / Robot.cpp to call ThinAudioClient instead of STT→LLM→TTS chain
+- [ ] Flash to Stack-chan
+- [ ] **MILESTONE: Press button → speak → Rosie responds through robot speaker**
 
 ## Phase 4: Agent Configuration (1 day)
-- [ ] Configure Rosie as the agent for this node on OpenClaw Gateway
-- [ ] Set Rosie's system prompt for robot interaction
-  - [ ] Include body command format in system prompt (so agent knows it can drive the body)
-  - [ ] Include personality guidance (Rosie persona, but robot-appropriate)
-  - [ ] Include tool availability (household, printer, fridge, memory, Telegram)
+- [ ] Configure "rosie-robot" agent session on OpenClaw Gateway
+- [ ] Write system prompt with:
+  - [ ] Rosie's personality (warm, funny, household ops director)
+  - [ ] Body command format: `[expression:happy] [gesture:nod] [led:blue]`
+  - [ ] Instruction to keep responses short (<200 chars, ~20 seconds of speech)
+  - [ ] Instruction to use body commands naturally (express emotion, look around)
+  - [ ] Tool availability (household, printer, fridge, memory, Telegram)
 - [ ] Wire up household tools:
   - [ ] rosie_status (household summary)
   - [ ] rosie_printer_status (3D printer)
@@ -71,33 +75,54 @@ The `rosie-node/` ESP-IDF project is throwaway — Architecture A artifact. Kept
   - [ ] rosie_memory (memory search)
   - [ ] rosie_say (Telegram voice notes)
   - [ ] rosie_time
-- [ ] Map robot commands (borrow patterns from robot-bridge's 11 MCP tools):
-  - [ ] "Look at me" → `body.servo` lookAtNormalized
-  - [ ] "Show me [image]" → camera capture + display
-  - [ ] Emotion mapping → `body.expression` (happy/sad/angry/sleepy/doubt)
-  - [ ] LED states → `body.led` (idle=off, wake=green, think=rainbow, reply=blue)
-  - [ ] Gestures → `body.gesture` (nod/shake/look_around)
-- [ ] **MILESTONE: "Hey Rosie, what's the printer status?" → robot looks, thinks, speaks**
+- [ ] Test: "Hey Rosie, what's the printer status?" → robot looks, thinks, speaks
+- [ ] **MILESTONE: Robot does useful agentic work through the pipeline**
 
 ## Phase 5: Polish & Testing (1-2 days)
-- [ ] End-to-end test: pet head → speak → Rosie responds through robot with personality
+- [ ] End-to-end test: pet head → speak → Rosie responds through robot
 - [ ] Calibrate audio levels (mic gain, speaker volume)
+- [ ] Test body commands (expression changes, servo gestures, LED states)
 - [ ] Test camera vision ("Hey Rosie, what do you see?")
-- [ ] Test servo gestures during speech (nod when happy, shake when doubtful)
-- [ ] Test LED emotion states (blue when replying, rainbow when thinking)
-- [ ] Test error states (gateway down, network loss, timeout)
-- [ ] Test dual-gateway switch (OpenClaw → Hermes → back)
+- [ ] Add error handling:
+  - [ ] Server down → play local "I can't connect" sample
+  - [ ] Timeout → play local "taking a while" sample
+  - [ ] Gibberish detection (reuse Larry V2's confidence threshold — low confidence → local sample)
+  - [ ] Network loss → retry with backoff
+- [ ] Add latency logging (reuse Larry V2's two-clock reconciliation)
 - [ ] Clean up code, write README, commit and push
 - [ ] **MILESTONE: Polished, documented, open-source-ready**
+
+## Phase 6 (FUTURE): Larry the Elephant on ESP32
+- [ ] Port Larry's Pi Python client logic to ESP32 C++
+  - [ ] VAD (WebRTC-style in C++, or simpler energy threshold)
+  - [ ] Noise calibration (reuse Larry's p95 × multiplier approach)
+  - [ ] Local sample playback (greeting, trumpet — Larry's core sounds)
+  - [ ] Effect markers (reuse Larry's `[trumpet]` pattern)
+- [ ] Configure "larry" agent session on OpenClaw Gateway
+  - [ ] Larry's HEART.md → system prompt
+  - [ ] Larry's MEMORY.md → agent memory (or keep as file the gateway reads)
+- [ ] Same audio pipeline server — just a different agent session
+- [ ] Test with Larry's plush body (LED, speaker, mic — no screen/servos)
+- [ ] **MILESTONE: Larry the Elephant runs on ESP32 instead of Pi**
+
+## Deferred to v1.1
+- [ ] Streaming audio (SSE — like Larry V2's `transcribe_respond_and_speak_stream`)
+- [ ] VAD on ESP32 (button trigger is fine for v1)
+- [ ] Noise calibration on ESP32 (Larry V2's p95 × 1.4 multiplier approach)
+
+## Deferred to v2
+- [ ] Hermes routing (proxy routes to OpenClaw OR Hermes based on config)
+- [ ] Dual-gateway switching without firmware change
+
+## Larry V2 Reference Files
+- `/Users/clawdio/Larry-android-port/lobster_audio.py` — Pi client source (VAD, noise filtering, HTTP POST, WAV playback)
+- `/Users/clawdio/Larry-android-port/lobster_audio_server.py` — Mac server source (Whisper STT, LM Studio LLM, Kokoro TTS, session manager, latency logging)
 
 ## Reference Patterns to Borrow (from robot-bridge — PATTERNS not code)
 - [ ] LED state machine: idle=off, wake=green(1.8s), think=rainbow chase, reply=blue
 - [ ] Face tracking: EMA smoothing=0.25, dead zone=6%, rate limit=12°/0.5s
-- [ ] LLM→TTS streaming: sentence-level with barge-in
 - [ ] Per-person memory sessions: `stackchan-{name}` session IDs
-- [ ] Natural stranger registration: LLM-driven, no regex state machine
 - [ ] 11 MCP tool definitions as reference for our gateway tool list
-- [ ] Opus params (if we ever need Opus): 16kHz, 60ms frames, complexity=10
 
 ## Hardware Notes (for reference if firmware needs fixes)
 - ⚠️ GC0308 camera pins: SDA=GPIO12, SCL=GPIO11 (2-repo consensus), XCLK=external 20MHz (NOT LEDC)

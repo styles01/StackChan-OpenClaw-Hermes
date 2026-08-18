@@ -1,168 +1,209 @@
 # StackChan-OpenClaw-Hermes — Build Plan
 
 ## Goal
-Replace the Stack-chan's weak chatbot brain with a real agentic harness (OpenClaw or Hermes) while keeping the robot body untouched.
+Build a **thin audio client pipeline for ESP32 robots** — piloted on Stack-chan, designed for reuse on Larry the Elephant. The ESP32 records audio, sends it to the mini, the mini does STT → LLM → TTS, and returns WAV audio. ESP32 plays it back. Larry V2 architecture, ported from Pi→Mac to ESP32→Mini.
 
-## Architecture
+## Architecture — "Larry V2 Thin Audio Client"
 
 ```
-┌──────────────────────────────────────────┐
-│  Stack-chan (Arduino/PlatformIO)         │
-│  ESP32-S3 CoreS3 — FIRMWARE UNTOUCHED    │
-│                                          │
-│  ┌────────────────────────────────────┐  │
-│  │ Body (STAYS AS-IS)                 │  │
-│  │  m5avatar face + expressions       │  │
-│  │  SCSCL servos (yaw + pitch)        │  │
-│  │  GC0308 camera                     │  │
-│  │  WS2812 LED ×12                    │  │
-│  │  FT6336 touch (head-pet)           │  │
-│  │  M5.Speaker / M5.Mic (half-duplex) │  │
-│  └────────────────────────────────────┘  │
-│                                          │
-│  ┌────────────────────────────────────┐  │
-│  │ LLMBase adapter (OUR CODE)         │  │
-│  │  chat(text) → HTTP POST to mini    │  │
-│  │  ← response: text + emotion + cmds │  │
-│  │  → TTS speaks, face moves, servo   │  │
-│  └────────────────────────────────────┘  │
-└──────────────────────────────────────────┘
-          │ HTTP (OpenAI-shaped JSON)
+┌──────────────────────────────────────────────────┐
+│  ESP32 (Stack-chan) — THIN AUDIO CLIENT          │
+│                                                  │
+│  ┌────────────────────────────────────────────┐  │
+│  │ Body (STAYS AS-IS — plaipin's code)        │  │
+│  │  m5avatar face + expressions               │  │
+│  │  SCSCL servos (yaw + pitch)                │  │
+│  │  GC0308 camera                              │  │
+│  │  WS2812 LED ×12                             │  │
+│  │  FT6336 touch (head-pet)                    │  │
+│  │  M5.Speaker / M5.Mic (half-duplex)          │  │
+│  └────────────────────────────────────────────┘  │
+│                                                  │
+│  ┌────────────────────────────────────────────┐  │
+│  │ Thin Audio Client (OUR NEW CODE ~300 LOC)  │  │
+│  │  1. Trigger: button press or head-pet      │  │
+│  │  2. Record: M5.Mic → 16kHz mono PCM        │  │
+│  │  3. Wrap as WAV header                     │  │
+│  │  4. HTTP POST WAV to mini:18790/audio      │  │
+│  │  5. Receive: WAV + body commands JSON      │  │
+│  │  6. Play WAV through M5.Speaker            │  │
+│  │  7. Parse body commands → face/servo/LED   │  │
+│  └────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────┘
+          │ HTTP POST (WAV audio)
           ▼
-┌──────────────────────────────────────────┐
-│  Clawdio-Mini (the middleman)            │
-│                                          │
-│  ┌────────────────────────────────────┐  │
-│  │ Proxy Service (Node.js, ~500 LOC)  │  │
-│  │  Receives HTTP from ESP32          │  │
-│  │  Routes to: OpenClaw OR Hermes     │  │
-│  │  Formats response for Stack-chan   │  │
-│  └────────────────────────────────────┘  │
-│                                          │
-│  ┌───────────────┐ ┌──────────────────┐  │
-│  │ OpenClaw      │ │ Hermes Agent     │  │
-│  │ Gateway       │ │ (optional)       │  │
-│  │ port 18789    │ │                  │  │
-│  │ WebSocket     │ │ WebSocket/HTTP   │  │
-│  └───────────────┘ └──────────────────┘  │
-│                                          │
-│  ┌────────────────────────────────────┐  │
-│  │ Rosie Agent (on OpenClaw)          │  │
-│  │  System prompt: Rosie persona      │  │
-│  │  Tools: household, printer,        │  │
-│  │  fridge, memory, Telegram          │  │
-│  │  Voice: en-GB-LibbyNeural          │  │
-│  └────────────────────────────────────┘  │
-└──────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  Clawdio-Mini — AUDIO PIPELINE SERVER            │
+│  (Larry V2 pattern, adapted for OpenClaw)        │
+│                                                  │
+│  ┌────────────────────────────────────────────┐  │
+│  │ /audio endpoint (Node.js or Python)        │  │
+│  │  1. Receive WAV from ESP32                 │  │
+│  │  2. STT: Parakeet or Whisper → text        │  │
+│  │  3. Send text to OpenClaw Gateway (WS)     │  │
+│  │  4. Get agent response (text + markers)    │  │
+│  │  5. Parse body command markers from text   │  │
+│  │  6. TTS: Kokoro → WAV (24kHz, Brit voice)  │  │
+│  │  7. Return: WAV audio + body commands JSON │  │
+│  └────────────────────────────────────────────┘  │
+│                                                  │
+│  ┌────────────────────────────────────────────┐  │
+│  │ OpenClaw Gateway (port 18789)              │  │
+│  │  Rosie agent (Stack-chan session)          │  │
+│  │  Larry agent (future — separate session)   │  │
+│  │  Tools, memory, personality, MCP           │  │
+│  └────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────┘
 ```
 
-**Key principle:** ESP32 stays dumb. Mini does the heavy lifting. Stack-chan body stays untouched.
+**Key principle:** ESP32 is a thin audio client. It knows NOTHING about STT, LLM, TTS, API keys, WebSocket, or gateway internals. It records audio, sends it, plays back what comes back. The mini does ALL the heavy lifting — exactly like Larry's Mac server does for the Pi today.
 
 ## What We're Building (3 pieces)
 
-### Piece 1: LLMBase Adapter (ESP32, ~200 LOC)
-- Fork plaipin's `OpenClawClient.cpp` (already implements `LLMBase`)
-- Improve: streaming responses, body-command parsing, error handling
-- Sends HTTP POST to the mini's proxy service
-- Receives: text to speak + emotion + optional servo/gesture/LED commands
-- Drives Stack-chan's body via existing API (`avatar.setExpression()`, `servo->moveToGaze()`, etc.)
+### Piece 1: Thin Audio Client Firmware (ESP32, ~300-400 LOC)
+- Fork plaipin's Stack-chan firmware (keeps body code: face, servo, camera, LED, touch, MainLoop)
+- **DELETE** plaipin's STT classes (CloudSpeechClient, Whisper, ModuleLLMASR) — not needed
+- **DELETE** plaipin's TTS classes (WebVoiceVox, ElevenLabs, OpenAITTS, AquesTalk) — not needed
+- **DELETE** plaipin's LLM classes (ChatGPT, Gemini, OpenClawClient, ModuleLLM) — not needed
+- **NEW:** `ThinAudioClient` class — replaces the entire STT/LLM/TTS pipeline:
+  - Records audio via M5.Mic (16kHz mono, fixed duration or VAD-stopped)
+  - Wraps PCM as WAV (simple header, no encoding)
+  - HTTP POST to mini:18790/audio
+  - Receives WAV + body commands JSON
+  - Plays WAV via M5.Speaker
+  - Parses body commands → drives face/servo/LED via existing API
+- **Reuse from plaipin:** platformio.ini (modified), partition table, config structure, MainLoop, body code
+- **Reuse from Larry V2:** VAD concept, noise calibration concept, local sample playback, effect marker parsing (evolved into body commands)
 
-### Piece 2: Proxy Service (on mini, ~500-600 LOC)
-- Fork plaipin's `openclaw-rest-proxy.js` (456 lines, already works)
-- Extends to:
-  - Route to OpenClaw OR Hermes based on config
-  - Parse agent responses for body commands
-  - Stream responses back to ESP32 (plaipin used `stream: false`)
-  - Handle dual-gateway switching without firmware changes
+### Piece 2: Audio Pipeline Server (on mini, ~500-600 LOC)
+- Larry V2-style server that receives WAV, does STT → LLM → TTS, returns WAV
+- **Option A: Python (direct port of Larry's server)**
+  - Reuse Larry's `lobster_audio_server.py` pattern directly
+  - Flask server, Whisper worker subprocess, Kokoro TTS
+  - Adapt: route to OpenClaw Gateway instead of LM Studio
+  - Adapt: parse body command markers from agent response
+  - Pro: Larry's code already works, minimal changes
+  - Con: Python on the mini (vs Node.js for plaipin's proxy)
+- **Option B: Node.js (clean implementation)**
+  - New server based on Larry V2 architecture but in Node.js
+  - Calls OpenClaw Gateway WebSocket (like plaipin's proxy did)
+  - Calls Whisper/Parakeet for STT
+  - Calls Kokoro for TTS (or shells out to Python Kokoro)
+  - Pro: Single language ecosystem on mini (Node.js)
+  - Con: More new code
+- **My recommendation: Option A (Python) for v1** — Larry's server already works. Port to Node.js later if we want consolidation. Ship faster.
 - Runs as systemd service on Clawdio-Mini
-- Dependencies: just `ws@^8.18.0` (same as plaipin)
 
 ### Piece 3: Agent Configuration (on gateway)
-- Rosie's system prompt configured for robot interaction
+- Configure a "rosie-robot" agent session on OpenClaw Gateway
+- System prompt includes:
+  - Rosie's personality (warm, funny, household ops director)
+  - Body command format: `[expression:happy] [gesture:nod] [led:blue]`
+  - Instruction to keep responses short (<200 chars, ~20 seconds of speech)
+  - Instruction to use body commands naturally (express emotion, look around, etc.)
 - Tools wired up (household, printer, fridge, memory, Telegram)
-- Response format that includes body commands
-- Voice configuration for TTS through the robot
+- Voice: Kokoro British voice (bm_george or bf_emma) for consistency with Larry
 
-## What We're NOT Building
+## What We're NOT Building (v1)
 
 - ❌ ESP-IDF firmware from scratch (rosie-node is throwaway)
-- ❌ esp-openclaw-room-node integration (locks to OpenClaw, kills Hermes)
+- ❌ Plaipin's STT/TTS/LLM classes (DELETED — replaced by thin audio client)
 - ❌ WebRTC audio pipeline (half-duplex is fine)
 - ❌ LVGL display (m5avatar face stays)
 - ❌ AEC / full-duplex audio (not needed)
 - ❌ WakeNet wake word (use Stack-chan's existing button/VAD trigger)
 - ❌ Custom servo/camera/LED drivers (Stack-chan already has them)
-- ❌ Python bridge (we use a thin Node.js proxy on the mini)
+- ❌ Streaming audio (defer to v1.1 — ship non-streaming first, like Larry V2 non-streaming endpoint)
+- ❌ Hermes routing (defer to v2 — ship OpenClaw-only first)
+- ❌ Cloud API keys on the ESP32 (zero credentials on device)
 
-## Response Format (agent → robot)
+## Response Format (server → ESP32)
 
-The proxy formats the agent's response as OpenAI-shaped JSON that the ESP32 parses:
+The server returns JSON with base64-encoded WAV + body commands:
 
 ```json
 {
-  "choices": [{
-    "message": {
-      "content": "The text to speak through the robot speaker"
-    }
-  }],
+  "audio": "base64-encoded-WAV-data",
+  "sample_rate": 24000,
+  "transcript": "what the user said",
+  "response_text": "what the agent said (markers stripped)",
   "body": {
     "expression": "happy",
     "servo": { "yaw": -30, "pitch": 45, "speed": 50 },
     "gesture": "nod",
     "led": "blue"
+  },
+  "timings": {
+    "stt": 0.3,
+    "llm": 1.2,
+    "tts": 0.5,
+    "total": 2.0
   }
 }
 ```
 
-- `content` — text for TTS (emoji-stripped, markdown-stripped, <200 chars)
-- `body.expression` — m5avatar expression: neutral/happy/sad/angry/sleepy/doubt
-- `body.servo` — optional servo command (yaw ±90°, pitch 10-70°, speed 0-100)
-- `body.gesture` — optional gesture: nod/shake/look_around
-- `body.led` — optional LED state: off/green/blue/rainbow
+- `audio` — base64 WAV for M5.Speaker playback
+- `body` — optional body commands (parsed from agent's response markers)
+- `timings` — latency breakdown (like Larry V2's latency logging)
 
-The `body` field is optional. If absent, robot just speaks the text with neutral expression.
+Body command markers (parsed from agent text before TTS):
+- `[expression:happy]` → m5avatar expression: neutral/happy/sad/angry/sleepy/doubt
+- `[gesture:nod]` → gesture: nod/shake/look_around
+- `[led:blue]` → LED: off/green/blue/rainbow
+- `[servo:yaw:-30,pitch:45]` → direct servo command
 
 ## Build Phases
 
-### Phase 1: Fork & Flash (1-2 days)
+### Phase 1: Fork & Flash Stock (1 day)
 - [ ] Full 16MB flash backup of stock Stack-chan firmware (HARD RULE)
 - [ ] Fork plaipin repo as our base
-- [ ] Configure `OpenClawClient` to point to mini's IP:18790
-- [ ] Copy plaipin's `openclaw-rest-proxy.js` to Clawdio-Mini
-- [ ] Configure proxy: `OPENCLAW_WS_URL=ws://localhost:18789`, `OPENCLAW_GATEWAY_TOKEN=...`
-- [ ] Set up systemd service for proxy on mini
-- [ ] Flash plaipin firmware to Stack-chan
-- [ ] **MILESTONE: Stack-chan talks to OpenClaw Gateway through the proxy**
+- [ ] Flash plaipin firmware UNMODIFIED to Stack-chan — verify body works (face, servo, touch)
+- [ ] **MILESTONE: Stack-chan boots with plaipin firmware, body works**
 
-### Phase 2: Improve Adapter (2-3 days)
-- [ ] Add streaming support (`stream: true` — robot starts speaking first sentence while agent still generating)
-- [ ] Add body-command parsing in `OpenClawClient::chat()` response handler
-- [ ] Add emoji stripping (copy plaipin's `stripEmoji()`)
-- [ ] Add response sanitization (strip markdown, cap at ~200 chars)
-- [ ] Add error handling (connection errors, timeouts, parse errors)
-- [ ] **MILESTONE: Streaming responses + body commands work**
+### Phase 2: Audio Pipeline Server on Mini (1-2 days)
+- [ ] Port Larry V2's `lobster_audio_server.py` pattern to a new server
+- [ ] Adapt: route to OpenClaw Gateway WebSocket instead of LM Studio
+- [ ] Add body command marker parsing (regex, like Larry's effect markers)
+- [ ] Add Kokoro TTS (already on mini, British voice)
+- [ ] Test: POST a WAV file → get WAV + JSON back (curl test, no ESP32 needed)
+- [ ] **MILESTONE: Server works end-to-end with curl — WAV in, WAV + commands out**
 
-### Phase 3: Hermes Path (1-2 days)
-- [ ] Add Hermes routing to the proxy (same HTTP interface, different gateway)
-- [ ] Add Hermes auth/webhook configuration
-- [ ] Test: swap OpenClaw → Hermes by changing one config value on the mini
-- [ ] **MILESTONE: Dual-gateway switching works without firmware change**
+### Phase 3: Thin Audio Client Firmware (2-3 days)
+- [ ] Write `ThinAudioClient` class (replaces STT/LLM/TTS pipeline)
+  - M5.Mic recording (16kHz mono, button-triggered for v1)
+  - WAV header construction
+  - HTTP POST to mini:18790/audio
+  - Parse JSON response (audio + body commands)
+  - M5.Speaker WAV playback
+  - Body command execution (face/servo/LED)
+- [ ] Remove/disable plaipin's STT, TTS, LLM classes from the build
+- [ ] Update platformio.ini (set our config, remove STT/TTS API key fields)
+- [ ] Update config (point to mini's IP:18790, no API keys needed)
+- [ ] Flash to Stack-chan
+- [ ] **MILESTONE: Press button → speak → Rosie responds through robot speaker**
 
 ### Phase 4: Agent Configuration (1 day)
-- [ ] Configure Rosie as the agent for this node on OpenClaw Gateway
-- [ ] Set Rosie's system prompt for robot interaction (include body command format)
+- [ ] Configure "rosie-robot" agent session on OpenClaw Gateway
+- [ ] Write system prompt with body command format + Rosie personality
 - [ ] Wire up household tools (printer status, fridge, memory, Telegram)
-- [ ] Map robot commands (look, emote, gesture, LED)
-- [ ] **MILESTONE: "Hey Rosie, what's the printer status?" → robot looks, thinks, speaks**
+- [ ] Test: "Hey Rosie, what's the printer status?" → robot looks, thinks, speaks
+- [ ] **MILESTONE: Robot does useful agentic work through the pipeline**
 
 ### Phase 5: Polish & Testing (1-2 days)
 - [ ] End-to-end test: pet head → speak → Rosie responds through robot
 - [ ] Calibrate audio levels (mic gain, speaker volume)
-- [ ] Test camera vision ("what do you see?")
-- [ ] Test servo gestures during speech
-- [ ] Test LED emotion states
+- [ ] Test body commands (expression changes, servo gestures, LED states)
+- [ ] Add error handling (server down, timeout, gibberish detection like Larry)
+- [ ] Add latency logging (reuse Larry V2's two-clock NTP-style reconciliation)
 - [ ] Clean up code, write README, commit and push
 - [ ] **MILESTONE: Polished, documented, open-source-ready**
+
+### Phase 6 (FUTURE): Larry the Elephant on ESP32
+- [ ] Port Larry's Pi Python client logic to ESP32 C++ (VAD, noise calibration, samples)
+- [ ] Configure "larry" agent session on OpenClaw Gateway (Larry's HEART.md + MEMORY.md)
+- [ ] Same audio pipeline server — just a different agent session
+- [ ] Test with Larry's plush body (LED, speaker, mic — no screen/servos)
+- [ ] **MILESTONE: Larry the Elephant runs on ESP32 instead of Pi**
 
 ## File Structure
 
@@ -170,28 +211,31 @@ The `body` field is optional. If absent, robot just speaks the text with neutral
 /Volumes/1TBSSDClawd/stackchan-node/
 ├── analysis/                       # Research reports (done)
 │   ├── swarm-*.md                  # 4 swarm research reports
-│   ├── adversarial-*.md            # Code + doc critiques
+│   ├── swarm2-*.md                 # 4 swarm-2 reports + synthesis
 │   └── *-repo-analysis.md          # 6 reference repo analyses
 ├── repos/                          # Reference repos (not tracked)
-│   ├── plaipin-openclaw-stackchan/ # OUR BASE — fork this
-│   ├── stackchan-mcp/              # Hardware reference
-│   ├── esp-openclaw-node/          # (throwaway — was for Architecture A)
-│   ├── robot-bridge/               # Hermes reference
+│   ├── plaipin-openclaw-stackchan/ # FORK BASE — body code + MainLoop
 │   └── ...
-├── rosie-node/                     # ⚠️ THROWAWAY — Architecture A artifact
-│                                   # Kept for reference, not used
-├── firmware/                       # Our fork of plaipin (to create)
-│   ├── platformio.ini
+├── firmware/                       # Our fork (to create)
+│   ├── platformio.ini             # Modified — no STT/TTS API keys
 │   ├── src/
-│   │   ├── llm/
-│   │   │   └── OpenClaw/           # Our improved adapter
-│   │   ├── ...
+│   │   ├── ThinAudioClient.cpp     # NEW — replaces STT/LLM/TTS pipeline
+│   │   ├── ThinAudioClient.h       # NEW
+│   │   ├── BodyCommandParser.cpp   # NEW — parses [expression:happy] etc
+│   │   ├── BodyCommandParser.h     # NEW
+│   │   ├── MainLoop.cpp            # Modified — calls ThinAudioClient
+│   │   ├── Robot.cpp               # Modified — uses ThinAudioClient
+│   │   └── ...                     # Body code stays from plaipin
 │   └── ...
-├── proxy/                          # Our proxy service (on mini)
-│   ├── openclaw-rest-proxy.js      # Forked from plaipin
-│   ├── hermes-route.js             # Hermes routing (new)
-│   └── package.json
-├── docs/BRIEF.md                   # This project brief
+├── server/                         # Audio pipeline server (on mini)
+│   ├── audio_pipeline.py           # NEW — Larry V2-style server
+│   ├── whisper_worker.py           # NEW — STT subprocess (from Larry)
+│   ├── kokoro_tts.py               # NEW — TTS module
+│   ├── gateway_client.js           # NEW — OpenClaw WebSocket client
+│   └── requirements.txt            # Python deps
+├── docs/
+│   ├── BRIEF.md                    # Project brief (updated)
+│   └── LARRY-V2-REFERENCE.md       # How Larry V2 maps to our architecture
 ├── BUILD_PLAN.md                   # This file
 ├── TODO.md                         # Task list
 └── CHANGELOG.md                    # Change log
@@ -201,30 +245,63 @@ The `body` field is optional. If absent, robot just speaks the text with neutral
 
 | Phase | Time | What |
 |-------|------|------|
-| 1. Fork & Flash | 1-2 days | Fork plaipin, configure proxy, first voice test |
-| 2. Improve Adapter | 2-3 days | Streaming, body commands, error handling |
-| 3. Hermes Path | 1-2 days | Dual-gateway routing in proxy |
-| 4. Agent Config | 1 day | Rosie on gateway, tools, commands |
-| 5. Polish | 1-2 days | Testing, calibration, docs |
-| **Total** | **~1-1.5 weeks** | Down from 2.5-3 weeks for Architecture A |
+| 1. Fork & Flash Stock | 1 day | Backup, fork, flash unmodified, verify body |
+| 2. Audio Pipeline Server | 1-2 days | Port Larry V2 server pattern, adapt for OpenClaw |
+| 3. Thin Audio Client | 2-3 days | Write ThinAudioClient, remove plaipin STT/TTS/LLM, flash |
+| 4. Agent Config | 1 day | Rosie on gateway, system prompt, tools |
+| 5. Polish | 1-2 days | Testing, calibration, error handling, docs |
+| **Total (Stack-chan)** | **~1-1.5 weeks** | Pilot proven on ESP32 |
+| 6. Larry ESP32 (future) | **~1 week** | Port Pi client to ESP32, configure Larry agent |
+
+## Key Decisions (Resolved)
+
+1. ~~Architecture A vs B vs C~~ → **Adapter pattern** (plaipin fork, PlatformIO/Arduino)
+2. ~~Full-duplex / AEC~~ → **Half-duplex** (fine for both Stack-chan and Larry)
+3. ~~esp-openclaw-room-node SDK~~ → **Not using** (locks to OpenClaw, kills Hermes)
+4. ~~rosie-node ESP-IDF code~~ → **Throwaway** (Architecture A artifact)
+5. ~~LVGL vs M5GFX~~ → **M5GFX/m5avatar stays**
+6. ~~Wake word~~ → **Stack-chan's existing trigger** (button/head-pet)
+7. ~~Dual-gateway~~ → **Defer Hermes to v2** (ship OpenClaw-only first)
+8. ~~Streaming~~ → **Defer to v1.1** (ship non-streaming first, like Larry V2)
+9. ~~Fork base~~ → **Plaipin fork + add MIT license** (pragmatic, attribute original)
+10. ~~Body commands~~ → **System prompt markers** `[expression:happy] [gesture:nod] [led:blue]`
+11. ~~STT/TTS~~ → **Thin audio client (Larry V2 pattern)** — ESP32 sends WAV to mini, mini does STT/TTS, returns WAV. No API keys on device. Replaces plaipin's entire STT/TTS/LLM pipeline.
+12. ~~Repo name~~ → **Keep "StackChan-OpenClaw-Hermes"** (Hermes support is deferred but architecture supports it)
 
 ## Status
-- [x] Repo analysis (6 repos + 4 swarm reports)
-- [x] Architecture decision (adapter pattern, plaipin base)
-- [x] BRIEF updated to new architecture
+- [x] Repo analysis (6 repos + 4 swarm reports + 4 swarm-2 reports + synthesis)
+- [x] Architecture decision (thin audio client / Larry V2 pattern)
+- [x] BRIEF updated to Larry V2 thin audio client architecture
 - [x] BUILD_PLAN rewritten
-- [ ] Phase 1: Fork & Flash
-- [ ] Phase 2: Improve Adapter
-- [ ] Phase 3: Hermes Path
-- [ ] Phase 4: Agent Config
-- [ ] Phase 5: Polish
+- [ ] Phase 1: Fork & Flash Stock
+- [ ] Phase 2: Audio Pipeline Server on Mini
+- [ ] Phase 3: Thin Audio Client Firmware
+- [ ] Phase 4: Agent Configuration
+- [ ] Phase 5: Polish & Testing
+- [ ] Phase 6: Larry the Elephant on ESP32 (future)
 
-## Resolved Decisions
-1. ~~Architecture A vs B vs C~~ → RESOLVED: Adapter pattern (James's call). Stack-chan firmware stays Arduino/PlatformIO. We write an LLMBase adapter + proxy on the mini. No ESP-IDF, no room-node SDK, no WebRTC.
-2. ~~Full-duplex / AEC~~ → RESOLVED: Not needed. Half-duplex is fine. Stack-chan, robot-bridge, and plaipin all ship half-duplex.
-3. ~~esp-openclaw-room-node SDK~~ → RESOLVED: Not using it. Locks to OpenClaw, kills Hermes option, forces ESP-IDF conversion.
-4. ~~rosie-node ESP-IDF code~~ → RESOLVED: Throwaway. Was Architecture A artifact.
-5. ~~LVGL vs M5GFX~~ → RESOLVED: M5GFX/m5avatar stays. No LVGL.
-6. ~~Wake word~~ → RESOLVED: Use Stack-chan's existing trigger (button/head-pet/VAD). No WakeNet needed.
-7. ~~Dual-gateway~~ → RESOLVED: Proxy on mini routes to OpenClaw OR Hermes. ESP32 doesn't know which.
-8. ~~Streaming~~ → TARGET: Add `stream: true` support (plaipin used `stream: false`). Robot speaks first sentence while agent still generating.
+## Larry V2 Reference
+
+**Source files:**
+- `/Users/clawdio/Larry-android-port/lobster_audio.py` — Pi client (VAD, noise filtering, HTTP POST, WAV playback)
+- `/Users/clawdio/Larry-android-port/lobster_audio_server.py` — Mac server (Whisper STT, LM Studio LLM, Kokoro TTS, session manager, latency logging)
+
+**Key parameters from Larry V2:**
+- Sample rate: 16kHz mono (Pi resamples from 44.1kHz; ESP32 M5.Mic outputs 16kHz natively)
+- VAD: WebRTC VAD aggressiveness 3, 30ms chunks, 350ms pause duration
+- Noise filtering: min energy 0.005, min voice ratio 0.3, max noise 3000ms
+- Whisper model: "tiny" (fast on Mac; mini can run larger)
+- LLM max tokens: 80 (short responses = faster TTS)
+- TTS: Kokoro, British voice (bm_george), 24kHz output
+- Session: 10 turns max, 5min timeout → memory file update
+- Gibberish detection: confidence < -0.8 → play local sample (TME mode)
+
+**What we adapt for Stack-chan:**
+- VAD: Port concept to C++ (or use button trigger for v1 — simpler)
+- STT: Whisper or Parakeet on mini (instead of LM Studio)
+- LLM: OpenClaw Gateway (instead of LM Studio direct)
+- TTS: Kokoro on mini (same as Larry)
+- Session: OpenClaw handles sessions (instead of Python SessionManager)
+- Memory: OpenClaw handles memory (instead of MEMORY.md file)
+- Effects → Body commands: `[trumpet]` → `[expression:happy] [gesture:nod] [led:blue]`
+- Latency logging: Reuse Larry's two-clock NTP-style reconciliation
