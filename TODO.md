@@ -1,47 +1,66 @@
 # TODO
 
-## Phase 1: Core Bring-Up
-- [ ] Set up ESP-IDF v5.5.4+ build environment on Clawdio-Mini
-- [ ] Copy Waveshare ESP32-S3 board port from esp-openclaw-node as template
-- [ ] Adapt board port for M5Stack CoreS3:
-  - [ ] AW88298 speaker codec config
-  - [ ] ES7210 mic config
-  - [ ] ILI9342 display init
+## Phase 0: Gateway Prep (0.5 day)
+- [ ] Confirm Gateway port: 18789 (NOT 19001 — that's the `--dev` profile default)
+- [ ] Set `gateway.nodes.commands.allow` to allow rosie_* commands (currently unset → node gets `commands: []`)
+- [ ] Decide auth path: password (`clawdiomax`) vs setup code
+- [ ] Run `openclaw qr --voice-node --setup-code-only` to generate provisioning code
+- [ ] Restart gateway after config changes
+
+## Phase 1: Core Bring-Up + Voice Verification (2-3 days)
+- [ ] Set up ESP-IDF v5.5.4 build environment on Clawdio-Mini
+- [ ] Use Waveshare ESP32-S3 board port as STRUCTURAL template (not code template)
+- [ ] Write CoreS3 board port:
+  - [ ] AW88298 speaker codec (NOT ES8311 like Waveshare — different chip)
+  - [ ] ES7210 mic with TDM I2S (NOT STD like Waveshare — needed for AEC reference)
+  - [ ] ILI9342 SPI display init (NOT SH8601 QSPI like Waveshare — different driver)
   - [ ] AXP2101 PMIC config
   - [ ] FT6336 touch driver
 - [ ] Create `rosie-node/` firmware project structure
-- [ ] Configure WebSocket target to OpenClaw Gateway
+- [ ] Set up dual-OTA partition table + rollback from the start
+- [ ] Configure WebSocket target to OpenClaw Gateway on port 18789
 - [ ] Verify WebSocket handshake + Ed25519 pairing
+- [ ] **CRITICAL: Verify Talk voice path** (`gateway-control-v1` capability) — run `wake` console command, confirm gateway returns offer URL + clientSecret. Make-or-break test.
 - [ ] First voice test: talk to Stack-chan → audio routes through Gateway → Rosie responds
 
-## Phase 2: Robot Layer Integration
-- [ ] Port StackChan servo driver (SCSCL UART1 @ 1Mbps)
-  - [ ] Yaw + pitch control
-  - [ ] lookAtNormalized / lookAtPoint 3D IK
-  - [ ] Spring-damper motion model
-  - [ ] NVS zero-calibration
-- [ ] Port StackChan LVGL face/avatar
-  - [ ] Eye/mouth/bubble widget tree
-  - [ ] Emotion states (happy, thinking, listening, speaking)
-  - [ ] Blink/breath/speaking modifiers
-  - [ ] Map emotions to esp-openclaw-node talk states
-- [ ] Port camera (GC0308)
-  - [ ] Capture → JPEG → POST to OpenClaw endpoint
-  - [ ] Wire as Gateway command handler
-- [ ] Port sensors (optional, can defer)
-  - [ ] BMI270 IMU → shake to interrupt / pickup detection
-  - [ ] Si12T head touch → petting → happy face
+## Phase 2: Robot Layer Integration (3-5 days)
+NOTE: StackChan robot layer is NOT cleanly separable. Extract only portable pieces.
 
-## Phase 3: Wake Word
-- [ ] Research ESP-SR/WakeNet custom model generation options
-- [ ] Generate "Hey Rosie" wake word model
-  - Option A: Espressif online generator
-  - Option B: Train with ESP-SR toolkit
-  - Option C: Multi-wake-word model with mappable slot
-- [ ] Configure firmware to use custom model
-- [ ] Compile, flash, test: "Hey Rosie" → device wakes
+- [ ] **Servo + motion (HIGH VALUE, LOW RISK — genuinely portable):**
+  - [ ] Extract `stackchan/motion/` + `hal/hal_servo.cpp` + `drivers/FTServo_Arduino/`
+  - [ ] Add deps: `smooth_ui_toolkit` (v2.12.0), `ArduinoJson` (v7.4.2) as managed components
+  - [ ] Yaw + pitch control, lookAtNormalized / lookAtPoint 3D IK
+  - [ ] Spring-damper motion model, NVS zero-calibration
+  - [ ] UART1 @ 1Mbps GPIO6/7 (NO CONFLICT — console on USB Serial/JTAG)
+  - [ ] Wire as board `services.register_commands` hook
 
-## Phase 4: Gateway-Side Rosie Config
+- [ ] **Face (USE ROOM-NODE BUILT-IN for v1):**
+  - [ ] v1: Use esp-openclaw-node's built-in procedural LVGL face (`room_face.c`) — zero work, already wired to Talk state
+  - [ ] v2 (later): Re-parent StackChan avatar widget tree onto room-node display (NOT a direct port — `StackChanAvatarDisplay` inherits from xiaozhi's `LvglDisplay`)
+
+- [ ] **Camera (SEPARATE, LATER — deeply coupled to xiaozhi):**
+  - [ ] Rewrite as standalone `esp_video` capture → JPEG → POST (NOT a port of StackChan camera)
+  - [ ] Wire through room-node's `try_acquire_camera()` / `release_camera()` to avoid media contention with Talk
+  - [ ] Note: gateway's `denyCommands` blocks `camera.snap`/`camera.clip` — use custom command name (e.g. `rosie.vision`)
+
+- [ ] **Sensors (OPTIONAL, DEFER):**
+  - [ ] BMI270 IMU, Si12T touch — drivers are portable, gesture recognizers in `stackchan/modifiers/` are self-contained
+
+## Phase 3: Wake Word (1-2 days + parallel research track)
+NOTE: There is NO self-service online wake word generator. It's a submission to Espressif (GitHub issue #88).
+
+- [ ] **Immediate (works today):** Ship with stock WakeNet model
+  - Option A: `wn9_hiesp` ("Hi ESP") — esp-openclaw-node default
+  - Option B: `wn9_histackchan_tts3` ("Hi StackChan") — already exists for this hardware
+  - Update wake callback string in `room_media.c:61` to match
+- [ ] **Parallel research track (days-weeks, external dependency):**
+  - Submit "Hey Rosie" to Espressif via GitHub issue #88 / application form
+  - Evaluate `xiaozhi-assets-generator` MultiNet flow
+  - No guarantee Espressif accepts — fallback is stock model permanently
+- [ ] Configure firmware to use chosen stock model
+- [ ] Compile, flash, test: device wakes on stock word
+
+## Phase 4: Gateway-Side Rosie Config (1 hour)
 - [ ] Configure Rosie as the agent for this node on OpenClaw Gateway
 - [ ] Set Rosie's system prompt as node personality
 - [ ] Wire up household tools:
@@ -56,16 +75,10 @@
   - [ ] "Show me [image]" → camera capture + display
   - [ ] Emotion mapping → face states
 
-## Phase 5: Polish & Testing
-- [ ] End-to-end: "Hey Rosie, what's the printer status?" → face thinks → servo looks → speaks status
+## Phase 5: Polish & Testing (2-3 days)
+- [ ] End-to-end: wake word → face thinks → servo looks → speaks status
 - [ ] Calibrate audio levels (mic gain, speaker volume)
 - [ ] Tune wake word sensitivity (false triggers vs miss rate)
 - [ ] Test servo motions during speech
-- [ ] Test camera vision ("Hey Rosie, what do you see?")
+- [ ] Test camera vision ("what do you see?")
 - [ ] Flash final firmware
-
-## Investigation
-- [ ] Verify OpenClaw Gateway supports esp-openclaw-node protocol (ws://localhost:19001)
-- [ ] Check ESP-IDF version compatibility (esp-openclaw-node v5.5.5 vs StackChan v5.5.4)
-- [ ] Check UART1 conflict (StackChan servos vs esp-openclaw-node)
-- [ ] Research Espressif wake word generator availability

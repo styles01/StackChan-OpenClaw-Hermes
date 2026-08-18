@@ -6,99 +6,134 @@ Replace the default Stack-chan chatbot (xiaozhi cloud brain) with a real OpenCla
 ## Architecture
 
 ```
-Stack-chan Hardware (M5Stack CoreS3, ESP32-S3)
-├── esp-openclaw-node core (steal verbatim)
-│   ├── WebSocket → OpenClaw Gateway (ws://host:19001)
-│   ├── JSON-RPC protocol, Ed25519 pairing
-│   ├── WebRTC audio (Opus 16kHz) → provider STT/TTS
-│   ├── WakeNet 9 wake word detection
-│   └── Provisioning (BLE/AP)
-├── CoreS3 Board Port (new, based on Waveshare S3 template)
-│   ├── AW88298 speaker codec config
-│   ├── ES7210 mic config
-│   ├── ILI9342 display init
-│   ├── AXP2101 PMIC
-│   └── FT6336 touch
-├── StackChan Robot Layer (borrow from StackChan firmware)
-│   ├── SCSCL serial servo control (yaw + pitch)
-│   ├── LVGL face/avatar with emotions
-│   ├── GC0308 camera (vision hook → OpenClaw endpoint)
-│   ├── BMI270 IMU (shake/pickup detection)
-│   └── Si12T head touch (petting gestures)
-└── Custom: "Hey Rosie" wake word model
-    └── ESP-SR/WakeNet custom model
+┌─────────────────────────────────────┐
+│  Stack-chan Hardware (CoreS3)       │
+│  ESP32-S3 + PSRAM                   │
+│  ┌───────────────────────────────┐  │
+│  │ esp-openclaw-node core        │  │
+│  │  WebSocket → OpenClaw Gateway │  │
+│  │  WebRTC audio (Opus 16kHz)    │  │
+│  │  WakeNet 9 wake word          │  │
+│  │  BLE/AP provisioning          │  │
+│  └───────────────────────────────┘  │
+│  ┌───────────────────────────────┐  │
+│  │ CoreS3 Board Port             │  │
+│  │  AW88298 speaker / ES7210 mic │  │
+│  │  ILI9342 display / AXP2101    │  │
+│  │  FT6336 touch                 │  │
+│  └───────────────────────────────┘  │
+│  ┌───────────────────────────────┐  │
+│  │ Robot Layer (from StackChan)  │  │
+│  │  SCSCL servos (yaw + pitch)   │  │
+│  │  LVGL face/avatar + emotions  │  │
+│  │  GC0308 camera                │  │
+│  │  BMI270 IMU / Si12T touch     │  │
+│  └───────────────────────────────┘  │
+└─────────────────────────────────────┘
+          │ WebSocket (ws://gateway:18789)
+          ▼
+┌─────────────────────────────────────┐
+│  OpenClaw Gateway (Clawdio-Mini)    │
+│  ┌───────────────────────────────┐  │
+│  │ Rosie Agent                   │  │
+│  │  System prompt: Rosie persona │  │
+│  │  Tools: household, printer,   │  │
+│  │  fridge, memory, Telegram     │  │
+│  │  Voice: en-GB-LibbyNeural     │  │
+│  └───────────────────────────────┘  │
+│  ┌───────────────────────────────┐  │
+│  │ Audio Pipeline                │  │
+│  │  STT (Whisper) → LLM → TTS   │  │
+│  └───────────────────────────────┘  │
+└─────────────────────────────────────┘
 ```
 
 ## What We're Taking From Each Repo
 
 ### 1. esp-openclaw-node (the core)
 - **Take verbatim:** esp_openclaw_node core, esp_openclaw_talk, provisioning, room-node product
-- **Board port template:** Waveshare ESP32-S3 example (same chip, PSRAM, I2S codecs, LVGL)
-- **Protocol:** WebSocket JSON-RPC to Gateway, WebRTC audio to provider
-- **Key files:** `esp_openclaw_node.h`, `esp_openclaw_node_protocol.c`, `esp_openclaw_room_node.c`, `room_media.c`, `esp_openclaw_talk.c`
+- **Board port template:** Waveshare ESP32-S3 example — STRUCTURAL template only (~40-50% reusable as code, 100% as port contract)
+- **Protocol:** WebSocket JSON-RPC v3-4 to Gateway on port **18789** (NOT 19001), Ed25519 pairing
+- **Key files:** `esp_openclaw_node.h`, `esp_openclaw_node_protocol.c`, `esp_openclaw_room_node.h`, `room_media.c`, `esp_openclaw_talk.c`
 
 ### 2. StackChan firmware (the robot body)
-- **Servo system:** SCSCL serial-bus servos (UART1 @ 1Mbps, GPIO6/7), yaw + pitch, spring-damper motion, lookAtNormalized, lookAtPoint 3D IK
-- **Avatar face:** LVGL widget tree (eyes/mouth/bubble), emotions, blink/breath/speaking modifiers, JSON API
-- **Camera:** GC0308 with Explain() vision hook (capture → JPEG → POST to AI endpoint)
-- **Sensors:** BMI270 IMU (shake/pickup), Si12T head touch, PCF8563 RTC
-- **Build:** ESP-IDF v5.5.4, same as esp-openclaw-node
+- **Servo + motion (PORTABLE — high value, low risk):** `stackchan/motion/`, `hal/hal_servo.cpp`, `drivers/FTServo_Arduino/` — no xiaozhi deps, only LVGL + smooth_ui_toolkit + ArduinoJson
+- **Avatar face (COUPLED — defer to v2):** `StackChanAvatarDisplay` inherits from xiaozhi's `LvglDisplay` — not portable as-is. Use room-node's built-in procedural face for v1.
+- **Camera (COUPLED — rewrite, don't port):** depends on xiaozhi's mcp_server/board/display. Rewrite as standalone esp_video capture.
+- **Sensors (DEFER):** BMI270, Si12T drivers are portable. Later.
+- **Build:** ESP-IDF v5.5.4
 
 ### 3. xiaozhi-esp32 firmware (reference for what we're replacing)
-- **Wake word approach:** ESP-SR/WakeNet — same system, we just swap the model
-- **Audio pipeline reference:** Opus encoding/decoding patterns
-- **Board profile reference:** m5stack/core-s3 config (audio codec pins, display config, etc.)
+- **Wake word approach:** ESP-SR/WakeNet — same system, stock model for now
+- **Board profile reference:** m5stack/core-s3 config (audio codec pins, display config)
 
 ### 4. zclaw (smallest contributor)
-- **Agent loop pattern:** tool-calling decision engine
-- **NVS provisioning pattern:** custom endpoint override
-- **Not much else** — no audio, no hardware relevance
+- Agent loop pattern — marginal, since the agent loop lives on the Gateway in this architecture
 
 ## Build Phases
 
-### Phase 1: Core Bring-Up (1-2 days)
+### Phase 0: Gateway Prep (0.5 day)
+- [ ] Confirm Gateway port: **18789** (NOT 19001 — that's the `--dev` profile default)
+- [ ] Set `gateway.nodes.commands.allow` to allow rosie_* commands (currently unset → node gets `commands: []`)
+- [ ] Decide auth path: password (`clawdiomax`) vs setup code
+- [ ] Run `openclaw qr --voice-node --setup-code-only` to generate provisioning code
+- [ ] Restart gateway after config changes
+
+### Phase 1: Core Bring-Up + Voice Verification (2-3 days)
 - [ ] Set up ESP-IDF v5.5.4 build environment on Clawdio-Mini
-- [ ] Copy Waveshare ESP32-S3 board port as starting template
-- [ ] Adapt board port for CoreS3:
-  - [ ] AW88298 speaker codec (same as StackChan)
-  - [ ] ES7210 mic (same as StackChan)
-  - [ ] ILI9342 display (StackChan uses this)
+- [ ] Use Waveshare ESP32-S3 board port as STRUCTURAL template (not code template)
+- [ ] Write CoreS3 board port (real engineering — ~40-50% code reuse from Waveshare):
+  - [ ] AW88298 speaker codec (NOT ES8311 like Waveshare — different chip)
+  - [ ] ES7210 mic with TDM I2S (NOT STD like Waveshare — needed for AEC reference)
+  - [ ] ILI9342 SPI display init (NOT SH8601 QSPI like Waveshare — different driver)
   - [ ] AXP2101 PMIC config
   - [ ] FT6336 touch
-- [ ] Get esp-openclaw-node connecting to OpenClaw Gateway
-- [ ] Verify WebSocket handshake + pairing
+- [ ] Get esp-openclaw-node connecting to Gateway on port 18789
+- [ ] Verify WebSocket handshake + Ed25519 pairing
+- [ ] **CRITICAL: Verify Talk voice path** (`gateway-control-v1` capability) — run `wake` console command, confirm gateway returns offer URL + clientSecret (not "Gateway upgrade required"). This is the make-or-break test.
 - [ ] First voice test: talk to Stack-chan, audio routes through Gateway
+- [ ] Set up dual-OTA partition table + rollback from the start
 
-### Phase 2: Robot Layer Integration (2-3 days)
-- [ ] Port StackChan servo driver (SCSCL UART1 @ 1Mbps)
-  - [ ] Yaw + pitch control
-  - [ ] lookAtNormalized / lookAtPoint
-  - [ ] Spring-damper motion model
-  - [ ] NVS zero-calibration
-- [ ] Port StackChan LVGL face/avatar
-  - [ ] Eye/mouth/bubble widget tree
-  - [ ] Emotion states (happy, thinking, listening, speaking)
-  - [ ] Blink/breath/speaking modifiers
-  - [ ] Map to esp-openclaw-node talk states
-- [ ] Port camera (GC0308)
-  - [ ] Capture → JPEG → POST to OpenClaw endpoint
-  - [ ] Wire up as a Gateway command handler
-- [ ] Port sensors (optional, can defer)
-  - [ ] BMI270 IMU → shake to interrupt / pickup detection
-  - [ ] Si12T head touch → petting → happy face
+### Phase 2: Robot Layer Integration (3-5 days)
+NOTE: StackChan robot layer is NOT cleanly separable — display inherits from xiaozhi's LvglDisplay, camera depends on xiaozhi's mcp_server/board/display. Extract only the portable pieces.
 
-### Phase 3: Wake Word (2-5 hours)
-- [ ] Research ESP-SR/WakeNet custom model generation
-- [ ] Generate "Hey Rosie" wake word model
-  - Option A: Espressif online generator (if available)
-  - Option B: Train custom model with ESP-SR toolkit
-  - Option C: Multi-wake-word model with a slot we can map
-- [ ] Configure firmware to use custom model
-- [ ] Compile, flash, test: say "Hey Rosie" → device wakes
+- [ ] **Servo + motion (HIGH VALUE, LOW RISK — genuinely portable):**
+  - [ ] Extract `stackchan/motion/` + `hal/hal_servo.cpp` + `drivers/FTServo_Arduino/`
+  - [ ] Add deps: `smooth_ui_toolkit` (v2.12.0), `ArduinoJson` (v7.4.2) as managed components
+  - [ ] Yaw + pitch control, lookAtNormalized / lookAtPoint 3D IK
+  - [ ] Spring-damper motion model, NVS zero-calibration
+  - [ ] UART1 @ 1Mbps GPIO6/7 (NO CONFLICT — console is on USB Serial/JTAG)
+  - [ ] Wire as board `services.register_commands` hook
+
+- [ ] **Face (USE ROOM-NODE BUILT-IN for v1):**
+  - [ ] v1: Use esp-openclaw-node's built-in procedural LVGL face (`room_face.c`) — zero work, already wired to Talk state
+  - [ ] v2 (later): Re-parent StackChan avatar widget tree onto room-node display (NOT a direct port — `StackChanAvatarDisplay` inherits from xiaozhi's `LvglDisplay`)
+
+- [ ] **Camera (SEPARATE, LATER — deeply coupled to xiaozhi):**
+  - [ ] Rewrite as standalone `esp_video` capture → JPEG → POST (NOT a port of StackChan camera)
+  - [ ] Wire through room-node's `try_acquire_camera()` / `release_camera()` to avoid media contention with Talk
+  - [ ] Note: gateway's `denyCommands` blocks `camera.snap`/`camera.clip` — use custom command name (e.g. `rosie.vision`)
+
+- [ ] **Sensors (OPTIONAL, DEFER):**
+  - [ ] BMI270 IMU, Si12T touch — drivers are portable, gesture recognizers in `stackchan/modifiers/` are self-contained
+
+### Phase 3: Wake Word (1-2 days + parallel research track)
+NOTE: There is NO self-service online wake word generator. It's a submission to Espressif (GitHub issue #88). Ship a stock model now.
+
+- [ ] **Immediate (works today):** Ship with stock WakeNet model
+  - Option A: `wn9_hiesp` ("Hi ESP") — esp-openclaw-node default
+  - Option B: `wn9_histackchan_tts3` ("Hi StackChan") — already exists for this hardware
+  - Update wake callback string in `room_media.c:61` to match
+- [ ] **Parallel research track (days-weeks, external dependency):**
+  - Submit "Hey Rosie" to Espressif via GitHub issue #88 / application form
+  - Evaluate `xiaozhi-assets-generator` MultiNet flow
+  - No guarantee Espressif accepts — fallback is stock model permanently
+- [ ] Configure firmware to use chosen stock model
+- [ ] Compile, flash, test: device wakes on stock word
 
 ### Phase 4: Gateway-Side Rosie Config (1 hour)
-- [ ] Configure Rosie as the agent for this node on the OpenClaw Gateway
-- [ ] Set Rosie's system prompt as the node personality
+- [ ] Configure Rosie as the agent for this node on OpenClaw Gateway
+- [ ] Set Rosie's system prompt as node personality
 - [ ] Wire up household tools:
   - [ ] rosie_status (household summary)
   - [ ] rosie_printer_status (3D printer)
@@ -111,8 +146,8 @@ Stack-chan Hardware (M5Stack CoreS3, ESP32-S3)
   - [ ] "Show me [image]" → camera capture + display
   - [ ] Emotion mapping → face states
 
-### Phase 5: Polish & Testing (1-2 days)
-- [ ] End-to-end test: "Hey Rosie, what's the printer status?" → face shows thinking → servo looks at you → speaks status
+### Phase 5: Polish & Testing (2-3 days)
+- [ ] End-to-end test: "Hey Rosie, what's the printer status?" → face thinks → servo looks → speaks status
 - [ ] Calibrate audio levels (mic gain, speaker volume)
 - [ ] Tune wake word sensitivity (false triggers vs miss rate)
 - [ ] Test servo motions during speech
@@ -123,15 +158,16 @@ Stack-chan Hardware (M5Stack CoreS3, ESP32-S3)
 
 ```
 /Volumes/1TBSSDClawd/stackchan-node/
-├── analysis/                    # 4 subagent reports (done)
+├── analysis/                    # 5 reports (done)
 │   ├── zclaw-analysis.md
 │   ├── esp-openclaw-node-analysis.md
 │   ├── xiaozhi-firmware-analysis.md
-│   └── stackchan-firmware-analysis.md
-├── firmware/                    # reference repos (cloned)
+│   ├── stackchan-firmware-analysis.md
+│   └── adversarial-review.md
+├── firmware/                    # reference repos (not tracked in git)
 │   ├── xiaozhi-esp32/           # what we're replacing
 │   ├── StackChan/               # robot layer source
-├── repos/                       # reference repos (cloned)
+├── repos/                       # reference repos (not tracked in git)
 │   ├── zclaw/
 │   ├── esp-openclaw-node/       # core to steal
 ├── rosie-node/                  # OUR FIRMWARE (to create)
@@ -139,27 +175,52 @@ Stack-chan Hardware (M5Stack CoreS3, ESP32-S3)
 │   ├── main/
 │   │   ├── main.c
 │   │   ├── board_cores3/        # CoreS3 board port
-│   │   ├── robot/               # servo + face + camera + sensors
-│   │   └── wake_word/           # "Hey Rosie" model
+│   │   ├── robot/               # servo + motion (from StackChan)
+│   │   └── wake_word/           # stock model config
 │   ├── sdkconfig.defaults
-│   └── partitions.csv
-├── server.py                    # MCP server (current, may deprecate)
+│   └── partitions.csv          # dual-OTA + rollback
+├── server.py                    # MCP server (interim, separate system)
 ├── BUILD_PLAN.md                # this file
-├── PLAN.md                      # original plan
-└── README.md
+├── PROJECT.md
+├── TODO.md
+└── CHANGELOG.md
 ```
 
-## Key Decisions Needed
-1. **Wake word model generation** — need to research if Espressif has an online generator or if we need the ESP-SR training toolkit
-2. **Gateway connection** — does the OpenClaw Gateway on this machine support the esp-openclaw-node protocol? Need to verify ws://localhost:19001
-3. **ESP-IDF version** — esp-openclaw-node examples pin v5.5.5, StackChan uses v5.5.4 — need to pick one (probably 5.5.5)
-4. **Servo UART conflict** — StackChan uses UART1 for servos, esp-openclaw-node may need UART1 for something else. Need to check.
+## Resolved Decisions (from adversarial review)
+1. ~~Wake word model generation~~ → RESOLVED: No self-service generator exists. Ship stock model, submit "Hey Rosie" to Espressif as parallel track.
+2. ~~Gateway connection~~ → RESOLVED: Port is 18789 (not 19001). Protocol supported. Must set `gateway.nodes.commands.allow`.
+3. ~~ESP-IDF version~~ → RESOLVED: Pick 5.5.4 (matches StackChan's tested env, satisfies `>=5.3`).
+4. ~~Servo UART conflict~~ → RESOLVED: No conflict. Servos on UART1, console on USB Serial/JTAG.
+
+## Open Risks (from adversarial review)
+1. **`gateway-control-v1` Talk capability** — NOT found in gateway dist. Must verify with real device in Phase 1. If it fails, fall back to interim MCP server (separate system, not a drop-in).
+2. **esp-sr/esp_video version skew** — StackChan pins esp-sr ~2.3.0, esp-openclaw-node needs ^2.4.7. Only matters if reusing StackChan audio/wake code (which we're NOT). Camera pins esp_video ==1.3.1 — keep camera on separate track.
+3. **`smooth_ui_toolkit` + `ArduinoJson` + `mooncake` deps** — StackChan robot brain needs these external repos. Add as managed components.
+4. **Room-node face vs StackChan avatar collision** — two competing face systems. Use room-node built-in for v1.
+5. **Camera + Talk media contention** — wire through room-node's acquire/release API.
+6. **`denyCommands` blocks `camera.snap`/`camera.clip`** — use custom command name (`rosie.vision`).
+7. **No OTA/rollback plan** — keep dual-OTA partition table + rollback from the start.
+8. **`server.py` MCP fallback is a trap** — it's a different protocol, not a drop-in fallback. Treat as separate interim system.
+
+## Revised Effort Estimate
+
+| Phase | Original | Revised | Why |
+|-------|----------|---------|-----|
+| 0. Gateway prep | (missing) | 0.5 day | Port, auth, commands.allow |
+| 1. Core bring-up | 1-2 days | 2-3 days | CoreS3 board port is real engineering |
+| 2. Robot layer | 2-3 days | 3-5 days | Display/camera coupled, only servo is portable |
+| 3. Wake word | 2-5 hours | 1-2 days + parallel | No self-service generator, external dependency |
+| 4. Gateway config | 1 hour | 1 hour | Unchanged |
+| 5. Polish | 1-2 days | 2-3 days | More to calibrate |
+| **Total** | **~1 week** | **~2.5-3 weeks** | |
 
 ## Status
 - [x] Repo analysis (4 subagent reports complete)
-- [x] Build plan written
-- [ ] Phase 1: Core bring-up
-- [ ] Phase 2: Robot layer
-- [ ] Phase 3: Wake word
+- [x] Adversarial review (thomas, verified against source)
+- [x] Build plan revised per review
+- [ ] Phase 0: Gateway prep
+- [ ] Phase 1: Core bring-up + voice verification
+- [ ] Phase 2: Robot layer (servo first, face later, camera last)
+- [ ] Phase 3: Wake word (stock model now, "Hey Rosie" parallel track)
 - [ ] Phase 4: Gateway config
 - [ ] Phase 5: Polish
