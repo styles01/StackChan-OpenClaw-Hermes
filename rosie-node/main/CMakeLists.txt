@@ -4,9 +4,10 @@ idf_component_register(
         "board_cores3/cores3_display.c"
         "board_cores3/cores3_audio.c"
         "board_cores3/cores3_touch.c"
-        "board_cores3/cores3_servo.c"
-        "board_cores3/cores3_camera.c"
-        "board_cores3/cores3_led.c"
+        # Phase 2 files (cores3_servo.c, cores3_camera.c, cores3_led.c) excluded —
+        # from-scratch implementations pending replacement with thin wrappers
+        # around proven Stack-chan libraries (M5StackChan.Motion, esp_camera, etc.)
+        # See analysis/adversarial-doc-critique.md for details
     INCLUDE_DIRS
         "."
         "board_cores3"

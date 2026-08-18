@@ -177,11 +177,27 @@ Replace the default Stack-chan chatbot (xiaozhi cloud brain) with a native AI ag
 - [ ] First voice test: talk to Stack-chan, audio routes through Gateway
 - [ ] Set up dual-OTA partition table + rollback from the start
 
+### Phase 1.5: Arduino-ESP32 Feasibility Spike (0.5 day — BEFORE Phase 2)
+**P0 RISK: esp-openclaw-node is pure ESP-IDF with zero Arduino deps. Adding Arduino-ESP32 is untested.**
+Must verify no symbol/task conflicts before committing to Path A.
+
+- [ ] Add `espressif/arduino-esp32` to `idf_component.yml`
+- [ ] Verify build compiles alongside esp-openclaw-node (check for `app_main` conflicts)
+- [ ] Manually add `M5Unified` library (NOT available as ESP-IDF managed component — needs manual integration)
+- [ ] Manually add `StackChan-BSP` library (same — manual integration)
+- [ ] Verify `M5StackChan.Motion.move()` can be called from ESP-IDF code via C++ wrapper
+- [ ] Check binary size impact (realistic estimate: 4.2-4.5MB total in 6MB partition)
+- [ ] If feasibility fails → fall back to Path B (port patterns to pure ESP-IDF)
+
 ### Phase 2: Robot Layer Integration (3-5 days)
 **REUSE-FIRST PRINCIPLE: Wrap proven Stack-chan libraries, don't reinvent them.**
 Add `espressif/arduino-esp32` (v3.3.6, built on ESP-IDF v5.5.2) as a managed component to get direct access to `M5StackChan.Motion`, `M5Unified`, `StackChan-BSP`, `esp_camera`. These are already proven on CoreS3 by stackchan-mcp and plaipin.
 
-- [ ] **Add Arduino-ESP32 as managed component:**
+**⚠️ NOTE: M5Unified and StackChan-BSP are NOT available as ESP-IDF managed components.** They need manual integration (clone as components or add as library deps). This is doable but NOT trivial — see Phase 1.5 feasibility spike.
+
+**⚠️ NOTE: Sample rate mismatch — our audio runs at 16kHz, Waveshare reference uses 24kHz.** Must verify 16kHz works with WebRTC Opus pipeline or adjust to 24kHz.
+
+- [ ] **Add Arduino-ESP32 as managed component (requires Phase 1.5 feasibility spike first):**
   - [ ] Add `espressif/arduino-esp32` to `idf_component.yml`
   - [ ] Add `m5stack/M5Unified`, `m5stack/StackChan-BSP` as Arduino library deps
   - [ ] Verify build still compiles with Arduino component added
@@ -287,9 +303,10 @@ NOTE: There is NO self-service online wake word generator. It's a submission to 
 2. ~~Gateway connection~~ → RESOLVED: Port is 18789 (not 19001). Protocol supported. Must set `gateway.nodes.commands.allow`.
 3. ~~ESP-IDF version~~ → RESOLVED: Pick 5.5.4 (matches StackChan's tested env, satisfies `>=5.3`).
 4. ~~Servo UART conflict~~ → RESOLVED: No conflict. Servos on UART1, console on USB Serial/JTAG.
-5. ~~Arduino vs ESP-IDF for robot layer~~ → RESOLVED: Add Arduino-ESP32 as managed component (Path A). Reuse `M5StackChan.Motion`, `esp_camera`, `M5Unified` directly. Don't reinvent servo/camera/LED drivers that already work.
+5. ~~Arduino vs ESP-IDF for robot layer~~ → TARGET (pending feasibility spike): Add Arduino-ESP32 as managed component. Reuse `M5StackChan.Motion`, `esp_camera`, `M5Unified` directly. NOT YET TESTED — esp-openclaw-node is pure ESP-IDF with zero Arduino deps. Must verify no symbol/task conflicts before committing.
 6. ~~Audio I2S mode~~ → RESOLVED: STD I2S for both TX and RX (not TDM). Waveshare reference proves STD works with ES7210 for 2-channel AEC. Mixed STD+TDM on same port doesn't work.
 7. ~~Reinventing the wheel~~ → RESOLVED: James called this out. Adversarial review should have caught "should this code exist?" not just "are there bugs?" Reuse-first principle now enforced.
+8. ~~Sample rate~~ → OPEN: Our audio runs at 16kHz, Waveshare reference uses 24kHz. Must verify 16kHz works with WebRTC Opus pipeline or match to 24kHz.
 
 ## Open Risks (from adversarial review)
 1. **`gateway-control-v1` Talk capability** — NOT found in gateway dist. Must verify with real device in Phase 1. If it fails, fall back to interim MCP server (separate system, not a drop-in).

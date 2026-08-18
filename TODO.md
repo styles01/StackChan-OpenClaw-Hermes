@@ -62,9 +62,19 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [ ] Study robot-bridge's LLM→TTS streaming pipeline (sentence-level, barge-in, emotion before LLM) for Talk voice path optimization
 - [ ] Consider robot-bridge's natural stranger registration pattern (LLM-driven, no regex) for Phase 3
 
+## Phase 1.5: Arduino-ESP32 Feasibility Spike (0.5 day — BEFORE Phase 2)
+**P0 RISK: esp-openclaw-node is pure ESP-IDF with zero Arduino deps. Adding Arduino is untested.**
+- [ ] Add `espressif/arduino-esp32` to `idf_component.yml`
+- [ ] Verify build compiles alongside esp-openclaw-node (check for `app_main` conflicts)
+- [ ] Manually add `M5Unified` library (NOT available as ESP-IDF managed component)
+- [ ] Manually add `StackChan-BSP` library (same)
+- [ ] Verify `M5StackChan.Motion.move()` can be called from ESP-IDF via C++ wrapper
+- [ ] Check binary size impact (realistic estimate: 4.2-4.5MB in 6MB partition)
+- [ ] If feasibility fails → fall back to Path B (port patterns to pure ESP-IDF)
+
 ## Phase 2: Robot Layer Integration (3-5 days)
 **REUSE-FIRST PRINCIPLE: Wrap proven Stack-chan libraries, don't reinvent them.**
-Add `espressif/arduino-esp32` (v3.3.6) as a managed component for direct access to `M5StackChan.Motion`, `M5Unified`, `StackChan-BSP`, `esp_camera`.
+**⚠️ Requires Phase 1.5 feasibility spike first.**
 
 - [ ] **Add Arduino-ESP32 as managed component:**
   - [ ] Add `espressif/arduino-esp32` to `idf_component.yml`

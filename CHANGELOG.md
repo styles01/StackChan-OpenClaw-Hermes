@@ -42,13 +42,17 @@ All notable changes to the StackChan-OpenClaw-Hermes project.
 - James caught that I was reinventing the wheel — writing servo/camera/LED drivers from scratch when proven implementations exist in stackchan-mcp and plaipin
 - Adversarial review should have caught "should this code exist?" not just "are there bugs in this code?" — process failure noted
 - **New principle: Reuse proven code unless we have a specific architectural reason to rewrite**
-- **Architecture decision: Add Arduino-ESP32 (v3.3.6, built on ESP-IDF v5.5.2) as a managed component**
+- **Architecture decision: Add Arduino-ESP32 (v3.3.6, built on ESP-IDF v5.5.2) as a managed component** — TARGET, pending feasibility spike
   - Gives direct access to `M5StackChan.Motion`, `M5Unified`, `StackChan-BSP`, `esp_camera`
   - These are already proven on CoreS3 by stackchan-mcp and plaipin
-  - Maximum reuse, minimum reinvention
-  - Can strip Arduino dependency later if binary size becomes an issue
+  - ⚠️ NOT YET TESTED — esp-openclaw-node is pure ESP-IDF, adding Arduino is untested
+  - ⚠️ M5Unified and StackChan-BSP are NOT available as ESP-IDF managed components — need manual integration
+  - Phase 1.5 feasibility spike added to BUILD_PLAN to test before committing
 - Updated BRIEF, BUILD_PLAN, TODO, README with reuse-first principle and Arduino-as-component decision
-- From-scratch servo/camera/LED files will be replaced with thin wrappers around proven libraries
+- From-scratch servo/camera/LED files created but are WRONG and pending replacement with thin wrappers
+  - They compile but are dead code (not called from main.c)
+  - Will be replaced when Arduino-ESP32 feasibility is confirmed
+- Self-critique: `analysis/adversarial-doc-critique.md` — found 8 issues, all fixed in this commit
 
 ### Decisions
 - ADR-001: Use esp-openclaw-node as firmware core
