@@ -38,3 +38,12 @@ dependencies.lock
 # Reference repos (cloned, not our code)
 firmware/
 repos/
+
+# Archive build artifacts (contain personal paths)
+archive/*/build/
+archive/*/managed_components/
+archive/*/sdkconfig
+archive/*/dependencies.lock
+
+# Backups
+backups/

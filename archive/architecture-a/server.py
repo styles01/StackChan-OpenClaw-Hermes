@@ -61,16 +61,16 @@ log = logging.getLogger("rosie-stackchan")
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 
-WORKSPACE = "/Users/clawdio/openclaw-workspaces/rosie"
-TTS_SCRIPT = "/Users/clawdio/.openclaw/workspace/tts-machine/run_tts.py"
-BAMBU_ACCESS_CODE_FILE = "/Users/clawdio/.config/bambu/a1mini-access-code.txt"
+WORKSPACE = "<your-home>/openclaw-workspaces/rosie"
+TTS_SCRIPT = "<your-home>/.openclaw/workspace/tts-machine/run_tts.py"
+BAMBU_ACCESS_CODE_FILE = "<your-home>/.config/bambu/a1mini-access-code.txt"
 FRIDGE_DATA_DIR = os.path.expanduser("~/.hermes/workspace/eink-fridge/data")
 MEMORY_FILE = os.path.join(WORKSPACE, "MEMORY.md")
 
 CHAT_IDS = {
-    "james": "8112145924",
-    "gabby": "8261476039",
-    "group": "-1003974261609",
+    "james": "<REDACTED_TELEGRAM_ID",
+    "gabby": "<REDACTED_TELEGRAM_ID",
+    "group": "<REDACTED_GROUP_ID",
 }
 
 # ─── Tools ────────────────────────────────────────────────────────────────────
@@ -214,7 +214,7 @@ async def handle_tool_call(name, args):
                 ["python3", "-c", '''
 import ssl, json, time
 import paho.mqtt.client as mqtt
-ACCESS_CODE = open("/Users/clawdio/.config/bambu/a1mini-access-code.txt").read().strip()
+ACCESS_CODE = open("<your-home>/.config/bambu/a1mini-access-code.txt").read().strip()
 SERIAL = "0300CA662400052"
 got = []
 def on_connect(c,u,f,rc,p=None):
@@ -232,7 +232,7 @@ ctx = ssl.create_default_context()
 ctx.check_hostname = False
 ctx.verify_mode = ssl.CERT_NONE
 cli.tls_set_context(ctx)
-cli.connect("192.168.2.215", 8883, 30)
+cli.connect("<PRINTER_IP>", 8883, 30)
 cli.loop_start()
 time.sleep(8)
 cli.loop_stop()

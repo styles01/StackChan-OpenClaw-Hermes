@@ -125,7 +125,7 @@ Python FastAPI server (reuse Larry V2 patterns directly). Larry's server is Flas
 - `fastapi` 0.128.8 ✓
 - `uvicorn` 0.39.0 ✓
 - `openai-whisper` 20250625 ✓
-- Larry's `lobster_audio_server.py` at `/Users/clawdio/Larry-android-port/` ✓
+- Larry's `lobster_audio_server.py` at `<your-home>/Larry-android-port/` ✓
 
 **Endpoints:**
 
@@ -474,8 +474,8 @@ Plaipin has a **custom wake word system** using MFCC + DTW via the `simplevox` l
 ## Larry V2 Reference
 
 **Source files:**
-- `/Users/clawdio/Larry-android-port/lobster_audio.py` — Pi client (VAD, noise filtering, HTTP POST, WAV playback)
-- `/Users/clawdio/Larry-android-port/lobster_audio_server.py` — Mac server (Whisper STT, LM Studio LLM, Kokoro TTS, session manager, latency logging)
+- `<your-home>/Larry-android-port/lobster_audio.py` — Pi client (VAD, noise filtering, HTTP POST, WAV playback)
+- `<your-home>/Larry-android-port/lobster_audio_server.py` — Mac server (Whisper STT, LM Studio LLM, Kokoro TTS, session manager, latency logging)
 
 **Key parameters:**
 - Sample rate: 16kHz mono (M5.Mic outputs 16kHz natively — no resampling)

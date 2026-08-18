@@ -193,8 +193,8 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - `driver/WakeWord.cpp` → SimpleVox MFCC+DTW wake word (keep as-is)
 
 ## Larry V2 Reference Files
-- `/Users/clawdio/Larry-android-port/lobster_audio.py` — Pi client source
-- `/Users/clawdio/Larry-android-port/lobster_audio_server.py` — Mac server source
+- `<your-home>/Larry-android-port/lobster_audio.py` — Pi client source
+- `<your-home>/Larry-android-port/lobster_audio_server.py` — Mac server source
   - `transcribe()` line 103 → faster-whisper
   - `generate_speech()` line 123 → Kokoro
   - `parse_effects()` line 165 → regex marker stripping
