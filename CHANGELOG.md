@@ -66,6 +66,14 @@ All notable changes to the Stack-chan → Rosie Node project.
 - Architecture: MCP Python server → HTTP REST → ESP32 (different from our WebSocket+WebRTC approach)
 - Firmware is a goldmine for Phase 2 robot layer work
 
+### Reddit r/StackChan Thread Analysis
+- Thread: "Openclaw + StackChan 🦞🦞" (June 2026) — real-world integration findings
+- `analysis/reddit-openclaw-stackchan-thread.md` (120 lines)
+- CRITICAL: `esp_codec_dev_write()` silently fails in XiaoZhi firmware — I2S format conflict with duplex config. Fix: bypass codec, write directly to `i2s_channel_write()`
+- 16kHz WAV confirmed as proven working sample rate — matches our choice
+- Mic quality is a known problem — plan for gain/AGC tuning early
+- Real demand for Stack-chan + OpenClaw integration — no clean reference implementation exists yet
+
 ### Backup Rule
 - HARD RULE added to TODO.md: backup stock firmware before flashing
 - `backups/` directory created on 1TB SSD

@@ -95,6 +95,15 @@ Replace the default Stack-chan chatbot (xiaozhi cloud brain) with a real OpenCla
 - Full analysis: `analysis/stackchan-mcp-repo-analysis.md`
 - Repo cloned to `repos/stackchan-mcp/` (excluded from git tracking)
 
+### 7. Reddit r/StackChan community findings (real-world integration experience)
+- Thread: "Openclaw + StackChan 🦞🦞" (June 2026) — `analysis/reddit-openclaw-stackchan-thread.md`
+- **CRITICAL FINDING:** `esp_codec_dev_write()` silently fails in XiaoZhi firmware due to I2S format conflict with duplex config. Fix: bypass codec write, use `i2s_channel_write()` directly. Keep codec only for amp/volume management.
+- 16kHz WAV is the proven working sample rate for TTS pipeline — confirms our choice
+- Mic quality is a known problem — even with higher gain, Whisper returns empty transcriptions. Plan for gain/AGC tuning early.
+- Head-pet (touch sensor) as push-to-talk alternative to wake word
+- Real demand for Stack-chan + OpenClaw integration — people buying hardware for this use case
+- No clean reference implementation exists yet — our project could fill this gap
+
 ## Build Phases
 
 ### Phase 0: Gateway Prep (0.5 day)

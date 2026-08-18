@@ -38,6 +38,8 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [ ] Borrow GC0308 camera pin config from stackchan-mcp (Phase 2 camera work)
 - [ ] Borrow servo gesture patterns (nod/shake state machine) from stackchan-mcp (Phase 2 servo work)
 - [ ] Add audio gate / mic resume pattern to prevent feedback during Talk — from stackchan-mcp
+- [ ] ⚠️ KNOWN GOTCHA: If `esp_codec_dev_write()` silently fails, bypass it and write PCM directly to `i2s_channel_write()`. Keep codec only for amp/volume. (From Reddit community finding)
+- [ ] Test mic quality early — Reddit users report Whisper returns empty transcriptions due to low mic gain on CoreS3
 
 ## Phase 2: Robot Layer Integration (3-5 days)
 NOTE: StackChan robot layer is NOT cleanly separable. Extract only portable pieces.
