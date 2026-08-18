@@ -1,0 +1,37 @@
+# Build artifacts
+build/
+sdkconfig
+sdkconfig.old
+managed_components/
+dependencies.lock
+
+# Environment
+.env
+*.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Firmware binaries
+*.bin
+*.elf
+*.hex
+*.map
+
+# Audio/media
+*.mp3
+*.wav
+*.avi
+*.mp4
+
+# Claude/agent notes
+.claude/
+
+# Large model files (keep out of git)
+*.wn9
+*.wav2vec
+*.model
