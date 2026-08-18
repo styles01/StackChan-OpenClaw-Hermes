@@ -1,5 +1,16 @@
 # TODO
 
+## ⚠️ HARD RULE: Backup Stock Firmware Before Flashing
+We have bricked multiple devices before. BEFORE flashing rosie-node to the Stack-chan:
+1. Plug in via USB, detect serial port
+2. `esptool read_flash 0 0x1000000 backup_stackchan_stock.bin` (full 16MB dump)
+3. Save partition table: `esptool read_flash 0x8000 0x1000 backup_partition_table.bin`
+4. Verify backup file is exactly 16MB
+5. Store backups on 1TB SSD: `/Volumes/1TBSSDClawd/stackchan-node/backups/`
+6. ONLY then flash rosie-node
+
+If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` restores brick-for-brick.
+
 ## Phase 0: Gateway Prep (0.5 day)
 - [ ] Confirm Gateway port: 18789 (NOT 19001 — that's the `--dev` profile default)
 - [ ] Set `gateway.nodes.commands.allow` to allow rosie_* commands (currently unset → node gets `commands: []`)
