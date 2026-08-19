@@ -349,6 +349,13 @@ Deep research into OpenClaw's channel plugin architecture, session lifecycle, an
 - Working reference repos collected (5 repos in `repos/working-repos/`)
 - **Hermes-StackChan reference** — circlemouth fork analyzed as primary architecture reference
 - **Profile binding validated** — Rosie on OpenClaw:18789, Venus on Hermes:8643, strict identity tests pass
+- **Three-repo merge** — official v1.4.3 + circlemouth ai-server + plaipin config layer
+- **Web config server** — GET/POST /config on device port 80, HTML editor, mDNS (`clawdio-mini.local`)
+- **Device connected to ai-server** — full chain: device → mDNS → WS → ai-server → OpenClaw → Rosie
+- **English voice** — TTS (`en-GB-LibbyNeural`), STT (faster-whisper, English), English fast-acks
+- **OpenClaw auth** — Bearer token working, HTTP 200
+- **Firmware crash fixed** — WiFi power save + TCP reconnect cleanup, 61KB free SRAM (up from 29KB)
+- **Device talks and survives** — full conversation cycles: listening → speaking → listening (no crash!)
 
 ### 📋 TODO — Firmware (v1)
 - **C1:** Add session/channel headers to `OpenClawClient::http_post_json()`
@@ -357,7 +364,9 @@ Deep research into OpenClaw's channel plugin architecture, session lifecycle, an
 - **C4:** Enlarge `DynamicJsonDocument` buffers to 4096
 - **R1:** Cap `chatHistory` length (prevent unbounded growth)
 - **R2:** Add mutex around chat/speech (thread safety)
-- Test on hardware
+- **STT/VAD tuning** — raise VAD threshold (0.025 too low), increase max duration, fix segment limit (1 sentence cut-off)
+- **Wake word** — submit Espressif request for "Hey Rosie" custom WakeNet, or use "Hey, Ivy" temporarily
+- **POST /config crash** — 16384 stack built but untested (device was disconnected)
 - **P1:** Fix PlatformIO build: `board = esp32-s3-devkitc-1`, add `-mfix-esp32-psram-cache-issue -DESP32S3 -DBOARD_HAS_PSRAM`, update M5Unified to `^0.2.20`
 - **P2:** Or migrate to official ESP-IDF build system (recommended)
 - **P3:** Or use UIFlow2 Python path (easiest, no build system)

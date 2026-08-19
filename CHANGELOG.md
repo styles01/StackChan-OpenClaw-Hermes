@@ -43,6 +43,24 @@ The device is a thin audio client — STT/LLM/TTS happen on the server, not the 
 2. **First-boot OTA hole** — unconditional skip (hard return), not conditional on config.
 3. **Backend binding off-device** — per-device lookup in ai-server via `devices.json` + WS handshake `Device-Id`.
 
-### Current Blockers
-- **Device USB disconnected** — serial port `/dev/cu.usbmodem211301` not present; needs physical replug
-- **End-to-end WS test pending** — device not yet flashed with Phase 4 WebSocket URL writing code
+### 2026-08-19 — Phase 5: Firmware Crash Fix — Device Talks and Survives (DONE)
+
+**Root cause found and fixed:** Device crashed 100% at `listening → speaking` transition. Two bugs:
+
+1. **WiFi power save killing TCP** — `OnAudioChannelClosed` callback set WiFi to `LOW_POWER (MAX_MODEM)` after TTS finished. WiFi modem sleep killed the TCP connection (`TCP receive failed: -1`). Device tried to reconnect after wake word → crashed.
+   - **Fix:** Stay in `PERFORMANCE` mode while WebSocket session is active. Only drop to `LOW_POWER` when truly idle (`OnDisconnected`).
+
+2. **EspTcp::Connect stale socket/task leak** — When reconnecting after unexpected TCP drop, old receive task was already dead. Creating new 4KB receive task on top of exhausted 29KB free SRAM → crash.
+   - **Fix:** Force-close stale sockets before creating new ones. Wait for old receive tasks to exit. Reduced receive task stack 4096 → 2048 (saves 2KB SRAM).
+
+**Results:**
+- Free SRAM at boot: **61KB** (up from 29KB)
+- Full conversation cycle works: `listening → speaking → listening` ✅ (no crash!)
+- Device survived 4+ consecutive conversation cycles (was crashing on the first one every time before fix)
+- ai-server log confirms: STT → LLM → TTS → 64 Opus frames sent → played successfully
+
+**Files modified:**
+- `firmware/managed_components/78__esp-ml307/src/esp/esp_tcp.cc` — force cleanup stale sockets, reduce task stack 4096→2048
+- `firmware/xiaozhi-esp32/main/application.cc` — WiFi power save fix (stay PERFORMANCE during session)
+
+**Remaining issue: STT quality** — VAD threshold too low (0.025), picking up room noise. `max duration reached` hitting timeout before speech finishes. LLM responses incoherent because STT input is garbage. Segment limit (1) cuts off responses prematurely. This is a tuning issue, NOT a firmware crash issue.

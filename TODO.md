@@ -45,24 +45,30 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [x] mDNS confirmed working (`CONFIG_LWIP_DNS_SUPPORT_MDNS_QUERIES=y`)
 - [x] Config saved with `clawdio-mini.local` hostname (bare, no http://)
 
-## Phase 4: WebSocket URL Writing — 🔄 IN PROGRESS
+## Phase 4: Device Connected to ai-server — ✅ DONE
 - [x] POST /config writes `ws://<host>:8765/ws` into `"websocket"` NVS namespace
 - [x] Auto-builds URL from config host (port 8765, path /ws)
 - [x] Custom `websocket_url` field overrides auto-built URL
-- [ ] Rebuild with port 8765 fix (was 18789, now corrected)
-- [ ] Flash to device
-- [ ] Verify device connects to `ws://clawdio-mini.local:8765/ws`
-- [ ] End-to-end test: voice in → STT → LLM → TTS → voice out
+- [x] Device connects to `ws://clawdio-mini.local:8765/ws` via mDNS
+- [x] ai-server accepts WS, reads Device-Id, routes to OpenClaw/rosie
+- [x] Audio pipeline active (VAD → STT → LLM → TTS → Opus → device)
+- [x] English voice (en-GB-LibbyNeural), English STT, English fast-acks
+- [x] OpenClaw auth (Bearer token) working
+- [x] Committed and pushed (8ca4589)
 
-## Phase 5: Per-Device Backend Binding — PENDING
-- [ ] ai-server reads `Device-Id` from WS handshake
-- [ ] Looks up `devices.json` for per-device backend+agent routing
-- [ ] Test with multiple devices
+## Phase 5: Firmware Crash Fix — ✅ DONE
+- [x] Root cause found: WiFi power save (LOW_POWER/MAX_MODEM) killing TCP after TTS
+- [x] Root cause found: EspTcp::Connect stale socket/task leak on reconnect
+- [x] Fix: Stay in PERFORMANCE mode during WebSocket session
+- [x] Fix: Force-close stale sockets, wait for old receive tasks, reduce stack 4096→2048
+- [x] Free SRAM improved: 29KB → 61KB at boot
+- [x] Device survives 4+ conversation cycles (was crashing on first one every time)
+- [x] Full cycle confirmed: wake word → listening → speaking → listening (no crash)
 
-## Phase 6: Code Review + Cleanup — PENDING
+## Phase 6: Code Review + Cleanup — IN PROGRESS
 - [ ] Code review on actual diff (Step 6)
 - [ ] Fix review issues (Step 7)
-- [ ] Update README, BUILD_PLAN (mark superseded), TODO, CHANGELOG, MEMORY (Step 8)
+- [x] Update README, CHANGELOG, TODO, MEMORY (Step 8 — this commit)
 - [ ] Rename repo to `stackchan-openclaw`
 - [ ] Commit and push
 - [ ] Keep plaipin cloned as reference (concepts only, not code)
