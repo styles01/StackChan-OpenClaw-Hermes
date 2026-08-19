@@ -2,38 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Stack-chan Config</title>
+  <title>Stack-chan Setup</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
   <style>
-    html { font-size: 18px; }
+    html { font-size: 16px; }
     body {
       font-family: -apple-system, system-ui, sans-serif;
       margin: 0; padding: 1em;
       background: #1a1a2e; color: #e0e0e0;
+      padding: env(safe-area-inset-top) 1em env(safe-area-inset-bottom);
     }
-    h1 { font-size: 1.4em; margin-top: 0; color: #00d4ff; }
+    h1 { font-size: 1.4em; margin-top: 0; color: #00d4ff; display: flex; align-items: center; gap: 0.5em; }
+    h1 .face { animation: bounce 2s ease-in-out infinite; display: inline-block; }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
     h2 { font-size: 1.1em; color: #00d4ff; border-bottom: 1px solid #333; padding-bottom: 0.3em; }
-    label { display: block; margin-bottom: 0.3em; font-weight: bold; color: #aaa; font-size: 0.85em; }
+    label { display: block; margin-bottom: 0.3em; font-weight: bold; color: #ccc; font-size: 0.85em; }
     input, select {
       width: 100%; padding: 0.6em; font-size: 0.95em;
       border-radius: 6px; border: 1px solid #444;
       background: #16213e; color: #e0e0e0; box-sizing: border-box;
+      transition: border-color 0.2s;
     }
     input:focus { border-color: #00d4ff; outline: none; }
+    input:invalid { border-color: #e74c3c; }
     button {
       padding: 0.6em 1.5em; font-size: 0.95em;
       border-radius: 6px; border: none;
       background: #00d4ff; color: #1a1a2e; cursor: pointer;
-      font-weight: bold; transition: background 0.2s;
+      font-weight: bold; transition: all 0.2s;
     }
-    button:hover { background: #00a8cc; }
+    button:hover:not(:disabled) { background: #00a8cc; }
+    button:active:not(:disabled) { transform: scale(0.97); }
+    button:disabled { opacity: 0.5; cursor: wait; }
     button.danger { background: #e74c3c; color: #fff; }
-    button.danger:hover { background: #c0392b; }
+    button.danger:hover:not(:disabled) { background: #c0392b; }
     button.secondary { background: #444; color: #e0e0e0; }
-    button.secondary:hover { background: #555; }
-    #status { margin-top: 1em; padding: 0.7em; border-radius: 6px; }
+    button.secondary:hover:not(:disabled) { background: #555; }
+    code { background: #0d1117; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; }
+    #status {
+      margin-top: 1em; padding: 0.7em; border-radius: 6px;
+      scroll-margin-top: 1em;
+    }
+    #status:empty { display: none; }
     .ok { background: #1a3a1a; color: #4caf50; }
     .err { background: #3a1a1a; color: #e74c3c; }
+    .info { background: #1a2a3a; color: #5dbef5; }
     .container { max-width: 600px; margin: auto; }
     .section { background: #16213e; padding: 1.2em; border-radius: 10px; margin-bottom: 1em; }
     .row { display: flex; gap: 1em; margin-bottom: 0.8em; }
@@ -44,30 +58,64 @@
       overflow-x: auto; font-size: 0.8em; color: #8b949e;
       max-height: 300px; overflow-y: auto;
     }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.75em; }
     .badge-oc { background: #00d4ff22; color: #00d4ff; }
     .badge-hermes { background: #e056dd22; color: #e056dd; }
     #ip-group { display: flex; gap: 0.5em; align-items: center; }
     #ip-group input { flex: 1; }
     #ip-group button { white-space: nowrap; }
-    .hint { color: #666; font-size: 0.8em; margin-top: 0.3em; }
+    .hint { color: #999; font-size: 0.8em; margin-top: 0.3em; }
+    .scan-result {
+      display: flex; align-items: center; gap: 0.5em; width: 100%;
+      padding: 0.5em 0.8em; margin: 0.3em 0; text-align: left;
+      border-radius: 6px; background: #0d1117; cursor: pointer;
+      border: 1px solid #333; transition: border-color 0.2s, transform 0.1s;
+      color: #e0e0e0; font-size: 0.95em;
+    }
+    .scan-result:hover { border-color: #00d4ff; }
+    .scan-result:active { transform: scale(0.98); }
+    .scan-result .ip { color: #00d4ff; font-weight: bold; font-family: monospace; }
+    .scan-result .desc { color: #aaa; font-size: 0.85em; }
+    .scan-spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid #333; border-top-color: #00d4ff;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .toast {
+      position: fixed; bottom: 1em; left: 50%; transform: translateX(-50%);
+      padding: 0.8em 1.5em; border-radius: 8px; z-index: 100;
+      animation: slideUp 0.3s ease-out; max-width: 90vw;
+    }
+    @keyframes slideUp { from { transform: translate(-50%, 100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+    .toast.ok { background: #1a3a1a; color: #4caf50; border: 1px solid #2a5a2a; }
+    .toast.err { background: #3a1a1a; color: #e74c3c; border: 1px solid #5a2a2a; }
+    .toast.info { background: #1a2a3a; color: #5dbef5; border: 1px solid #2a4a5a; }
+    .field-error { color: #e74c3c; font-size: 0.8em; margin-top: 0.2em; display: none; }
+    .field-error.show { display: block; }
+    input.error { border-color: #e74c3c; }
     @media (max-width: 500px) {
-      .row { flex-direction: column; }
+      .row, #ip-group { flex-direction: column; gap: 0.5em; }
+      button { min-height: 44px; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>🤖 Stack-chan Config</h1>
+    <h1><span class="face">🤖</span> Stack-chan Setup</h1>
 
     <div class="section">
-      <h2>Connection</h2>
+      <h2>Find Your Robot</h2>
       <div id="ip-group">
-        <input type="text" id="base-url" value="http://192.168.1.100" placeholder="http://<stack-chan-ip>">
-        <button class="secondary" onclick="loadConfig()">Connect</button>
+        <input type="text" id="base-url" value="" placeholder="http://192.168.1.100 (or let us find it)">
+        <button class="secondary" onclick="loadConfig()" id="connect-btn"><span aria-hidden="true">🔌</span> Connect</button>
       </div>
-      <div class="hint">Enter your Stack-chan's IP address, then click Connect to load its current config</div>
-      <div id="status"></div>
+      <div class="actions" style="margin-top: 0.8em;">
+        <button class="secondary" onclick="autoScan()" id="scan-btn"><span aria-hidden="true">🔍</span> Find Stack-chan</button>
+      </div>
+      <div id="scan-results" aria-live="polite"></div>
+      <div id="status" aria-live="polite"></div>
     </div>
 
     <div class="section" id="config-section" style="display:none;">
@@ -75,13 +123,13 @@
       <div class="row">
         <div>
           <label for="backend">Active Backend</label>
-          <select id="backend">
-            <option value="0">OpenClaw (0)</option>
-            <option value="1">Hermes (1)</option>
+          <select id="backend" onchange="toggleBackendSections()">
+            <option value="0">OpenClaw</option>
+            <option value="1">Hermes</option>
           </select>
         </div>
       </div>
-      <div class="hint">Which LLM backend the robot talks to</div>
+      <div class="hint">Which AI agent the robot talks to</div>
     </div>
 
     <div class="section" id="openclaw-section" style="display:none;">
@@ -90,20 +138,23 @@
         <div>
           <label for="oc-host">Host</label>
           <input type="text" id="oc-host" placeholder="192.168.1.50">
+          <div class="field-error" id="oc-host-err">Host is required</div>
         </div>
         <div>
           <label for="oc-port">Port</label>
-          <input type="number" id="oc-port" placeholder="18789" value="18789">
+          <input type="number" id="oc-port" value="18789" min="1" max="65535" inputmode="numeric">
+          <div class="field-error" id="oc-port-err">Port must be 1-65535</div>
         </div>
       </div>
       <div class="row">
         <div>
           <label for="oc-model">Model</label>
-          <input type="text" id="oc-model" placeholder="openclaw/rosie" value="openclaw/rosie">
+          <input type="text" id="oc-model" value="openclaw/rosie">
         </div>
         <div>
           <label for="oc-agent-id">Agent ID</label>
           <input type="text" id="oc-agent-id" placeholder="rosie">
+          <div class="field-error" id="oc-agent-id-err">Agent ID is required</div>
         </div>
       </div>
     </div>
@@ -114,30 +165,34 @@
         <div>
           <label for="hermes-host">Host</label>
           <input type="text" id="hermes-host" placeholder="192.168.1.50">
+          <div class="field-error" id="hermes-host-err">Host is required</div>
         </div>
         <div>
           <label for="hermes-port">Port</label>
-          <input type="number" id="hermes-port" placeholder="8643" value="8643">
+          <input type="number" id="hermes-port" value="8643" min="1" max="65535" inputmode="numeric">
+          <div class="field-error" id="hermes-port-err">Port must be 1-65535</div>
         </div>
       </div>
       <div class="row">
         <div>
           <label for="hermes-model">Model</label>
-          <input type="text" id="hermes-model" placeholder="hermes-agent" value="hermes-agent">
+          <input type="text" id="hermes-model" value="hermes-agent">
         </div>
         <div>
           <label for="hermes-agent-id">Agent ID</label>
           <input type="text" id="hermes-agent-id" placeholder="venus">
+          <div class="field-error" id="hermes-agent-id-err">Agent ID is required</div>
         </div>
       </div>
     </div>
 
     <div class="section" id="actions-section" style="display:none;">
+      <h2>Actions</h2>
       <div class="actions">
-        <button onclick="saveConfig()">💾 Save Config</button>
-        <button class="secondary" onclick="loadConfig()">🔄 Reload</button>
-        <button class="secondary" onclick="testChat()">💬 Test Chat</button>
-        <button class="secondary" onclick="showRaw()">📋 Show Raw JSON</button>
+        <button onclick="saveConfig()" id="save-btn"><span aria-hidden="true">💾</span> Save Config</button>
+        <button class="secondary" onclick="loadConfig()" id="reload-btn"><span aria-hidden="true">🔄</span> Reload</button>
+        <button class="secondary" onclick="testChat()" id="chat-btn"><span aria-hidden="true">💬</span> Test Chat</button>
+        <button class="secondary" onclick="showRaw()"><span aria-hidden="true">📋</span> Show Raw JSON</button>
       </div>
     </div>
 
@@ -146,11 +201,11 @@
       <div class="row">
         <div>
           <label for="chat-text">Message</label>
-          <input type="text" id="chat-text" placeholder="What's your name and role?" value="What's your name and role?">
+          <input type="text" id="chat-text" value="What's your name and role?" placeholder="Ask Stack-chan something...">
         </div>
       </div>
       <div class="actions">
-        <button onclick="sendChat()">Send</button>
+        <button onclick="sendChat()" id="send-btn">Send</button>
       </div>
       <pre id="chat-output"></pre>
     </div>
@@ -160,118 +215,343 @@
       <pre id="raw-output"></pre>
     </div>
 
-    <div class="section">
+    <div class="section" id="apikey-section" style="display:none;">
       <h2>API Keys</h2>
-      <div class="hint">API keys are set via the <code>/apikey</code> endpoint on the device. This page only manages the backend config (host, port, model, agent).</div>
+      <div class="hint">Keys are stored securely on the device (NVS), never written to YAML. Set them here — they won't be shown again.</div>
+      <div class="row" style="margin-top: 0.8em;">
+        <div>
+          <label for="oc-apikey">OpenClaw API Key</label>
+          <input type="password" id="oc-apikey" placeholder="sk-...">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="hermes-apikey">Hermes API Key</label>
+          <input type="password" id="hermes-apikey" placeholder="sk-venus-...">
+        </div>
+      </div>
+      <div class="actions">
+        <button class="secondary" onclick="saveApiKey('openclaw')" id="oc-apikey-btn"><span aria-hidden="true">🔑</span> Save OpenClaw Key</button>
+        <button class="secondary" onclick="saveApiKey('hermes')" id="hermes-apikey-btn"><span aria-hidden="true">🔑</span> Save Hermes Key</button>
+      </div>
+      <div class="hint" style="margin-top: 0.5em;">Current keys shown as masked in the config above (e.g. <code>***1234</code>). Leave blank and save to keep existing key.</div>
     </div>
   </div>
 
   <script>
-    function getBaseUrl() {
-      return document.getElementById('base-url').value.replace(/\/+$/, '');
+    // ============ TOAST ============
+    function toast(msg, type) {
+      const existing = document.querySelector('.toast');
+      if (existing) existing.remove();
+      const t = document.createElement('div');
+      t.className = 'toast ' + (type || 'info');
+      t.textContent = msg;
+      t.setAttribute('role', 'status');
+      document.body.appendChild(t);
+      setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 3000);
     }
 
-    function showStatus(msg, isOk) {
+    // ============ STATUS ============
+    function showStatus(msg, type) {
       const s = document.getElementById('status');
       s.textContent = msg;
-      s.className = isOk ? 'ok' : 'err';
-      if (!msg) s.className = '';
+      s.className = type || '';
+      if (msg) s.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // ============ BUTTON LOADING STATE ============
+    function setBtnLoading(btn, loading, originalText) {
+      if (loading) {
+        btn.disabled = true;
+        btn.dataset.original = btn.innerHTML;
+        btn.innerHTML = '<span class="scan-spinner"></span>';
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = btn.dataset.original || originalText || btn.innerHTML;
+      }
+    }
+
+    // ============ FETCH WITH TIMEOUT ============
+    function fetchWithTimeout(url, options, timeoutMs) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs || 5000);
+      return fetch(url, { ...(options || {}), signal: controller.signal })
+        .finally(() => clearTimeout(timeout));
+    }
+
+    // ============ BACKEND TOGGLE ============
+    function toggleBackendSections() {
+      const backend = document.getElementById('backend').value;
+      const oc = document.getElementById('openclaw-section');
+      const hermes = document.getElementById('hermes-section');
+      if (backend === '1') {
+        oc.style.display = 'none';
+        hermes.style.display = '';
+      } else {
+        oc.style.display = '';
+        hermes.style.display = 'none';
+      }
+    }
+
+    // ============ VALIDATION ============
+    function validateConfig() {
+      let valid = true;
+      const backend = document.getElementById('backend').value;
+      const prefix = backend === '1' ? 'hermes' : 'oc';
+
+      // Clear errors
+      document.querySelectorAll('.field-error').forEach(e => e.classList.remove('show'));
+      document.querySelectorAll('input').forEach(e => e.classList.remove('error'));
+
+      const host = document.getElementById(prefix + '-host');
+      const port = document.getElementById(prefix + '-port');
+      const agent = document.getElementById(prefix + '-agent-id');
+
+      if (!host.value.trim()) {
+        document.getElementById(prefix + '-host-err').classList.add('show');
+        host.classList.add('error'); valid = false;
+      }
+      const portVal = parseInt(port.value);
+      if (!portVal || portVal < 1 || portVal > 65535) {
+        document.getElementById(prefix + '-port-err').classList.add('show');
+        port.classList.add('error'); valid = false;
+      }
+      if (!agent.value.trim()) {
+        document.getElementById(prefix + '-agent-id-err').classList.add('show');
+        agent.classList.add('error'); valid = false;
+      }
+      return valid;
+    }
+
+    // ============ AUTO-DISCOVERY ============
+    function getSubnet() {
+      const host = location.hostname;
+      const parts = host.split('.');
+      if (parts.length === 4) return parts.slice(0, 3).join('.');
+      return null;
+    }
+
+    async function autoScan() {
+      const btn = document.getElementById('scan-btn');
+      const resultsDiv = document.getElementById('scan-results');
+      const subnet = getSubnet();
+
+      if (!subnet) {
+        showStatus('⚠️ Cannot determine your network. Enter the IP manually below.', 'info');
+        return;
+      }
+
+      setBtnLoading(btn, true);
+      resultsDiv.innerHTML = '';
+      showStatus('🔍 Looking for Stack-chan on ' + subnet + '.0/24...', 'info');
+
+      let found = [];
+      let scanned = 0;
+      const total = 254;
+      const IPs = [];
+      for (let i = 1; i <= 254; i++) IPs.push(subnet + '.' + i);
+
+      const BATCH = 20;
+      for (let i = 0; i < IPs.length; i += BATCH) {
+        const batch = IPs.slice(i, i + BATCH);
+        await Promise.all(batch.map(async (ip) => {
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 1500);
+            const res = await fetch('http://' + ip + '/config', {
+              method: 'GET', signal: controller.signal
+            });
+            clearTimeout(timeout);
+            if (res.ok) {
+              const data = await res.json();
+              if (data && (data.backend !== undefined || data.openclaw || data.hermes)) {
+                found.push({ ip, data });
+                addScanResult(ip, data);
+              }
+            }
+          } catch (e) { /* not a stack-chan */ }
+          scanned++;
+        }));
+        showStatus('🔍 Scanning... ' + Math.min(scanned, total) + '/' + total + ' IPs checked', 'info');
+      }
+
+      setBtnLoading(btn, false);
+
+      if (found.length === 0) {
+        showStatus('No Stack-chan found nearby 😢 — is your robot powered on and connected to WiFi? You can also try entering the IP manually above.', 'err');
+      } else if (found.length === 1) {
+        showStatus('✅ Found your Stack-chan! Connecting...', 'ok');
+        selectDevice(found[0].ip, found[0].data);
+      } else {
+        showStatus('✅ Found ' + found.length + ' Stack-chans! Tap one to connect.', 'info');
+      }
+    }
+
+    function addScanResult(ip, data) {
+      const resultsDiv = document.getElementById('scan-results');
+      const btn = document.createElement('button');
+      btn.className = 'scan-result';
+      const backend = data.backend === 1 ? 'Hermes' : 'OpenClaw';
+      const agent = data.openclaw?.agent_id || data.hermes?.agent_id || 'unknown';
+      btn.innerHTML = '<span class="ip">' + ip + '</span> <span class="desc">backend: ' + backend + ', agent: ' + agent + '</span>';
+      btn.onclick = () => selectDevice(ip, data);
+      resultsDiv.appendChild(btn);
+    }
+
+    function selectDevice(ip, data) {
+      document.getElementById('base-url').value = 'http://' + ip;
+      loadConfig();
+    }
+
+    // ============ CONFIG LOAD/SAVE ============
+    function getBaseUrl() {
+      let url = document.getElementById('base-url').value.trim().replace(/\/+$/, '');
+      if (!url) return '';
+      // Auto-prepend http:// if missing
+      if (!url.match(/^https?:\/\//)) url = 'http://' + url;
+      return url;
     }
 
     async function loadConfig() {
       const base = getBaseUrl();
-      showStatus('Connecting...', 'ok');
+      if (!base) { showStatus('Enter a Stack-chan IP or use Find Stack-chan', 'err'); return; }
+
+      const btn = document.getElementById('connect-btn');
+      setBtnLoading(btn, true);
+      showStatus('Connecting to ' + base + '...', 'info');
+
       try {
-        const res = await fetch(base + '/config', { method: 'GET' });
+        const res = await fetchWithTimeout(base + '/config', { method: 'GET' }, 5000);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         showStatus('✅ Connected — config loaded', 'ok');
 
-        // Show sections
         document.getElementById('config-section').style.display = '';
-        document.getElementById('openclaw-section').style.display = '';
-        document.getElementById('hermes-section').style.display = '';
         document.getElementById('actions-section').style.display = '';
+        document.getElementById('apikey-section').style.display = '';
 
-        // Populate backend
         document.getElementById('backend').value = String(data.backend || 0);
 
-        // Populate OpenClaw
         const oc = data.openclaw || {};
         document.getElementById('oc-host').value = oc.host || '';
         document.getElementById('oc-port').value = oc.port || 18789;
         document.getElementById('oc-model').value = oc.model || 'openclaw/rosie';
         document.getElementById('oc-agent-id').value = oc.agent_id || '';
 
-        // Populate Hermes
         const h = data.hermes || {};
         document.getElementById('hermes-host').value = h.host || '';
         document.getElementById('hermes-port').value = h.port || 8643;
         document.getElementById('hermes-model').value = h.model || 'hermes-agent';
         document.getElementById('hermes-agent-id').value = h.agent_id || '';
 
-        // Store raw
+        // Show only the active backend's section
+        toggleBackendSections();
+
         document.getElementById('raw-output').textContent = JSON.stringify(data, null, 2);
       } catch (err) {
-        showStatus('❌ ' + err.message, 'err');
+        showStatus('❌ Couldn\'t reach Stack-chan at ' + base + '. Check the IP and try again.', 'err');
+      } finally {
+        setBtnLoading(btn, false);
       }
     }
 
     function buildConfigJson() {
+      // Per proposal C3: bot_token is NOT sent in config POST body.
+      // Tokens are stored via the /apikey endpoint separately.
       return {
         backend: parseInt(document.getElementById('backend').value),
         openclaw: {
           host: document.getElementById('oc-host').value,
           port: parseInt(document.getElementById('oc-port').value),
           model: document.getElementById('oc-model').value,
-          agent_id: document.getElementById('oc-agent-id').value,
-          bot_token: '',
-          default_model: ''
+          agent_id: document.getElementById('oc-agent-id').value
         },
         hermes: {
           host: document.getElementById('hermes-host').value,
           port: parseInt(document.getElementById('hermes-port').value),
           model: document.getElementById('hermes-model').value,
-          agent_id: document.getElementById('hermes-agent-id').value,
-          bot_token: '',
-          default_model: ''
+          agent_id: document.getElementById('hermes-agent-id').value
         }
       };
     }
 
+    async function saveApiKey(which) {
+      const base = getBaseUrl();
+      if (!base) { toast('Connect to Stack-chan first', 'err'); return; }
+      const key = which === 'openclaw'
+        ? document.getElementById('oc-apikey').value.trim()
+        : document.getElementById('hermes-apikey').value.trim();
+      if (!key) { toast('Enter a key first', 'err'); return; }
+      const btn = which === 'openclaw'
+        ? document.getElementById('oc-apikey-btn')
+        : document.getElementById('hermes-apikey-btn');
+      setBtnLoading(btn, true);
+      try {
+        const res = await fetchWithTimeout(base + '/apikey_set', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            which === 'openclaw'
+              ? { openclaw: { key: key } }
+              : { hermes: { key: key } }
+          )
+        }, 5000);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        toast('✅ ' + which + ' key saved', 'ok');
+        document.getElementById(which === 'openclaw' ? 'oc-apikey' : 'hermes-apikey').value = '';
+        await loadConfig(); // reload to show masked token
+      } catch (err) {
+        toast('❌ ' + err.message, 'err');
+      } finally {
+        setBtnLoading(btn, false);
+      }
+    }
+
     async function saveConfig() {
+      if (!validateConfig()) {
+        toast('Please fix the highlighted fields', 'err');
+        return;
+      }
       const base = getBaseUrl();
       const cfg = buildConfigJson();
-      showStatus('Saving...', 'ok');
+      const btn = document.getElementById('save-btn');
+      setBtnLoading(btn, true);
+      showStatus('Telling Stack-chan about your changes...', 'info');
+
       try {
-        const res = await fetch(base + '/config', {
+        const res = await fetchWithTimeout(base + '/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(cfg)
-        });
+        }, 5000);
         if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + await res.text());
         const msg = await res.text();
-        showStatus('✅ ' + msg, 'ok');
-        // Reload to verify
+        toast('✅ ' + msg, 'ok');
         await loadConfig();
       } catch (err) {
-        showStatus('❌ Save failed: ' + err.message, 'err');
+        toast('❌ Save failed: ' + err.message, 'err');
+      } finally {
+        setBtnLoading(btn, false);
       }
     }
 
     async function testChat() {
       document.getElementById('chat-section').style.display = '';
+      document.getElementById('chat-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       const output = document.getElementById('chat-output');
+      const btn = document.getElementById('send-btn');
+      setBtnLoading(btn, true);
       output.textContent = 'Sending...';
       const base = getBaseUrl();
       const text = document.getElementById('chat-text').value;
       try {
-        const res = await fetch(base + '/chat?text=' + encodeURIComponent(text));
+        const res = await fetchWithTimeout(base + '/chat?text=' + encodeURIComponent(text), {}, 30000);
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const text_out = await res.text();
-        output.textContent = text_out;
+        output.textContent = await res.text();
       } catch (err) {
         output.textContent = 'Error: ' + err.message;
+      } finally {
+        setBtnLoading(btn, false);
       }
     }
 
@@ -284,6 +564,13 @@
     // Enter key triggers connect
     document.getElementById('base-url').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') loadConfig();
+    });
+
+    // Auto-scan on page load (only if no IP entered yet)
+    window.addEventListener('load', () => {
+      if (!document.getElementById('base-url').value) {
+        setTimeout(() => autoScan(), 500);
+      }
     });
   </script>
 </body>

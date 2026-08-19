@@ -1,6 +1,13 @@
 # Build Plan — Stack-chan OpenClaw Audio Client
 
-## Goal
+> **⚠️ SUPERSEDED — 2026-08-19**
+> This v1 swap-backends plan is superseded by `research/STEP2-MERGE-PLAN-REVISED.md`.
+> The FastAPI mini server (ports 18791/18790/18789), MiniSTT/MiniTTS/BodyCommandParser,
+> and the device-side STT/TTS seam model are all abandoned.
+> The device is a thin audio client — STT/LLM/TTS happen on the server (ai-server).
+> See `CHANGELOG.md` for what changed and why.
+
+## Goal (HISTORICAL — see STEP2-MERGE-PLAN-REVISED.md for current plan)
 Give Stack-chan a smart brain with zero cloud API keys on the device. v1: swap plaipin's STT/TTS backends to point at the mini. v1.1: collapse to a thin audio client. The mini server is the same in both versions.
 
 ## Architecture — v1 Swap-Backends

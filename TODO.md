@@ -21,13 +21,50 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [ ] Write README (community-first framing: "dumb audio terminal, no API keys")
 - [ ] Commit and push updated docs
 
-## Phase 1: Fork & Flash Stock (1 day)
-- [ ] Plug in Stack-chan, detect serial port
-- [ ] Full 16MB flash backup of stock firmware (HARD RULE)
-- [ ] Save partition table backup
-- [ ] Verify backup is 16MB
-- [ ] Store on SSD: `/Volumes/1TBSSDClawd/stackchan-node/backups/`
-- [ ] Fork from Stack-chan upstream (MIT-licensed) — NOT plaipin (no license)
+## Phase 1: Fork & Flash Stock (1 day) — ✅ DONE
+- [x] Plug in Stack-chan, detect serial port (`/dev/cu.usbmodem211301`)
+- [x] Full 16MB flash backup of stock firmware → `backups/cores3_factory_uiflow2_v2.5.1.bin`
+- [x] Save partition table backup
+- [x] Store on SSD: `/Volumes/1TBSSDClawd/stackchan-node/backups/`
+- [x] Official StackChan v1.4.3 firmware cloned and copied to `firmware/` (231 files)
+
+## Phase 2: Three-Repo Merge — ✅ DONE
+- [x] Circlemouth patch merged (1188 lines, 11 files) — canonical xiaozhi-esp32 patch
+- [x] Plaipin config structs ported to ESP-IDF/NVS
+- [x] OTA auto-update unconditionally disabled (hard return)
+- [x] ai-server (TypeScript WS bridge) — 72/72 tests pass
+- [x] Build succeeds: `stack-chan.bin` 3.7MB, 27% free
+
+## Phase 3: Web Config Server — ✅ DONE
+- [x] GET /config — returns JSON config
+- [x] POST /config — saves config to NVS
+- [x] GET / — serves HTML config editor (mobile-friendly)
+- [x] Web config server starts on boot (after WiFi connects)
+- [x] httpd stack size fixed (16384)
+- [x] POST handler crash fixed (calloc + stack bump)
+- [x] mDNS confirmed working (`CONFIG_LWIP_DNS_SUPPORT_MDNS_QUERIES=y`)
+- [x] Config saved with `clawdio-mini.local` hostname (bare, no http://)
+
+## Phase 4: WebSocket URL Writing — 🔄 IN PROGRESS
+- [x] POST /config writes `ws://<host>:8765/ws` into `"websocket"` NVS namespace
+- [x] Auto-builds URL from config host (port 8765, path /ws)
+- [x] Custom `websocket_url` field overrides auto-built URL
+- [ ] Rebuild with port 8765 fix (was 18789, now corrected)
+- [ ] Flash to device
+- [ ] Verify device connects to `ws://clawdio-mini.local:8765/ws`
+- [ ] End-to-end test: voice in → STT → LLM → TTS → voice out
+
+## Phase 5: Per-Device Backend Binding — PENDING
+- [ ] ai-server reads `Device-Id` from WS handshake
+- [ ] Looks up `devices.json` for per-device backend+agent routing
+- [ ] Test with multiple devices
+
+## Phase 6: Code Review + Cleanup — PENDING
+- [ ] Code review on actual diff (Step 6)
+- [ ] Fix review issues (Step 7)
+- [ ] Update README, BUILD_PLAN (mark superseded), TODO, CHANGELOG, MEMORY (Step 8)
+- [ ] Rename repo to `stackchan-openclaw`
+- [ ] Commit and push
 - [ ] Keep plaipin cloned as reference (concepts only, not code)
 - [ ] Flash plaipin firmware unmodified to Stack-chan — verify body works:
   - [ ] Face/avatar displays and animates
