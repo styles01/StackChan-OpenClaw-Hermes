@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/cover-dark.png" alt="Stack-chan × OpenClaw × Hermes" width="512">
+
 # Stack-chan × OpenClaw × Hermes
 
 **Give a little robot a real AI agent — with persistent identity, workspace access, session control, and profile binding across multiple backends.**
