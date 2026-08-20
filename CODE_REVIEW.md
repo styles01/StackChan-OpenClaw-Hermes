@@ -1,6 +1,6 @@
 # Stack-chan OpenClaw Firmware — Full Code Review
 **Date:** 2026-08-18  
-**Reviewer:** Rosie (after reading every critical file in the firmware)  
+**Reviewer:** Agent A (after reading every critical file in the firmware)  
 **Verdict:** **NO-GO** — 3 CRITICAL bugs must be fixed before push. 5 HIGH bugs should be fixed. Then it's GO.
 
 ---
@@ -349,4 +349,4 @@ The HIGH bugs (H1-H5, X1-X3) should be fixed in a follow-up commit. The proxy bu
 
 ---
 
-**Review by Rosie 🤖 + dex — read every file, cited every line number, no cheerleading.**
+**Review by Agent A 🤖 + dex — read every file, cited every line number, no cheerleading.**

@@ -133,7 +133,7 @@ Evidence for:
 **How to position for this:**
 1. **If they build it natively, we WIN.** Our adapter code and proxy become the reference implementation. We PR it upstream and it gets merged. The community gets native support. We get credit. This is the BEST outcome.
 2. **If they don't build it, we're the canonical source.** Our fork becomes the go-to. We get GitHub stars, community recognition, and possibly contributors.
-3. **If someone ELSE builds it better, we lose.** But we've still built something useful for ourselves (Rosie on a robot) and learned a lot.
+3. **If someone ELSE builds it better, we lose.** But we've still built something useful for ourselves (Agent A on a robot) and learned a lot.
 
 **The docs should acknowledge this risk explicitly.** "We are filling a gap. If Stack-chan fills it themselves, that's a win for the community. We position our work to be mergeable upstream so we benefit either way."
 

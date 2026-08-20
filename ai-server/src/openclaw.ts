@@ -28,8 +28,8 @@ export class OpenClawClient implements HermesSessionClient {
         const port = options?.port ?? process.env.OPENCLAW_PORT ?? '18789'
         this.baseUrl = `http://${host}:${port}`
         this.apiKey = options?.apiKey ?? process.env.OPENCLAW_API_KEY ?? ''
-        this.model = options?.model ?? process.env.OPENCLAW_MODEL ?? 'openclaw/rosie'
-        const agentId = options?.agentId ?? process.env.OPENCLAW_AGENT_ID ?? 'rosie'
+        this.model = options?.model ?? process.env.OPENCLAW_MODEL ?? 'openclaw/your-agent'
+        const agentId = options?.agentId ?? process.env.OPENCLAW_AGENT_ID ?? 'your-agent'
         const deviceId = options?.deviceId ?? process.env.STACKCHAN_DEVICE_ID ?? 'default'
         this.sessionKey = `agent:${agentId}:stackchan:${deviceId}`
     }

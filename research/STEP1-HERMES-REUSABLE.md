@@ -1,10 +1,10 @@
 # STEP 1 — Hermes-StackChan: What's Reusable for OpenClaw
 
 **Review date:** 2026-08-19
-**Reference repo:** `/Volumes/1TBSSDClawd/stackchan-node/repos/working-repos/Hermes-StackChan` (GitHub: `circlemouth/Hermes-StackChan`)
-**Our repo:** `/Volumes/1TBSSDClawd/stackchan-node` (GitHub: `styles01/StackChan-OpenClaw-Hermes`)
+**Reference repo:** `<repo-root>/stackchan-node/repos/working-repos/Hermes-StackChan` (GitHub: `circlemouth/Hermes-StackChan`)
+**Our repo:** `<repo-root>/stackchan-node` (GitHub: `styles01/StackChan-OpenClaw-Hermes`)
 
-**Bottom line up front:** The reference repo is *exactly* the architecture we want to build. It already solved the hard problem — replacing the xiaozhi cloud backend with a local bridge. The single most valuable reusable piece is **`ai-server/src/openclaw.ts`**, a ready-made OpenClaw Gateway HTTP client that routes LLM turns to `openclaw/rosie` via `/v1/chat/completions` with per-device session-key routing. The firmware-side work (WebSocket protocol + Opus audio bridge + reconnect logic) is a thin adaptation of xiaozhi-esp32's existing WebSocket protocol, which we should learn from rather than copy wholesale.
+**Bottom line up front:** The reference repo is *exactly* the architecture we want to build. It already solved the hard problem — replacing the xiaozhi cloud backend with a local bridge. The single most valuable reusable piece is **`ai-server/src/openclaw.ts`**, a ready-made OpenClaw Gateway HTTP client that routes LLM turns to `openclaw/agent-a` via `/v1/chat/completions` with per-device session-key routing. The firmware-side work (WebSocket protocol + Opus audio bridge + reconnect logic) is a thin adaptation of xiaozhi-esp32's existing WebSocket protocol, which we should learn from rather than copy wholesale.
 
 ---
 
@@ -109,7 +109,7 @@ A complete `HermesSessionClient` implementation (compatible with `session.ts` in
 - `submitPrompt(prompt)`: non-streamed POST, parses `choices[0].message.content`.
 - `streamPrompt(prompt)`: **SSE streaming** (handles both `data:` and `data:` prefixes, `[DONE]`), yields `{type:'delta'|'complete'}` events — feeds the streaming LLM→TTS pipeline.
 - `interrupt()` / `dispose()`: AbortController-based cancellation (supports barge-in).
-- **Session key format matches our design:** `agent:rosie:stackchan:default`.
+- **Session key format matches our design:** `agent:agent-a:stackchan:default`.
 
 ### `src/hermes.ts`
 The Hermes backend client (JSON-RPC over stdio `tui_gateway.entry` or WebSocket to Dashboard `/api/ws`). **Not needed for OpenClaw** except that STT/TTS may still use Hermes Python tools.
@@ -126,8 +126,8 @@ STACKCHAN_WS_HOST=0.0.0.0
 STACKCHAN_BACKEND=openclaw
 OPENCLAW_HOST=127.0.0.1
 OPENCLAW_PORT=18789
-OPENCLAW_AGENT_ID=rosie
-OPENCLAW_MODEL=openclaw/rosie
+OPENCLAW_AGENT_ID=agent-a
+OPENCLAW_MODEL=openclaw/agent-a
 OPENCLAW_API_KEY=<gateway-password>
 STACKCHAN_DEVICE_ID=default
 HERMES_ROOT=../hermes-agent   # STT/TTS Python helpers (can be replaced)
@@ -184,7 +184,7 @@ Key settings (ESP32-S3 target, 16MB flash, QIO):
 Ranked by value / effort:
 
 ### Tier 1 — Copy/adapt nearly verbatim (highest value)
-1. **`ai-server/src/openclaw.ts`** — the OpenClaw Gateway client. **Directly reusable** — it already routes to `openclaw/rosie` via `/v1/chat/completions` with per-device session key. Just confirm the Gateway's real HTTP port/auth and that SSE streaming matches.
+1. **`ai-server/src/openclaw.ts`** — the OpenClaw Gateway client. **Directly reusable** — it already routes to `openclaw/agent-a` via `/v1/chat/completions` with per-device session key. Just confirm the Gateway's real HTTP port/auth and that SSE streaming matches.
 2. **`ai-server/` whole session pipeline** (`session.ts`, `audio.ts`, `local_vad.ts`, `hermes_audio.ts`, `device_control.ts`, `stackchan_mcp_server.ts`) — this is the working firmware⇄LLM bridge. Port the OpenClaw + VAD + Opus + tool-control architecture.
 3. **The `openclaw` backend selection mechanism** (`STACKCHAN_BACKEND=openclaw` in `Session` constructor + `.env.example`) — clean, env-driven.
 
@@ -208,7 +208,7 @@ Ranked by value / effort:
 | **LLM backend** | `HermesClient` (JSON-RPC to HermesDashboard) | **`OpenClawClient` (already in repo)** — make it the default/primary backend. |
 | **STT** | Hermes Python `transcription_tools` or `HERMES_STT_URL` | Keep OpenAI-compatible HTTP STT; add OpenClaw STT (whisper) if available; else a local Whisper endpoint. |
 | **TTS** | Hermes `tts_tool` or `STACKCHAN_LOCAL_TTS_URL` | Keep HTTP local TTS (Piper etc.) — Hermes-specific only if we keep hermes-agent. |
-| **Session key** | `agent:rosie:stackchan:<device_id>` | Same key format works for OpenClaw — verify against gateway routing rules. |
+| **Session key** | `agent:agent-a:stackchan:<device_id>` | Same key format works for OpenClaw — verify against gateway routing rules. |
 | **Env** | `STACKCHAN_BACKEND=hermes`, `OPENCLAW_*` | Flip default to `openclaw`; point `OPENCLAW_HOST/PORT/AGENT_ID/MODEL/API_KEY` at our gateway. |
 | **hermes-agent submodule** | Required for STT/TTS helpers + fallback LLM | **Drop it** if we use only OpenClaw + local STT/TTS. (README says Hermes still used for STT/TTS fallback; if we replace those too, it's fully optional.) |
 | **Firmware config** | `websocket_url: ws://<ai-server>:8765/ws` | Same — the firmware doesn't care which LLM is behind the bridge. Point it at OUR ai-server. |

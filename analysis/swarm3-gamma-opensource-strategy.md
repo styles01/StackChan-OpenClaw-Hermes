@@ -135,7 +135,7 @@ The name promises a feature (Hermes) that doesn't ship in v1. That's a trust pro
 **What's private (stays out of the repo):**
 - Larry's **HEART.md** (personality)
 - Larry's **MEMORY.md** (child facts, family details)
-- Rosie's **actual system prompt** (if it contains household specifics)
+- Agent A's **actual system prompt** (if it contains household specifics)
 - Any **API keys, server IPs, or credentials**
 
 **The clean architecture — "shared pipeline, private personalities":**
@@ -153,14 +153,14 @@ PUBLIC REPO (stackchan-thin-audio-client)
 PRIVATE (NOT in repo — James's machine / private config)
 ├── larry/HEART.md    # Larry's personality (private)
 ├── larry/MEMORY.md   # Larry's child facts (private)
-└── rosie/system-prompt.md  # Rosie's actual prompt (private)
+└── agent-a/system-prompt.md  # Agent A's actual prompt (private)
 ```
 
 **The key insight:** the repo ships a **template** for robot personalities, not the personalities themselves. A stranger clones the repo, writes their own system prompt, and their robot has its own personality. This is BETTER for the community — it's a framework, not a one-off.
 
 **Recommendation:**
 - Ship `agent-template.md` showing the system prompt *format* (personality section, body command format, response length rules) with placeholder text.
-- Keep Larry's and Rosie's actual prompts in a private location (James's machine, or a private submodule).
+- Keep Larry's and Agent A's actual prompts in a private location (James's machine, or a private submodule).
 - The README should say: *"Bring your own personality. The repo includes a system prompt template — write your robot's character and go."*
 
 ---
@@ -187,7 +187,7 @@ PUBLIC REPO: stackchan-thin-audio-client
 
 PRIVATE (James's machine, NOT in the repo):
   ├── larry/HEART.md + MEMORY.md   # Larry's personality + facts
-  ├── rosie/system-prompt.md       # Rosie's actual prompt
+  ├── agent-a/system-prompt.md       # Agent A's actual prompt
   └── .env / secrets               # API keys, server IPs
 ```
 
@@ -235,14 +235,14 @@ PRIVATE (James's machine, NOT in the repo):
 
 ## FINDING 8: The gateway-tools-to-robot-actions story is CLEAR and is a strong demo — but it needs to be spelled out
 
-**The question:** Is there a story for how gateway tools map to robot actions? E.g., "Rosie, check the printer" → gateway calls printer tool → result spoken through robot. Is this clear to a newcomer?
+**The question:** Is there a story for how gateway tools map to robot actions? E.g., "Agent A, check the printer" → gateway calls printer tool → result spoken through robot. Is this clear to a newcomer?
 
 **The story is clear, but it's not written down anywhere.** The BRIEF mentions tools ("household, printer, fridge, memory, Telegram") and the TODO lists them, but neither explains the *flow* to a newcomer. This is a missed opportunity — it's the most compelling demo the project has.
 
 **The flow (spell this out in the README):**
 
 ```
-"Hey Rosie, what's the printer status?"
+"Hey Agent A, what's the printer status?"
         │
         ▼
 ESP32 records audio → POSTs WAV to server
@@ -251,10 +251,10 @@ ESP32 records audio → POSTs WAV to server
 Server: STT → "what's the printer status?" → sends to OpenClaw Gateway
         │
         ▼
-Gateway: Rosie agent → calls rosie_printer_status tool → gets result
+Gateway: Agent A agent → calls agent-a_printer_status tool → gets result
         │
         ▼
-Gateway: Rosie forms response + body commands → returns to server
+Gateway: Agent A forms response + body commands → returns to server
         │
         ▼
 Server: TTS → WAV + body commands JSON → returns to ESP32
@@ -331,7 +331,7 @@ Let me walk through the repo as a stranger would, with the current framing vs. t
    - License: MIT, clearly stated
    - Credits: Stack-chan (MIT), plaipin (inspiration)
 3. **Resolve the license** — fork from Stack-chan (MIT), not plaipin (no license). Add MIT to your code. Credit plaipin.
-4. **Draw the public/private boundary** — ship the pipeline + agent template; keep Larry's HEART/MEMORY and Rosie's prompt private.
+4. **Draw the public/private boundary** — ship the pipeline + agent template; keep Larry's HEART/MEMORY and Agent A's prompt private.
 5. **Add the gateway-tools flow diagram** — this is the demo that gets people to fork.
 
 ---

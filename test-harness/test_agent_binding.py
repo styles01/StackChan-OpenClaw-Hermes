@@ -2,14 +2,14 @@
 """
 Agent Binding Validation Tests
 ===============================
-Validates that OpenClaw (Rosie) and Hermes (Venus) agents are reachable
+Validates that OpenClaw (Agent A) and Hermes (Agent B) agents are reachable
 via their HTTP API endpoints and respond with correct role/identity.
 
 Tests:
-  1. OpenClaw / Rosie — direct HTTP endpoint
-  2. Hermes / Venus — dedicated port 8643, no /p/ prefix
+  1. OpenClaw / Agent A — direct HTTP endpoint
+  2. Hermes / Agent B — dedicated port 8643, no /p/ prefix
   3. Session key persistence — same key returns same session
-  4. Agent isolation — Rosie doesn't answer as Venus and vice versa
+  4. Agent isolation — Agent A doesn't answer as Agent B and vice versa
   5. Auth rejection — missing/invalid bearer token returns 401
   6. Session header validation — x-openclaw-session-key and X-Hermes-Session-Key
   7. Channel header — x-openclaw-message-channel routing
@@ -117,8 +117,8 @@ def test_unit_only():
     
     # Test 1: OpenClaw header construction
     step("Unit: OpenClaw header construction")
-    headers = build_openclaw_headers("test-key", "rosie", "stackchan", "device-001")
-    expected_session_key = "agent:rosie:stackchan:device-001"
+    headers = build_openclaw_headers("test-key", "agent-a", "stackchan", "device-001")
+    expected_session_key = "agent:agent-a:stackchan:device-001"
     if headers.get("x-openclaw-session-key") == expected_session_key:
         ok(f"Session key correct: {expected_session_key}")
     else:
@@ -139,9 +139,9 @@ def test_unit_only():
     
     # Test 2: Hermes header construction
     step("Unit: Hermes header construction")
-    h_headers = build_hermes_headers("hermes-key", "venus-device-001")
-    if h_headers.get("X-Hermes-Session-Key") == "venus-device-001":
-        ok(f"Session key correct: venus-device-001")
+    h_headers = build_hermes_headers("hermes-key", "agent-b-device-001")
+    if h_headers.get("X-Hermes-Session-Key") == "agent-b-device-001":
+        ok(f"Session key correct: agent-b-device-001")
     else:
         fail(f"Session key wrong: '{h_headers.get('X-Hermes-Session-Key')}'")
         all_pass = False
@@ -155,10 +155,10 @@ def test_unit_only():
     # Test 3: Session key structure validation
     step("Unit: Session key structure validation")
     test_cases = [
-        ("agent:rosie:stackchan:device-001", True, "agent-prefixed → valid"),
-        ("agent:rosie:stackchan:device-002", True, "agent-prefixed → valid"),
+        ("agent:agent-a:stackchan:device-001", True, "agent-prefixed → valid"),
+        ("agent:agent-a:stackchan:device-002", True, "agent-prefixed → valid"),
         ("stackchan:device-001", False, "bare key → routes to default agent"),
-        ("agent:rosie:openai-user:james", True, "openai-user channel → valid"),
+        ("agent:agent-a:openai-user:james", True, "openai-user channel → valid"),
         ("", False, "empty key → invalid"),
         (None, False, "None key → invalid"),
     ]
@@ -172,8 +172,8 @@ def test_unit_only():
     
     # Test 4: Hermes URL construction
     step("Unit: Hermes dedicated port URL construction")
-    url = build_hermes_url("http://127.0.0.1:8643", "venus")
-    if url == "http://127.0.0.1:8643/p/venus/v1/chat/completions":
+    url = build_hermes_url("http://127.0.0.1:8643", "agent-b")
+    if url == "http://127.0.0.1:8643/p/agent-b/v1/chat/completions":
         ok(f"Profile URL correct: {url}")
     else:
         fail(f"Profile URL wrong: {url}")
@@ -234,8 +234,8 @@ def build_hermes_url(base_url, profile):
 # OPENCLAW TESTS
 # ============================================================================
 
-def test_openclaw_rosie(oc_url, oc_key, agent_id="rosie"):
-    """Test that OpenClaw Gateway routes to Rosie and she responds with her role."""
+def test_openclaw_agent-a(oc_url, oc_key, agent_id="agent-a"):
+    """Test that OpenClaw Gateway routes to Agent A and she responds with her role."""
     header(f"TEST: OpenClaw / {agent_id}")
     
     device_id = f"test-device-{int(time.time())}"
@@ -271,12 +271,12 @@ def test_openclaw_rosie(oc_url, oc_key, agent_id="rosie"):
     # Validate the response mentions the agent's identity STRICTLY
     info(f"Response ({len(content)} chars): \"{content[:120]}...\"")
     
-    # STRICT check: response MUST contain "rosie"
-    if "rosie" in content.lower():
-        ok("Identity validation passed — response contains 'rosie'")
+    # STRICT check: response MUST contain "agent-a"
+    if "agent-a" in content.lower():
+        ok("Identity validation passed — response contains 'agent-a'")
         return True
     else:
-        fail(f"Identity validation failed — response does NOT contain 'rosie'. Got: {content[:200]}")
+        fail(f"Identity validation failed — response does NOT contain 'agent-a'. Got: {content[:200]}")
         return False
 
 
@@ -286,7 +286,7 @@ def test_openclaw_auth_rejection(oc_url):
     
     # No auth header
     step("POST without Authorization header → expect 401")
-    status, resp, error = http_post_json(oc_url, {"model": "openclaw/rosie", "messages": [{"role": "user", "content": "test"}]}, {}, timeout=10)
+    status, resp, error = http_post_json(oc_url, {"model": "openclaw/agent-a", "messages": [{"role": "user", "content": "test"}]}, {}, timeout=10)
     
     if status == 401:
         ok(f"Correctly rejected (401) — no auth header")
@@ -299,7 +299,7 @@ def test_openclaw_auth_rejection(oc_url):
     
     # Invalid auth header
     step("POST with invalid Bearer token → expect 401")
-    status, resp, error = http_post_json(oc_url, {"model": "openclaw/rosie", "messages": [{"role": "user", "content": "test"}]}, {"Authorization": "Bearer invalid-token-xxx"}, timeout=10)
+    status, resp, error = http_post_json(oc_url, {"model": "openclaw/agent-a", "messages": [{"role": "user", "content": "test"}]}, {"Authorization": "Bearer invalid-token-xxx"}, timeout=10)
     
     if status == 401:
         ok(f"Correctly rejected (401) — invalid token")
@@ -335,11 +335,11 @@ def test_openclaw_models(oc_url, oc_key):
     models = [m.get("id", "?") for m in resp.get("data", [])]
     info(f"Available models: {', '.join(models)}")
     
-    if any("rosie" in m.lower() for m in models):
-        ok("Rosie agent found in models list")
+    if any("agent-a" in m.lower() for m in models):
+        ok("Agent A agent found in models list")
         return True
     else:
-        warn(f"Rosie not found in models list. Available: {models}")
+        warn(f"Agent A not found in models list. Available: {models}")
         return True  # Don't fail — model list format may vary
 
 
@@ -348,12 +348,12 @@ def test_openclaw_session_persistence(oc_url, oc_key):
     header("TEST: OpenClaw Session Persistence")
     
     device_id = f"persist-test-{int(time.time())}"
-    headers = build_openclaw_headers(oc_key, "rosie", "stackchan", device_id)
+    headers = build_openclaw_headers(oc_key, "agent-a", "stackchan", device_id)
     
     # First message
     step(f"Message 1: 'My name is TestBot, remember it.'")
     body1 = {
-        "model": "openclaw/rosie",
+        "model": "openclaw/agent-a",
         "messages": [{"role": "user", "content": "My name is TestBot, remember it. Reply in one sentence."}]
     }
     status1, resp1, err1 = http_post_json(oc_url, body1, headers, timeout=60)
@@ -368,7 +368,7 @@ def test_openclaw_session_persistence(oc_url, oc_key):
     # Second message — same session key, ask if she remembers
     step(f"Message 2: 'What is my name?' (same session key)")
     body2 = {
-        "model": "openclaw/rosie",
+        "model": "openclaw/agent-a",
         "messages": [{"role": "user", "content": "What is my name? Reply in one sentence."}]
     }
     status2, resp2, err2 = http_post_json(oc_url, body2, headers, timeout=60)
@@ -393,8 +393,8 @@ def test_openclaw_session_persistence(oc_url, oc_key):
 # HERMES TESTS
 # ============================================================================
 
-def test_hermes_venus(hermes_url, hermes_key, profile="venus"):
-    """Test that Hermes API server routes to Venus and she responds with her role."""
+def test_hermes_agent-b(hermes_url, hermes_key, profile="agent-b"):
+    """Test that Hermes API server routes to Agent B and she responds with her role."""
     header(f"TEST: Hermes / {profile}")
     
     url = build_hermes_url(hermes_url, profile)
@@ -432,19 +432,19 @@ def test_hermes_venus(hermes_url, hermes_key, profile="venus"):
     
     info(f"Response ({len(content)} chars): \"{content[:120]}...\"")
     
-    # STRICT check: response MUST contain "venus"
-    if "venus" in content.lower():
-        ok("Identity validation passed — response contains 'venus'")
+    # STRICT check: response MUST contain "agent-b"
+    if "agent-b" in content.lower():
+        ok("Identity validation passed — response contains 'agent-b'")
         return True
     else:
         if any(bad in content.lower() for bad in ["maïs", "mais", "mermaid"]):
-            fail("WRONG PROFILE — got Maïs (default), expected Venus")
+            fail("WRONG PROFILE — got Maïs (default), expected Agent B")
         else:
-            fail(f"Identity validation failed — response does NOT contain 'venus'. Got: {content[:200]}")
+            fail(f"Identity validation failed — response does NOT contain 'agent-b'. Got: {content[:200]}")
         return False
 
 
-def test_hermes_auth_rejection(hermes_url, profile="venus"):
+def test_hermes_auth_rejection(hermes_url, profile="agent-b"):
     """Test that Hermes rejects requests without valid auth."""
     header(f"TEST: Hermes Auth Rejection ({profile})")
     
@@ -509,7 +509,7 @@ def test_hermes_models(hermes_url, hermes_key):
         return True
 
 
-def test_hermes_session_persistence(hermes_url, hermes_key, profile="venus"):
+def test_hermes_session_persistence(hermes_url, hermes_key, profile="agent-b"):
     """Test that X-Hermes-Session-Key provides conversation continuity."""
     header(f"TEST: Hermes Session Persistence ({profile})")
     
@@ -559,11 +559,11 @@ def test_hermes_session_persistence(hermes_url, hermes_key, profile="venus"):
 # WORKSPACE FILE I/O TESTS
 # ============================================================================
 
-# Rosie's workspace root (where she writes files via the OpenClaw HTTP API)
-ROSIE_WORKSPACE_DIR = "/Users/clawdio/openclaw-workspaces/rosie"
+# Agent A's workspace root (where she writes files via the OpenClaw HTTP API)
+AGENT_A_WORKSPACE_DIR = "/Users/<your-host>/openclaw-workspaces/agent-a"
 
-# Venus's workspace root (where she writes files via the Hermes HTTP API)
-VENUS_WORKSPACE_DIR = "/Users/clawdio/.hermes/profiles/venus/workspace"
+# Agent B's workspace root (where she writes files via the Hermes HTTP API)
+AGENT_B_WORKSPACE_DIR = "/Users/<your-host>/.hermes/profiles/agent-b/workspace"
 
 
 def _read_file_or_none(path):
@@ -586,26 +586,26 @@ def _remove_file(path):
 
 
 def test_openclaw_workspace_write(oc_url, oc_key):
-    """Test that Rosie can write and read files in her workspace via the HTTP API."""
-    header("TEST: OpenClaw Workspace File I/O (Rosie)")
+    """Test that Agent A can write and read files in her workspace via the HTTP API."""
+    header("TEST: OpenClaw Workspace File I/O (Agent A)")
 
     ts = int(time.time())
     filename = f"stackchan_test_{ts}.txt"
-    filepath = os.path.join(ROSIE_WORKSPACE_DIR, filename)
+    filepath = os.path.join(AGENT_A_WORKSPACE_DIR, filename)
     content_initial = f"Hello from Stack-chan! Test ID: {ts}"
     content_updated = f"Updated by Stack-chan! Test ID: {ts}"
 
-    session_key = f"agent:rosie:stackchan:workspace-test-{ts}"
-    headers = build_openclaw_headers(oc_key, "rosie", "stackchan", f"workspace-test-{ts}")
-    # build_openclaw_headers builds the session key as agent:rosie:stackchan:<device_id>,
+    session_key = f"agent:agent-a:stackchan:workspace-test-{ts}"
+    headers = build_openclaw_headers(oc_key, "agent-a", "stackchan", f"workspace-test-{ts}")
+    # build_openclaw_headers builds the session key as agent:agent-a:stackchan:<device_id>,
     # which matches our intended session key exactly.
 
     all_pass = True
 
     # --- Write ---
-    step(f"Write: asking Rosie to create {filename}")
+    step(f"Write: asking Agent A to create {filename}")
     body = {
-        "model": "openclaw/rosie",
+        "model": "openclaw/agent-a",
         "messages": [{"role": "user", "content": f"Create a file called {filename} in your workspace with the exact content: {content_initial}"}]
     }
     status, resp, error = http_post_json(oc_url, body, headers, timeout=120)
@@ -614,7 +614,7 @@ def test_openclaw_workspace_write(oc_url, oc_key):
         all_pass = False
     else:
         content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
-        info(f"Rosie replied: \"{content[:120]}...\"")
+        info(f"Agent A replied: \"{content[:120]}...\"")
         ok("Write request accepted (HTTP 200)")
 
     # --- Verify write on disk ---
@@ -630,9 +630,9 @@ def test_openclaw_workspace_write(oc_url, oc_key):
         all_pass = False
 
     # --- Update ---
-    step(f"Update: asking Rosie to update {filename}")
+    step(f"Update: asking Agent A to update {filename}")
     body = {
-        "model": "openclaw/rosie",
+        "model": "openclaw/agent-a",
         "messages": [{"role": "user", "content": f"Update the file {filename} to say: {content_updated}"}]
     }
     status, resp, error = http_post_json(oc_url, body, headers, timeout=120)
@@ -641,7 +641,7 @@ def test_openclaw_workspace_write(oc_url, oc_key):
         all_pass = False
     else:
         content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
-        info(f"Rosie replied: \"{content[:120]}...\"")
+        info(f"Agent A replied: \"{content[:120]}...\"")
         ok("Update request accepted (HTTP 200)")
 
     # --- Verify update on disk ---
@@ -667,24 +667,24 @@ def test_openclaw_workspace_write(oc_url, oc_key):
     return all_pass
 
 
-def test_hermes_workspace_write(hermes_url, hermes_key, profile="venus"):
-    """Test that Venus can write and read files in her workspace via the HTTP API."""
-    header(f"TEST: Hermes Workspace File I/O (Venus, profile={profile})")
+def test_hermes_workspace_write(hermes_url, hermes_key, profile="agent-b"):
+    """Test that Agent B can write and read files in her workspace via the HTTP API."""
+    header(f"TEST: Hermes Workspace File I/O (Agent B, profile={profile})")
 
     ts = int(time.time())
     filename = f"stackchan_test_{ts}.txt"
-    filepath = os.path.join(VENUS_WORKSPACE_DIR, filename)
-    content_initial = f"Hello from Stack-chan! Venus test! Test ID: {ts}"
-    content_updated = f"Updated by Stack-chan! Venus test! Test ID: {ts}"
+    filepath = os.path.join(AGENT_B_WORKSPACE_DIR, filename)
+    content_initial = f"Hello from Stack-chan! Agent B test! Test ID: {ts}"
+    content_updated = f"Updated by Stack-chan! Agent B test! Test ID: {ts}"
 
     url = build_hermes_url(hermes_url, profile)
-    session_key = f"venus-workspace-test-{ts}"
+    session_key = f"agent-b-workspace-test-{ts}"
     headers = build_hermes_headers(hermes_key, session_key)
 
     all_pass = True
 
     # --- Write ---
-    step(f"Write: asking Venus to create {filename}")
+    step(f"Write: asking Agent B to create {filename}")
     body = {
         "model": "hermes-agent",
         "messages": [{"role": "user", "content": f"Create a file called {filename} in your workspace with the exact content: {content_initial}"}]
@@ -695,7 +695,7 @@ def test_hermes_workspace_write(hermes_url, hermes_key, profile="venus"):
         all_pass = False
     else:
         content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
-        info(f"Venus replied: \"{content[:120]}...\"")
+        info(f"Agent B replied: \"{content[:120]}...\"")
         ok("Write request accepted (HTTP 200)")
 
     # --- Verify write on disk ---
@@ -711,7 +711,7 @@ def test_hermes_workspace_write(hermes_url, hermes_key, profile="venus"):
         all_pass = False
 
     # --- Update ---
-    step(f"Update: asking Venus to update {filename}")
+    step(f"Update: asking Agent B to update {filename}")
     body = {
         "model": "hermes-agent",
         "messages": [{"role": "user", "content": f"Update the file {filename} to say: {content_updated}"}]
@@ -722,7 +722,7 @@ def test_hermes_workspace_write(hermes_url, hermes_key, profile="venus"):
         all_pass = False
     else:
         content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
-        info(f"Venus replied: \"{content[:120]}...\"")
+        info(f"Agent B replied: \"{content[:120]}...\"")
         ok("Update request accepted (HTTP 200)")
 
     # --- Verify update on disk ---
@@ -753,50 +753,50 @@ def test_hermes_workspace_write(hermes_url, hermes_key, profile="venus"):
 # ============================================================================
 
 def test_agent_isolation(oc_url, oc_key, hermes_url, hermes_key):
-    """Test that OpenClaw Rosie and Hermes Venus are distinct agents with distinct responses."""
-    header("TEST: Agent Isolation (OpenClaw Rosie ≠ Hermes Venus)")
+    """Test that OpenClaw Agent A and Hermes Agent B are distinct agents with distinct responses."""
+    header("TEST: Agent Isolation (OpenClaw Agent A ≠ Hermes Agent B)")
     
-    # Ask Rosie
-    oc_headers = build_openclaw_headers(oc_key, "rosie", "stackchan", f"iso-test-{int(time.time())}")
-    oc_body = {"model": "openclaw/rosie", "messages": [{"role": "user", "content": "What is your name? One word."}]}
-    step("Asking Rosie her name...")
+    # Ask Agent A
+    oc_headers = build_openclaw_headers(oc_key, "agent-a", "stackchan", f"iso-test-{int(time.time())}")
+    oc_body = {"model": "openclaw/agent-a", "messages": [{"role": "user", "content": "What is your name? One word."}]}
+    step("Asking Agent A her name...")
     status1, resp1, err1 = http_post_json(oc_url, oc_body, oc_headers, timeout=60)
     
     if err1 or status1 != 200:
-        fail(f"Rosie request failed: {err1 or status1}")
+        fail(f"Agent A request failed: {err1 or status1}")
         return False
     
-    rosie_name = resp1.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-    ok(f"Rosie says: \"{rosie_name[:60]}\"")
+    agent-a_name = resp1.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+    ok(f"Agent A says: \"{agent-a_name[:60]}\"")
     
-    # Ask Venus
-    h_url = build_hermes_url(hermes_url, "venus")
+    # Ask Agent B
+    h_url = build_hermes_url(hermes_url, "agent-b")
     h_headers = build_hermes_headers(hermes_key, f"iso-test-{int(time.time())}")
     h_body = {"model": "hermes-agent", "messages": [{"role": "user", "content": "What is your name? One word."}]}
-    step("Asking Venus her name...")
+    step("Asking Agent B her name...")
     status2, resp2, err2 = http_post_json(h_url, h_body, h_headers, timeout=120)
     
     if err2 or status2 != 200:
-        fail(f"Venus request failed: {err2 or status2}")
+        fail(f"Agent B request failed: {err2 or status2}")
         return False
     
-    venus_name = resp2.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-    ok(f"Venus says: \"{venus_name[:60]}\"")
+    agent-b_name = resp2.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+    ok(f"Agent B says: \"{agent-b_name[:60]}\"")
     
-    # STRICT check: Rosie must say 'rosie', Venus must say 'venus'
-    rosie_ok = "rosie" in rosie_name.lower()
-    venus_ok = "venus" in venus_name.lower()
+    # STRICT check: Agent A must say 'agent-a', Agent B must say 'agent-b'
+    agent-a_ok = "agent-a" in agent-a_name.lower()
+    agent-b_ok = "agent-b" in agent-b_name.lower()
     
-    if rosie_ok and venus_ok:
-        ok("Agent isolation confirmed — Rosie said 'rosie', Venus said 'venus'")
+    if agent-a_ok and agent-b_ok:
+        ok("Agent isolation confirmed — Agent A said 'agent-a', Agent B said 'agent-b'")
         return True
     else:
-        if not rosie_ok and not venus_ok:
-            fail(f"Agent isolation FAILED — Rosie said '{rosie_name[:60]}' (no 'rosie'), Venus said '{venus_name[:60]}' (no 'venus')")
-        elif not rosie_ok:
-            fail(f"Agent isolation FAILED — Rosie said '{rosie_name[:60]}' (no 'rosie'), Venus said '{venus_name[:60]}'")
+        if not agent-a_ok and not agent-b_ok:
+            fail(f"Agent isolation FAILED — Agent A said '{agent-a_name[:60]}' (no 'agent-a'), Agent B said '{agent-b_name[:60]}' (no 'agent-b')")
+        elif not agent-a_ok:
+            fail(f"Agent isolation FAILED — Agent A said '{agent-a_name[:60]}' (no 'agent-a'), Agent B said '{agent-b_name[:60]}'")
         else:
-            fail(f"Agent isolation FAILED — Rosie said '{rosie_name[:60]}', Venus said '{venus_name[:60]}' (no 'venus')")
+            fail(f"Agent isolation FAILED — Agent A said '{agent-a_name[:60]}', Agent B said '{agent-b_name[:60]}' (no 'agent-b')")
         return False
 
 
@@ -848,14 +848,14 @@ def main():
     if not args.oc_key:
         warn("No --oc-key provided — skipping OpenClaw tests")
         results["oc_auth"] = None
-        results["oc_rosie"] = None
+        results["oc_agent-a"] = None
         results["oc_models"] = None
     else:
         results["oc_auth"] = test_openclaw_auth_rejection(args.oc_url)
         results["oc_models"] = test_openclaw_models(args.oc_url, args.oc_key)
-        results["oc_rosie"] = test_openclaw_rosie(args.oc_url, args.oc_key)
+        results["oc_agent-a"] = test_openclaw_agent-a(args.oc_url, args.oc_key)
         
-        if not args.skip_persistence and results["oc_rosie"]:
+        if not args.skip_persistence and results["oc_agent-a"]:
             results["oc_persistence"] = test_openclaw_session_persistence(args.oc_url, args.oc_key)
         else:
             results["oc_persistence"] = None
@@ -864,20 +864,20 @@ def main():
     if not args.hermes_key:
         warn("No --hermes-key provided — skipping Hermes tests")
         results["hermes_auth"] = None
-        results["hermes_venus"] = None
+        results["hermes_agent-b"] = None
         results["hermes_models"] = None
     else:
         results["hermes_auth"] = test_hermes_auth_rejection(args.hermes_url, args.hermes_profile)
         results["hermes_models"] = test_hermes_models(args.hermes_url, args.hermes_key)
-        results["hermes_venus"] = test_hermes_venus(args.hermes_url, args.hermes_key, args.hermes_profile)
+        results["hermes_agent-b"] = test_hermes_agent-b(args.hermes_url, args.hermes_key, args.hermes_profile)
         
-        if not args.skip_persistence and results["hermes_venus"]:
+        if not args.skip_persistence and results["hermes_agent-b"]:
             results["hermes_persistence"] = test_hermes_session_persistence(args.hermes_url, args.hermes_key, args.hermes_profile)
         else:
             results["hermes_persistence"] = None
     
     # --- Cross-system isolation ---
-    if not args.skip_isolation and results.get("oc_rosie") and results.get("hermes_venus"):
+    if not args.skip_isolation and results.get("oc_agent-a") and results.get("hermes_agent-b"):
         results["isolation"] = test_agent_isolation(args.oc_url, args.oc_key, args.hermes_url, args.hermes_key)
     else:
         results["isolation"] = None

@@ -12,7 +12,7 @@
 typedef struct {
     std::string host;
     int port;
-    std::string agent_id;       // e.g. "rosie", "hermes"
+    std::string agent_id;       // e.g. "your-agent", "hermes"
     std::string default_model;
 } openclaw_s;
 

@@ -1,6 +1,6 @@
-# Xiaozhi-ESP32 Firmware — Technical Analysis for Building a Custom "Rosie" Node
+# Xiaozhi-ESP32 Firmware — Technical Analysis for Building a Custom "Agent A" Node
 
-**Repo:** github.com/78/xiaozhi-esp32 (local: `/Volumes/1TBSSDClawd/stackchan-node/firmware/xiaozhi-esp32`)
+**Repo:** github.com/78/xiaozhi-esp32 (local: `<repo-root>/stackchan-node/firmware/xiaozhi-esp32`)
 **Project version:** 2.4.2 (from root `CMakeLists.txt`)
 **Target hardware:** M5Stack CoreS3 (`main/boards/m5stack/core-s3/`) — the Stack-chan body
 **Analysis date:** 2026-08-17
@@ -39,13 +39,13 @@
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key architectural insight for Rosie:** The device is essentially a **thin audio + display + MCP-tool client**. All intelligence (STT, LLM, TTS, system prompt, personality) lives **on the cloud server**, not on the device. The device's "personality" is therefore defined by:
+**Key architectural insight for Agent A:** The device is essentially a **thin audio + display + MCP-tool client**. All intelligence (STT, LLM, TTS, system prompt, personality) lives **on the cloud server**, not on the device. The device's "personality" is therefore defined by:
 1. The **wake word** (on-device, ESP-SR).
 2. The **system prompt / LLM config** (cloud-side, configured on the server).
 3. The **display expressions** (on-device, emoji/emote assets).
 4. The **MCP tools** it exposes (on-device, `mcp_server.cc`).
 
-To make a "Rosie" node, the cleanest path is to **replace the cloud backend** (point the device at your own server that speaks the same protocol) and **customize the on-device wake word + display + MCP tools**. The firmware itself does not need deep modification for personality — the server does that.
+To make a "Agent A" node, the cleanest path is to **replace the cloud backend** (point the device at your own server that speaks the same protocol) and **customize the on-device wake word + display + MCP tools**. The firmware itself does not need deep modification for personality — the server does that.
 
 ---
 
@@ -108,14 +108,14 @@ The firmware uses **Espressif ESP-SR** for offline wake-word detection. There ar
    - OR reads a `multinet_model` config from the assets `index.json` (for the online assets-generator flow).
    - Uses `esp_mn_handle_from_name()` + `esp_mn_iface_t` (MultiNet command-word recognition).
 
-### How to change it to "Hey Rosie"
+### How to change it to "Hey Agent A"
 
 **Option A — Use the built-in custom wake word (MultiNet):** Set these in the build (via `sdkconfig_append` or `menuconfig`):
 ```
 CONFIG_USE_AFE_WAKE_WORD=n
 CONFIG_USE_CUSTOM_WAKE_WORD=y
 CONFIG_CUSTOM_WAKE_WORD="hey luo xi"      # pinyin, space-separated
-CONFIG_CUSTOM_WAKE_WORD_DISPLAY="Hey Rosie"
+CONFIG_CUSTOM_WAKE_WORD_DISPLAY="Hey Agent A"
 CONFIG_CUSTOM_WAKE_WORD_THRESHOLD=20
 ```
 This requires a **MultiNet model** in the assets partition (the `esp_mn_*` model). The stock assets ship with WakeNet only, so you'd need to add a MultiNet model via the [xiaozhi-assets-generator](https://github.com/78/xiaozhi-assets-generator) tool or the online custom-assets flow.
@@ -124,11 +124,11 @@ This requires a **MultiNet model** in the assets partition (the `esp_mn_*` model
 ```
 python ./scripts/build.py m5stack-core-s3 --wake-word wn9_jarvis_tts
 ```
-List available models with `python ./scripts/build.py --list-wake-words`. **Note:** "Hey Rosie" is not a stock WakeNet phrase — you'd need a custom-trained model or use MultiNet.
+List available models with `python ./scripts/build.py --list-wake-words`. **Note:** "Hey Agent A" is not a stock WakeNet phrase — you'd need a custom-trained model or use MultiNet.
 
 **Option C — Train a custom WakeNet model** via Espressif's ESP-SR wake-word training service, then bundle it in the assets partition.
 
-**Important:** The wake word is **not** a simple string the firmware recognizes — it's a **neural network model** (WakeNet/MultiNet) that must be trained on the phrase. You cannot just type "Hey Rosie" into a config and have it work; you need a model that recognizes that phrase. The `CONFIG_CUSTOM_WAKE_WORD` pinyin string only works with a **MultiNet** model that has been trained on those command words.
+**Important:** The wake word is **not** a simple string the firmware recognizes — it's a **neural network model** (WakeNet/MultiNet) that must be trained on the phrase. You cannot just type "Hey Agent A" into a config and have it work; you need a model that recognizes that phrase. The `CONFIG_CUSTOM_WAKE_WORD` pinyin string only works with a **MultiNet** model that has been trained on those command words.
 
 ---
 
@@ -168,7 +168,7 @@ Outgoing control: `SendWakeWordDetected`, `SendStartListening`, `SendStopListeni
 - `CONFIG_OTA_URL` (default `https://api.tenclass.net/xiaozhi/ota/`) is the **version-check + config endpoint**. The device POSTs its identity and the server returns `{firmware:{version,url}, mqtt:{...}, websocket:{...}, activation:{...}}`.
 - The `mqtt`/`websocket` sections in that response configure the actual chat server connection (stored in NVS via `Settings`).
 
-**For Rosie:** To connect to OpenClaw instead of xiaozhi cloud, you either (a) run a self-hosted xiaozhi-compatible server and point `CONFIG_OTA_URL` at it, or (b) write a small server that implements the WebSocket hello + JSON + Opus protocol and serves the OTA config. The protocol is well-documented in `docs/websocket.md` and `docs/mqtt-udp.md`.
+**For Agent A:** To connect to OpenClaw instead of xiaozhi cloud, you either (a) run a self-hosted xiaozhi-compatible server and point `CONFIG_OTA_URL` at it, or (b) write a small server that implements the WebSocket hello + JSON + Opus protocol and serves the OTA config. The protocol is well-documented in `docs/websocket.md` and `docs/mqtt-udp.md`.
 
 ---
 
@@ -227,7 +227,7 @@ Outgoing control: `SendWakeWordDetected`, `SendStartListening`, `SendStopListeni
 - `self.screen.get_info`, `self.screen.snapshot`, `self.screen.preview_image`
 - `self.assets.set_download_url`
 
-**Custom tools:** The comment in `AddCommonTools` says *"Custom tools must be added in the board's `InitializeTools` function."* Boards can register their own tools (e.g. the ESP-Hi robot dog adds `self.dog.forward`). **This is the primary extension point for Rosie-specific device control** (servos, Stack-chan head/eye movement, etc.).
+**Custom tools:** The comment in `AddCommonTools` says *"Custom tools must be added in the board's `InitializeTools` function."* Boards can register their own tools (e.g. the ESP-Hi robot dog adds `self.dog.forward`). **This is the primary extension point for Agent A-specific device control** (servos, Stack-chan head/eye movement, etc.).
 
 ### MCP flow
 1. Device connects, advertises `"mcp": true` in hello `features`.
@@ -253,7 +253,7 @@ The device's `hello` advertises `"format":"opus"` and the server negotiates samp
 
 **There is no system prompt on the device.** The system prompt, LLM model (Qwen/DeepSeek), voice, and personality are all configured **on the server** (xiaozhi.me console, or your self-hosted server's config). The device is agnostic to which LLM is used.
 
-**For Rosie:** The personality is defined entirely server-side. To make Rosie, you configure the server's system prompt (e.g. "You are Rosie, a friendly robot assistant...") and voice. The device just renders whatever the server sends.
+**For Agent A:** The personality is defined entirely server-side. To make Agent A, you configure the server's system prompt (e.g. "You are Agent A, a friendly robot assistant...") and voice. The device just renders whatever the server sends.
 
 ### What the device CAN override
 - **Display emotion** — the server sends `{"type":"llm","emotion":"happy"}` and the device maps it to an emoji/expression. You can add custom emotions on-device.
@@ -316,7 +316,7 @@ ota_1,    app,  ota_1,   ,        0x3f0000
 assets,   data, spiffs,  0x800000, 8M
 ```
 
-**For Rosie:** You can host your own OTA server that serves firmware + the chat-server config. The `self.upgrade_firmware` MCP tool also allows remote OTA from an arbitrary URL.
+**For Agent A:** You can host your own OTA server that serves firmware + the chat-server config. The `self.upgrade_firmware` MCP tool also allows remote OTA from an arbitrary URL.
 
 ---
 
@@ -363,27 +363,27 @@ idf.py -p /dev/tty.usbmodem* flash
 
 ---
 
-## 11. Customization Points for a "Rosie" Node
+## 11. Customization Points for a "Agent A" Node
 
-Here's exactly where to inject Rosie-specific behavior. **The cleanest architecture: keep the firmware mostly stock, replace the cloud backend, and customize the on-device wake word + display + MCP tools.**
+Here's exactly where to inject Agent A-specific behavior. **The cleanest architecture: keep the firmware mostly stock, replace the cloud backend, and customize the on-device wake word + display + MCP tools.**
 
 ### A. Personality / LLM (server-side — primary)
-- **Do NOT modify firmware for personality.** Run a self-hosted xiaozhi-compatible server (e.g. `xinnan-tech/xiaozhi-esp32-server`) and set the system prompt to define Rosie's personality, voice, and behavior.
+- **Do NOT modify firmware for personality.** Run a self-hosted xiaozhi-compatible server (e.g. `xinnan-tech/xiaozhi-esp32-server`) and set the system prompt to define Agent A's personality, voice, and behavior.
 - Point the device at your server by setting `CONFIG_OTA_URL` to your server's OTA endpoint (which returns the `websocket`/`mqtt` config pointing at your chat server).
 
-### B. Wake word → "Hey Rosie"
-- **MultiNet custom wake word** (recommended): set `CONFIG_USE_CUSTOM_WAKE_WORD=y`, `CONFIG_CUSTOM_WAKE_WORD="hey luo xi"`, `CONFIG_CUSTOM_WAKE_WORD_DISPLAY="Hey Rosie"`. Requires a MultiNet model in assets.
-- **Pre-trained WakeNet:** `--wake-word wn9_jarvis_tts` etc. (no "Hey Rosie" stock model).
+### B. Wake word → "Hey Agent A"
+- **MultiNet custom wake word** (recommended): set `CONFIG_USE_CUSTOM_WAKE_WORD=y`, `CONFIG_CUSTOM_WAKE_WORD="hey luo xi"`, `CONFIG_CUSTOM_WAKE_WORD_DISPLAY="Hey Agent A"`. Requires a MultiNet model in assets.
+- **Pre-trained WakeNet:** `--wake-word wn9_jarvis_tts` etc. (no "Hey Agent A" stock model).
 - **Custom-trained model:** train via ESP-SR service, bundle in assets.
 - Files: `main/audio/engines/afe_audio_engine.cc`, `main/audio/wake_words/custom_wake_word.cc`, `sdkconfig.defaults.esp32s3`, `main/Kconfig.projbuild`.
 
 ### C. Display expressions (on-device)
-- Add custom emoji/GIFs to the assets partition for Rosie's face.
-- Map emotion names (sent by server) to Rosie expressions in `LcdDisplay::SetEmotion` / the emoji collection.
+- Add custom emoji/GIFs to the assets partition for Agent A's face.
+- Map emotion names (sent by server) to Agent A expressions in `LcdDisplay::SetEmotion` / the emoji collection.
 - Optionally port the `EmoteDisplay` animated-face style for richer expressions.
 
-### D. MCP tools (on-device — Rosie device control)
-- **Add Rosie-specific tools** in the board's `InitializeTools()` (e.g. `self.rosie.move_head`, `self.rosie.set_eye`, `self.rosie.servo`). This is the documented extension point for device control.
+### D. MCP tools (on-device — Agent A device control)
+- **Add Agent A-specific tools** in the board's `InitializeTools()` (e.g. `self.agent-a.move_head`, `self.agent-a.set_eye`, `self.agent-a.servo`). This is the documented extension point for device control.
 - The cloud LLM can then control Stack-chan's servos/eyes via MCP.
 
 ### E. OpenClaw connection (instead of xiaozhi cloud)
@@ -392,10 +392,10 @@ Two approaches:
 2. **Firmware protocol swap:** Replace `WebsocketProtocol`/`MqttProtocol` with a custom protocol that talks directly to OpenClaw. More work, but removes the xiaozhi protocol dependency. The `Protocol` interface (`main/protocols/protocol.h`) is cleanly abstracted — you can add a new `Protocol` subclass.
 
 ### F. Custom messages
-- Enable `CONFIG_RECEIVE_CUSTOM_MESSAGE` to let the server push arbitrary JSON to the device (e.g. Rosie status updates, custom display content).
+- Enable `CONFIG_RECEIVE_CUSTOM_MESSAGE` to let the server push arbitrary JSON to the device (e.g. Agent A status updates, custom display content).
 
 ### G. Board identity
-- If you ship a distinct "Rosie" firmware, **create a new board variant** (per `docs/custom-board.md`) rather than overwriting `m5stack-core-s3`, so OTA updates don't clobber your custom firmware with stock.
+- If you ship a distinct "Agent A" firmware, **create a new board variant** (per `docs/custom-board.md`) rather than overwriting `m5stack-core-s3`, so OTA updates don't clobber your custom firmware with stock.
 
 ---
 
@@ -422,12 +422,12 @@ Two approaches:
 
 ## Summary
 
-The xiaozhi-esp32 firmware is a **thin, well-abstracted voice-client** for ESP32 boards. The CoreS3 (Stack-chan) board is fully supported. To build a custom "Rosie" node:
+The xiaozhi-esp32 firmware is a **thin, well-abstracted voice-client** for ESP32 boards. The CoreS3 (Stack-chan) board is fully supported. To build a custom "Agent A" node:
 
-1. **Personality lives on the server** — run a self-hosted xiaozhi-compatible server (or a custom OpenClaw bridge) and define Rosie there. No firmware change needed for the LLM/system prompt.
+1. **Personality lives on the server** — run a self-hosted xiaozhi-compatible server (or a custom OpenClaw bridge) and define Agent A there. No firmware change needed for the LLM/system prompt.
 2. **Wake word** — switch to a custom MultiNet model or a pre-trained WakeNet model via `--wake-word` / Kconfig.
 3. **Display** — customize emoji/GIF expressions in the assets partition.
-4. **Device control** — add Rosie MCP tools in the board's `InitializeTools()`.
+4. **Device control** — add Agent A MCP tools in the board's `InitializeTools()`.
 5. **Connectivity** — point `CONFIG_OTA_URL` at your server, or add a custom `Protocol` subclass to talk to OpenClaw directly.
 
 The firmware's clean `Protocol` interface, `McpServer` tool registry, and board abstraction make it highly customizable without deep surgery.

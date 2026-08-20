@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Stack-chan → Rosie Workspace Write Test
-The real bar: Stack-chan (simulated in harness) writes a file to Rosie's workspace
-AS the rosie agent profile, through the OpenClaw Gateway.
+Stack-chan → Agent A Workspace Write Test
+The real bar: Stack-chan (simulated in harness) writes a file to Agent A's workspace
+AS the agent-a agent profile, through the OpenClaw Gateway.
 
 This proves the full binding:
-  Stack-chan firmware → Gateway (openclaw/rosie) → Rosie agent → workspace write
+  Stack-chan firmware → Gateway (openclaw/agent-a) → Agent A agent → workspace write
 """
 
 import json
@@ -16,9 +16,9 @@ import urllib.request
 import urllib.error
 
 GATEWAY_URL = "http://127.0.0.1:18789/v1/chat/completions"
-GATEWAY_AUTH = "Bearer clawdiomax"
-MODEL = "openclaw/rosie"
-WORKSPACE = "/Users/clawdio/openclaw-workspaces/rosie"
+GATEWAY_AUTH = "Bearer <your-gateway-password>"
+MODEL = "openclaw/agent-a"
+WORKSPACE = "/Users/<your-host>/openclaw-workspaces/agent-a"
 HANDSHAKE_FILE = f"{WORKSPACE}/stackchan-node/test-harness/STACKCHAN_HANDSHAKE.txt"
 
 GREEN = "\033[92m"
@@ -82,15 +82,15 @@ def strip_emoji(text):
 
 def main():
     print(f"\n{BOLD}{'='*60}{RESET}")
-    print(f"{BOLD}  Stack-chan → Rosie Workspace Write Test{RESET}")
-    print(f"{BOLD}  The Bar: Stack-chan writes to Rosie's workspace AS rosie{RESET}")
+    print(f"{BOLD}  Stack-chan → Agent A Workspace Write Test{RESET}")
+    print(f"{BOLD}  The Bar: Stack-chan writes to Agent A's workspace AS agent-a{RESET}")
     print(f"{BOLD}{'='*60}{RESET}\n")
     
     passed = 0
     failed = 0
     
     # ── Step 1: Verify workspace exists ───────────────────────────
-    print(f"{BOLD}Step 1: Verify Rosie's workspace exists{RESET}")
+    print(f"{BOLD}Step 1: Verify Agent A's workspace exists{RESET}")
     if os.path.isdir(WORKSPACE):
         log(f"Workspace found: {WORKSPACE}", "PASS")
         passed += 1
@@ -113,7 +113,7 @@ def main():
     # This simulates exactly what OpenClawClient::chat() does:
     # Build messages array with system prompts + user message
     # POST to http://<host>:<port>/v1/chat/completions
-    # Model: openclaw/rosie (the agent binding)
+    # Model: openclaw/agent-a (the agent binding)
     print(f"\n{BOLD}Step 3: Stack-chan sends write request through Gateway{RESET}")
     print(f"  Model: {MODEL}")
     print(f"  Endpoint: {GATEWAY_URL}")
@@ -121,9 +121,9 @@ def main():
     
     # Build firmware-style message array
     messages = [
-        {"role": "system", "content": "You are Rosie, a household operations director."},
+        {"role": "system", "content": "You are Agent A, a household operations director."},
         {"role": "system", "content": "User Info: Stack-chan robot test harness."},
-        {"role": "user", "content": f"Write a file at {HANDSHAKE_FILE} with exactly this content (no extra formatting):\n\nStack-chan handshake successful.\nWritten by Rosie via openclaw/rosie model.\nTimestamp: 2026-08-18.\nAgent: rosie\nWorkspace: {WORKSPACE}\n\nThen tell me you wrote it."}
+        {"role": "user", "content": f"Write a file at {HANDSHAKE_FILE} with exactly this content (no extra formatting):\n\nStack-chan handshake successful.\nWritten by Agent A via openclaw/agent-a model.\nTimestamp: 2026-08-18.\nAgent: agent-a\nWorkspace: {WORKSPACE}\n\nThen tell me you wrote it."}
     ]
     
     log(f"Sending {len(messages)} messages to Gateway...")
@@ -145,7 +145,7 @@ def main():
         sys.exit(1)
     
     log(f"Gateway responded in {elapsed:.1f}s")
-    log(f"Rosie said: \"{tts_text[:150]}\"")
+    log(f"Agent A said: \"{tts_text[:150]}\"")
     passed += 1
     
     # ── Step 4: Verify the file was ACTUALLY written to disk ───────
@@ -163,8 +163,8 @@ def main():
         # Verify content contains expected markers
         checks = [
             ("Stack-chan handshake" in content, "Contains 'Stack-chan handshake'"),
-            ("rosie" in content.lower(), "Contains 'rosie' agent identifier"),
-            ("openclaw/rosie" in content, "Contains model string 'openclaw/rosie'"),
+            ("agent-a" in content.lower(), "Contains 'agent-a' agent identifier"),
+            ("openclaw/agent-a" in content, "Contains model string 'openclaw/agent-a'"),
             ("2026-08-18" in content, "Contains timestamp"),
             (file_size > 50, f"File size > 50 bytes ({file_size})"),
         ]
@@ -189,7 +189,7 @@ def main():
     print(f"\n{BOLD}Step 5: Read the file back through Gateway (read + write proven){RESET}")
     
     messages2 = [
-        {"role": "system", "content": "You are Rosie, a household operations director."},
+        {"role": "system", "content": "You are Agent A, a household operations director."},
         {"role": "user", "content": f"Read the file at {HANDSHAKE_FILE} and tell me the first line."}
     ]
     
@@ -219,7 +219,7 @@ def main():
     
     if failed == 0:
         print(f"\n  {GREEN}{BOLD}✅ BAR MET{RESET}")
-        print(f"  {GREEN}Stack-chan → Gateway (openclaw/rosie) → Rosie agent → workspace write{RESET}")
+        print(f"  {GREEN}Stack-chan → Gateway (openclaw/agent-a) → Agent A agent → workspace write{RESET}")
         print(f"  {GREEN}File written: {HANDSHAKE_FILE}{RESET}")
         print(f"  {GREEN}Agent binding: CONFIRMED{RESET}")
     else:

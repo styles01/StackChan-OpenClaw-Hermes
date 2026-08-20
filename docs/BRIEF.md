@@ -43,7 +43,7 @@ The simplest path to a working robot. We keep plaipin's existing `STTBase`/`LLMB
           │ TTS: HTTP POST text → mini → WAV back
           ▼
 ┌──────────────────────────────────────────────────┐
-│  Clawdio-Mini — AUDIO PIPELINE SERVER            │
+│  <your-host> — AUDIO PIPELINE SERVER            │
 │                                                  │
 │  ┌────────────────────────────────────────────┐  │
 │  │ /stt endpoint                               │  │
@@ -64,7 +64,7 @@ The simplest path to a working robot. We keep plaipin's existing `STTBase`/`LLMB
 │                                                  │
 │  ┌────────────────────────────────────────────┐  │
 │  │ OpenClaw Gateway (port 18789)              │  │
-│  │  Rosie agent (Stack-chan session)          │  │
+│  │  Agent A agent (Stack-chan session)          │  │
 │  │  Larry agent (future — separate session)   │  │
 │  │  Tools, memory, personality, MCP           │  │
 │  └────────────────────────────────────────────┘  │
@@ -118,12 +118,12 @@ This same pattern (audio in → STT → LLM → TTS → audio out) is what ChatG
   - `/stt` — receives WAV, does Whisper/Parakeet STT, returns text + confidence
   - `/tts` — receives text, strips body command markers, does Kokoro TTS, returns WAV + body commands JSON
 - Body command marker parsing (regex, like Larry's `parse_effects`)
-- Runs as systemd service on Clawdio-Mini
+- Runs as systemd service on <your-host>
 - Python for v1 (reuse Larry's server patterns directly)
 
 ### Piece 3: Agent Configuration (on gateway)
-- Configure a "rosie-robot" agent session on OpenClaw Gateway
-- System prompt includes Rosie's personality + body command format
+- Configure a "agent-a-robot" agent session on OpenClaw Gateway
+- System prompt includes Agent A's personality + body command format
 - Tools wired up (household, printer, fridge, memory, Telegram)
 - Voice: Kokoro British voice for consistency
 
@@ -146,7 +146,7 @@ This same pattern (audio in → STT → LLM → TTS → audio out) is what ChatG
 3. **Retarget TTS backend** → mini's `/tts` endpoint instead of ElevenLabs/OpenAI
 4. **Build mini server** → two endpoints (STT, TTS) + body command parser
 5. **Add body command parser** → parse `[expression:happy]` markers → drive face/servo/LED
-6. **Configure agent** → Rosie's system prompt on gateway with body command format
+6. **Configure agent** → Agent A's system prompt on gateway with body command format
 
 ## Response Format — Markers-in-Text (FINAL)
 
@@ -220,7 +220,7 @@ Plaipin's repo has NO license file — under copyright law, that's "all rights r
 - Port plaipin's *concepts* (REST proxy, OpenClaw integration) as reference — write our own code
 - Credit plaipin in the README as inspiration
 - Add MIT license to our new code
-- Keep Larry's HEART.md/MEMORY.md and Rosie's actual system prompt PRIVATE (ship an `agent-template.md` instead)
+- Keep Larry's HEART.md/MEMORY.md and Agent A's actual system prompt PRIVATE (ship an `agent-template.md` instead)
 
 ## Open Source Framing
 
@@ -244,7 +244,7 @@ Plaipin's repo has NO license file — under copyright law, that's "all rights r
 
 ## Success Criteria
 
-1. **Stack-chan talks to Rosie** — press button → speak → Rosie responds through the robot's speaker with her personality, tools, and memory
+1. **Stack-chan talks to Agent A** — press button → speak → Agent A responds through the robot's speaker with her personality, tools, and memory
 2. **No cloud API keys on the ESP32** — zero cloud credentials stored on the device (WiFi + optional LAN token are fine)
 3. **Body commands work** — agent can say "look left", "act happy", "turn LED green" and the robot does it
 4. **Pipeline proven on ESP32** — the swap-backends approach works, paving the way for v1.1 thin client and Larry's ESP32 port
@@ -287,4 +287,4 @@ Plaipin's repo has NO license file — under copyright law, that's "all rights r
 ## Team
 
 - **James** — project lead, hardware owner, firmware testing, Larry the Elephant creator
-- **Rosie** — adapter development, server, gateway config, documentation
+- **Agent A** — adapter development, server, gateway config, documentation

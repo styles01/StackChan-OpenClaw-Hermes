@@ -89,7 +89,7 @@ The ESP32 thinks it's talking to an OpenAI-compatible API. A Node.js proxy trans
 ## What We Can Learn From This
 
 ### Directly Useful
-1. **Emoji stripping for TTS** — Their UTF-8 emoji filter is a good idea. When Rosie sends text with emoji to the robot for TTS, we should strip 4-byte emoji and decorative symbols. Copy their approach.
+1. **Emoji stripping for TTS** — Their UTF-8 emoji filter is a good idea. When Agent A sends text with emoji to the robot for TTS, we should strip 4-byte emoji and decorative symbols. Copy their approach.
 2. **Partition table reference** — Their CoreS3 partition layout confirms 16MB flash with ~6MB OTA partitions works. They also include a coredump partition (good idea for debugging).
 3. **Servo API pattern** — `moveToGaze(gazeX, gazeY)` is the right abstraction for servo control. Our servo port should match this pattern.
 4. **Telegram proxy pattern** — Their idea of polling Telegram and queuing messages for the robot is interesting. The proxy acts as a bridge for async messages going TO the robot.

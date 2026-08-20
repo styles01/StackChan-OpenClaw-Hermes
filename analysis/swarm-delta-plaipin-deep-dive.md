@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-17
 **Repo:** https://github.com/PlaiPin/plaipin-openclaw-stackchan
-**Local clone:** /Volumes/1TBSSDClawd/stackchan-node/repos/plaipin-openclaw-stackchan/
+**Local clone:** <repo-root>/stackchan-node/repos/plaipin-openclaw-stackchan/
 **Stars:** 2 | **Forks:** 0 | **Open issues:** 0 | **Created:** 2026-03-30
 **Last commit:** d9132fb "Add telegram input reaction" (Nat, 2026-03-30)
 **Languages:** C, C++, HTML, JavaScript, Makefile, Shell
@@ -160,7 +160,7 @@ The ESP32 **thinks it is talking to an OpenAI-compatible API.** The Node.js prox
 ## 7. WHAT WE CAN DIRECTLY REUSE
 
 ### Directly reusable (high value)
-1. **Emoji/symbol stripping for TTS** (`stripEmoji` in `OpenClawClient.cpp`) — copy this approach. When Rosie sends text with emoji to the robot for TTS, strip 4-byte emoji and 3-byte dingbats/symbols. This is battle-tested UTF-8 handling.
+1. **Emoji/symbol stripping for TTS** (`stripEmoji` in `OpenClawClient.cpp`) — copy this approach. When Agent A sends text with emoji to the robot for TTS, strip 4-byte emoji and 3-byte dingbats/symbols. This is battle-tested UTF-8 handling.
 2. **Response sanitization** — strip `**`/`__` markdown, newline→space, cap length (~200 chars) to protect TTS. Directly applicable.
 3. **Partition table** (`my_cores3_16MB.csv`) — confirms 16MB flash with ~6.25MB OTA partitions + a dedicated coredump partition works on CoreS3. Good reference for our flash layout.
 4. **Servo API pattern** — `moveToGaze(gazeX, gazeY)` / `moveToOrigin()` is the right abstraction. Our servo port should match this.

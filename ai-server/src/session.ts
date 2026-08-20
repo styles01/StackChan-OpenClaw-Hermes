@@ -463,7 +463,7 @@ export class Session {
     constructor(private readonly ws: WebSocket, deps: SessionDeps = {}) {
         // Per-device backend selection: read binding from WS handshake (Device-Id header)
         // Falls back to devices.json default, then to env var for backwards compat
-        const binding = deps.deviceBinding ?? { backend: (process.env.STACKCHAN_BACKEND ?? 'hermes') as 'openclaw' | 'hermes', agent_id: process.env.STACKCHAN_AGENT_ID ?? 'rosie' }
+        const binding = deps.deviceBinding ?? { backend: (process.env.STACKCHAN_BACKEND ?? 'hermes') as 'openclaw' | 'hermes', agent_id: process.env.STACKCHAN_AGENT_ID ?? 'your-agent' }
         const deviceId = deps.deviceId ?? 'unknown'
         this.hermes = deps.hermes ?? (binding.backend === 'openclaw' ? new OpenClawClient({ agentId: binding.agent_id, deviceId }) : new HermesClient())
         this.decodeOpusFramesFn = deps.decodeOpusFrames ?? decodeOpusFrames

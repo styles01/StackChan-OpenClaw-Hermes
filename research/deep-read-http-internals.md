@@ -155,7 +155,7 @@ function buildAgentMainSessionKey(params) {
 }
 ```
 
-So the format is **`agent:<agentId>:openai-user:<user>`**. The `user` value is used verbatim (after `.trim()`), lowercased only by the session-key normalization layer (`normalizeSessionKeyPreservingOpaquePeerIds` lowercases everything except case-preserving peer channels like signal/matrix). For a plain `user` like `conv:abc123`, the stored key is effectively `agent:rosie:openai-user:conv:abc123`.
+So the format is **`agent:<agentId>:openai-user:<user>`**. The `user` value is used verbatim (after `.trim()`), lowercased only by the session-key normalization layer (`normalizeSessionKeyPreservingOpaquePeerIds` lowercases everything except case-preserving peer channels like signal/matrix). For a plain `user` like `conv:abc123`, the stored key is effectively `agent:agent-a:openai-user:conv:abc123`.
 
 **Does it survive 4am resets?** Yes. This is a **main session key** (not a peer/channel key). It is persisted in the agent's session store under that exact key and is stable across restarts and the dream/reset cycle. Reusing the same `user` value on later calls resumes the same session. The docs explicitly recommend `user: "conv:YOUR_CONVERSATION_ID"` for stable per-conversation sessions.
 
@@ -240,11 +240,11 @@ function resolveTelegramConversationRoute(params) {
 
 The HTTP endpoint's `resolveGatewayRequestContext` **never** calls into binding routing. There is no `binding` reference anywhere in `http-utils-B0BcglUl.js` or `openai-http-9urlXlOE.js` (verified by grep — zero matches).
 
-**Bindings only work for real channel plugins.** A binding like `{ agentId: "rosie", match: { channel: "stackchan" } }` is only consulted when a message arrives through a channel plugin whose route resolver runs binding matching. The HTTP endpoint bypasses that entirely.
+**Bindings only work for real channel plugins.** A binding like `{ agentId: "agent-a", match: { channel: "stackchan" } }` is only consulted when a message arrives through a channel plugin whose route resolver runs binding matching. The HTTP endpoint bypasses that entirely.
 
 To route an HTTP request to a specific agent, you must use one of:
-- `model: "openclaw/rosie"` or `model: "agent:rosie"`
-- `x-openclaw-agent-id: rosie`
+- `model: "openclaw/agent-a"` or `model: "agent:agent-a"`
+- `x-openclaw-agent-id: agent-a`
 - the configured default agent
 
 ---
@@ -261,7 +261,7 @@ To route an HTTP request to a specific agent, you must use one of:
 
 ### What it CANNOT do (the Telegram-equivalent behaviors)
 1. **Outbound delivery.** Telegram messages get replies pushed back to the chat via the Telegram plugin's outbound transport. HTTP sets `deliver: false`, so there is no outbound delivery at all. The response is only the HTTP body. To "behave like Telegram" you'd need the agent's reply to be sent to a StackChan device — which requires an outbound transport, i.e. a channel plugin.
-2. **Binding routing.** Bindings are only consulted in the channel-plugin route resolver. The HTTP path never runs binding matching, so `{ agentId: "rosie", match: { channel: "stackchan" } }` is ignored for HTTP requests.
+2. **Binding routing.** Bindings are only consulted in the channel-plugin route resolver. The HTTP path never runs binding matching, so `{ agentId: "agent-a", match: { channel: "stackchan" } }` is ignored for HTTP requests.
 3. **`modelByChannel` override.** Even though the message channel label is set, `isDeliverableMessageChannel("stackchan")` is `false` (it's not in `CHANNEL_IDS` or registered plugin ids), so the `modelByChannel` override path is skipped.
 4. **Channel-plugin lifecycle.** No pairing, no `dmPolicy`/`allowFrom` access control, no inbound webhook, no channel-specific config, no native approvals, no reactions/buttons.
 5. **Session key shape.** A Telegram DM session key looks like `agent:<id>:telegram:<account>:direct:<peer>` (peer-scoped). An HTTP session key is `agent:<id>:openai-user:<user>` (main-scoped). They are different session namespaces, so an HTTP request can never join a Telegram session by session key.

@@ -1,9 +1,9 @@
-# StackChan Firmware — Technical Analysis for a Custom OpenClaw/Rosie Node
+# StackChan Firmware — Technical Analysis for a Custom OpenClaw/Agent A Node
 
-**Repo analyzed:** `github.com/m5stack/StackChan` (local clone at `/Volumes/1TBSSDClawd/stackchan-node/firmware/StackChan`)
+**Repo analyzed:** `github.com/m5stack/StackChan` (local clone at `<repo-root>/stackchan-node/firmware/StackChan`)
 **Firmware version:** 1.4.3 (`PROJECT_VER` in `firmware/CMakeLists.txt`)
 **Analysis date:** 2026-08-17
-**Purpose:** Understand Stack-chan's hardware + firmware so we can build a custom OpenClaw/Rosie node on this platform.
+**Purpose:** Understand Stack-chan's hardware + firmware so we can build a custom OpenClaw/Agent A node on this platform.
 
 ---
 
@@ -64,7 +64,7 @@ firmware/
 └── components/             # (fetched) mooncake, mooncake_log, smooth_ui_toolkit, ArduinoJson, esp-now
 ```
 
-**The two-layer split is the single most important thing to understand:** the `stackchan/` + `hal/` code is the robot; the `xiaozhi-esp32/` code is the AI agent. For a custom Rosie node we can **keep the robot layer and replace/repurpose the AI agent layer** (or drive the robot layer directly from our own control plane).
+**The two-layer split is the single most important thing to understand:** the `stackchan/` + `hal/` code is the robot; the `xiaozhi-esp32/` code is the AI agent. For a custom Agent A node we can **keep the robot layer and replace/repurpose the AI agent layer** (or drive the robot layer directly from our own control plane).
 
 ---
 
@@ -110,7 +110,7 @@ From the README + `board/stackchan.cc` + `board/config.h`:
 
 ## 4. Servo control (head/arm)
 
-**This is the most reusable piece for a Rosie node.**
+**This is the most reusable piece for a Agent A node.**
 
 - **Servo type:** Feetech **SCSCL** serial-bus servos (the `FTServo_Arduino` driver in `hal/drivers/FTServo_Arduino/`). These are half-duplex UART servos with position feedback, current/load sensing, and torque control.
 - **Bus:** UART1 at **1,000,000 baud**, TX=GPIO6, RX=GPIO7 (`_scs_bus.begin(UART_NUM_1, 1000000, 6, 7)` in `hal_servo.cpp`).
@@ -208,7 +208,7 @@ The firmware has **multiple communication channels**:
 
 **Server URL config:** `CONFIG_STACKCHAN_SERVER_URL` (Kconfig, default `http://47.113.125.164:12800`), overridable via `sdkconfig.defaults.local`. The `secret_logic` module generates the auth token (currently a weak placeholder `"hi-stack-chan"` unless overridden).
 
-**For a custom Rosie node:** the cleanest path is to **replace the StackChan server URL with our own** and speak the documented WebSocket protocol (or drive the robot layer directly over BLE/ESP-NOW). The xiaozhi AI agent can be pointed at any XiaoZhi-compatible backend or bypassed entirely.
+**For a custom Agent A node:** the cleanest path is to **replace the StackChan server URL with our own** and speak the documented WebSocket protocol (or drive the robot layer directly over BLE/ESP-NOW). The xiaozhi AI agent can be pointed at any XiaoZhi-compatible backend or bypassed entirely.
 
 ---
 
@@ -262,11 +262,11 @@ A **Go (GoFrame v2.10) backend** — the companion cloud service. Not a simple r
 - **Stack:** Go 1.26.3, GoFrame, gorilla/websocket, MySQL 8.0, Docker + Kustomize deploy templates, Flutter Web admin console (prebuilt).
 - **Port:** `:12800`.
 
-**For a custom Rosie node:** we almost certainly **don't need this full server**. The WebSocket protocol it implements is the useful spec (see §8). We can either (a) run a minimal WebSocket relay ourselves, or (b) drive the robot directly over BLE/ESP-NOW and skip the cloud entirely.
+**For a custom Agent A node:** we almost certainly **don't need this full server**. The WebSocket protocol it implements is the useful spec (see §8). We can either (a) run a minimal WebSocket relay ourselves, or (b) drive the robot directly over BLE/ESP-NOW and skip the cloud entirely.
 
 ---
 
-## 12. What we can steal for a custom Rosie node
+## 12. What we can steal for a custom Agent A node
 
 **Highest-value reusable components (all MIT-licensed, self-contained, JSON-driven):**
 
@@ -275,7 +275,7 @@ A **Go (GoFrame v2.10) backend** — the companion cloud service. Not a simple r
    - Spring-damper motion model with speed mapping — gives natural head motion
    - `lookAtNormalized` (joystick/camera tracking) + `lookAtPoint` (3D IK)
    - Zero-calibration persisted in NVS
-   - **This is the core "head" control we want for Rosie.**
+   - **This is the core "head" control we want for Agent A.**
 
 2. **Avatar face renderer** (`stackchan/avatar/`)
    - LVGL-based eyes/mouth/speech-bubble with emotions, blink, breath, speaking animation
@@ -287,7 +287,7 @@ A **Go (GoFrame v2.10) backend** — the companion cloud service. Not a simple r
    - Clean `Modifier` interface — easy to add new behaviors (e.g., "listening", "thinking", "happy-to-see-you")
 
 4. **Animation/timeline system** (`stackchan/animation/`)
-   - Keyframe sequences (face + servos + RGB) with timing — perfect for scripted Rosie gestures/dances
+   - Keyframe sequences (face + servos + RGB) with timing — perfect for scripted Agent A gestures/dances
 
 5. **JSON wire protocol** (`stackchan/json/json_helper.cpp`)
    - The exact JSON schemas for motion, avatar, neon-light, and dance — a ready-made control API
@@ -301,11 +301,11 @@ A **Go (GoFrame v2.10) backend** — the companion cloud service. Not a simple r
 8. **Communication patterns:** BLE fragmented-JSON GATT service, WebSocket binary protocol, ESP-NOW — reference implementations for how to control the robot.
 
 **What we'd likely NOT reuse:**
-- The full `xiaozhi-esp32` AI agent layer (unless we want XiaoZhi voice AI) — for OpenClaw/Rosie we'd drive the robot layer directly from our own control plane.
+- The full `xiaozhi-esp32` AI agent layer (unless we want XiaoZhi voice AI) — for OpenClaw/Agent A we'd drive the robot layer directly from our own control plane.
 - The Go server (too heavy) — unless we want the full app ecosystem.
 - The Mooncake app framework (nice but optional; we could boot straight into a custom control loop).
 
-**Recommended integration strategy for Rosie:**
+**Recommended integration strategy for Agent A:**
 - Keep the `stackchan/` + `hal/` robot layer and the board files.
 - Replace `main.cpp`'s Mooncake/xiaozhi boot with a **custom control loop** that:
   - Initializes the HAL (servos, face, audio, camera, sensors).

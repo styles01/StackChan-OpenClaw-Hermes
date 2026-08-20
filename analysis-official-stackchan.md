@@ -1,9 +1,9 @@
 # Analysis: Official M5Stack StackChan Firmware vs. PlatformIO Arduino Fork
 
 **Date:** 2026-08-18
-**Analyzed repo:** `/Volumes/1TBSSDClawd/stackchan-node/repos/StackChan/` (official, commit `b72b3ed`, branch `main`)
-**BSP repo:** `/Volumes/1TBSSDClawd/stackchan-node/repos/StackChan-BSP/` (cloned, commit HEAD)
-**Fork compared:** `/Volumes/1TBSSDClawd/stackchan-node/repos/plaipin-openclaw-stackchan/firmware/`
+**Analyzed repo:** `<repo-root>/stackchan-node/repos/StackChan/` (official, commit `b72b3ed`, branch `main`)
+**BSP repo:** `<repo-root>/stackchan-node/repos/StackChan-BSP/` (cloned, commit HEAD)
+**Fork compared:** `<repo-root>/stackchan-node/repos/plaipin-openclaw-stackchan/firmware/`
 
 ---
 
@@ -262,7 +262,7 @@ coredump, data, coredump,0xFF0000,0x10000,
 
 ## 8. StackChan-BSP (Board Support Package)
 
-Cloned to `/Volumes/1TBSSDClawd/stackchan-node/repos/StackChan-BSP/`. This is the **Arduino** board support package (separate from the ESP-IDF firmware).
+Cloned to `<repo-root>/stackchan-node/repos/StackChan-BSP/`. This is the **Arduino** board support package (separate from the ESP-IDF firmware).
 
 **Identity:**
 - `library.json`: name `StackChan-BSP`, version 1.1.0, `frameworks: arduino`, `platforms: espressif32`

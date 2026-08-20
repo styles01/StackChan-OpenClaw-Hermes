@@ -5,14 +5,14 @@ All notable changes to the StackChan-OpenClaw-Hermes project.
 ## [Unreleased]
 
 ### Added
-- Project structure initialized on 1TB SSD (`/Volumes/1TBSSDClawd/stackchan-node/`)
+- Project structure initialized on 1TB SSD (`<repo-root>/stackchan-node/`)
 - Git repository initialized with `main` branch
 - `PROJECT.md` — full project overview, architecture diagram, source repo inventory
 - `TODO.md` — phase-by-phase task checklist
 - `BUILD_PLAN.md` — detailed 5-phase build plan with file structure and effort estimates
 - `PLAN.md` — original exploratory plan (wake word + MCP integration strategy)
 - `README.md` — project introduction
-- `server.py` — Rosie MCP server for xiaozhi.me broker (7 tools, current prototype)
+- `server.py` — Agent A MCP server for xiaozhi.me broker (7 tools, current prototype)
 - `.env` — MCP server token config
 - `docs/adrs/` — architecture decision records directory
 
@@ -57,14 +57,14 @@ All notable changes to the StackChan-OpenClaw-Hermes project.
 ### Decisions
 - ADR-001: Use esp-openclaw-node as firmware core
 - ADR-002: Port StackChan robot layer (servos/face/camera) on top
-- ADR-003: Custom "Hey Rosie" wake word via ESP-SR/WakeNet
+- ADR-003: Custom "Hey Agent A" wake word via ESP-SR/WakeNet
 - ADR-004: xiaozhi.me MCP server approach deferred in favor of full OpenClaw node
 
 ### Phase 1 Progress
-- ESP-IDF v5.5.4 installed on 1TB SSD at `/Volumes/1TBSSDClawd/esp-idf/`
+- ESP-IDF v5.5.4 installed on 1TB SSD at `<repo-root>/esp-idf/`
 - CoreS3 board port written: `cores3_audio.c` (AW88298+ES7210 TDM I2S), `cores3_display.c` (ILI9342 SPI), `cores3_touch.c` (BOOT button)
-- `rosie-node/` firmware project created with CMakeLists.txt, idf_component.yml, partitions.csv, sdkconfig.defaults
-- First successful build: `rosie_node.bin` (3.4MB, 46% free in 6MB OTA partition)
+- `agent-node/` firmware project created with CMakeLists.txt, idf_component.yml, partitions.csv, sdkconfig.defaults
+- First successful build: `agent-a_node.bin` (3.4MB, 46% free in 6MB OTA partition)
 - All 80+ components resolved: WebRTC, LVGL, esp-sr (wn9_hiesp wake word), esp_codec_dev, esp_lcd_ili9341
 - Dual-OTA partition table (6MB each) + 2MB SPIFFS model partition
 
@@ -123,7 +123,7 @@ All notable changes to the StackChan-OpenClaw-Hermes project.
 - This IS the Hermes integration blueprint for our dual-target design
 
 ### Project Rename + GitHub Publication
-- Project renamed from "rosie-node" → **StackChan-OpenClaw-Hermes**
+- Project renamed from "agent-node" → **StackChan-OpenClaw-Hermes**
 - README, BRIEF, BUILD_PLAN, TODO, CHANGELOG all updated with new name
 - GitHub repository created and pushed
 - Frames project as the open-source reference firmware for Stack-chan + AI agent integration

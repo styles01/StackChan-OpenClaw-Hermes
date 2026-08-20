@@ -1,5 +1,5 @@
 Stack-chan handshake successful.
-Written by Rosie via openclaw/rosie model.
+Written by Agent A via openclaw/agent-a model.
 Timestamp: 2026-08-18.
-Agent: rosie
-Workspace: /Users/clawdio/openclaw-workspaces/rosie
+Agent: agent-a
+Workspace: /Users/<your-host>/openclaw-workspaces/agent-a

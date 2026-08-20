@@ -5,7 +5,7 @@ Custom ESP-IDF firmware that turns the M5Stack Stack-chan robot (ESP32-S3, CoreS
 
 ## Vision
 Stack-chan becomes a first-class AI agent node:
-- **Wake word:** ESP-SR WakeNet 9 ("Hi ESP", custom "Hey Rosie" as parallel track)
+- **Wake word:** ESP-SR WakeNet 9 ("Hi ESP", custom "Hey Agent A" as parallel track)
 - **Brain:** OpenClaw Gateway OR Hermes Agent (dual-target, config-time switch)
 - **Voice:** WebRTC audio pipeline (Opus 16kHz) through the Gateway
 - **Face:** LVGL avatar with emotions mapped to conversation state
@@ -38,7 +38,7 @@ Stack-chan becomes a first-class AI agent node:
 ┌──────────────────────────────────────────┐
 │  Your Agent (choose one)                  │
 │  OpenClaw Gateway       Hermes Agent      │
-│  - Rosie, Claude, etc.  - Local agent     │
+│  - Agent A, Claude, etc.  - Local agent     │
 │  - Tools, memory, TTS    - MCP tools      │
 │  - Telegram, Notion     - Custom logic    │
 └──────────────────────────────────────────┘
@@ -69,7 +69,7 @@ See [BUILD_PLAN.md](./BUILD_PLAN.md) for detailed build plan.
 
 1. **Core bring-up** — esp-openclaw-node on CoreS3, Gateway connection, first voice test
 2. **Robot layer** — servos, LVGL face, camera, sensors
-3. **Wake word** — stock WakeNet model now, "Hey Rosie" as parallel track
+3. **Wake word** — stock WakeNet model now, "Hey Agent A" as parallel track
 4. **Gateway config** — agent personality + household tools
 5. **Polish** — end-to-end testing and calibration
 
@@ -85,6 +85,6 @@ See [BUILD_PLAN.md](./BUILD_PLAN.md) for detailed build plan.
 
 ## Build Environment
 - **ESP-IDF:** v5.5.4
-- **Host:** Clawdio-Mini (macOS arm64)
-- **Storage:** 1TB SSD (`/Volumes/1TBSSDClawd/stackchan-node/`)
-- **Symlink:** `~/openclaw-workspaces/rosie/stackchan-node/` → SSD
+- **Host:** <your-host> (macOS arm64)
+- **Storage:** 1TB SSD (`<repo-root>/stackchan-node/`)
+- **Symlink:** `~/openclaw-workspaces/agent-a/stackchan-node/` → SSD

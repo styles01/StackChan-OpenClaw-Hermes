@@ -63,7 +63,7 @@ This matches Hermes semantics and makes the two backends interchangeable.
 const deviceId = options?.deviceId ?? process.env.STACKCHAN_DEVICE_ID ?? 'default'
 this.sessionKey = `agent:${agentId}:stackchan:${deviceId}`
 ```
-`STACKCHAN_DEVICE_ID` is read in code but **not documented** in `.env.example`. Without it, every device defaults to `deviceId='default'`, so **all StackChan devices share the session key `agent:rosie:stackchan:default`**. The gateway uses the session key for persistent multi-turn context (per `API_REFERENCE.md`), so two devices would bleed conversation context into each other.
+`STACKCHAN_DEVICE_ID` is read in code but **not documented** in `.env.example`. Without it, every device defaults to `deviceId='default'`, so **all StackChan devices share the session key `agent:agent-a:stackchan:default`**. The gateway uses the session key for persistent multi-turn context (per `API_REFERENCE.md`), so two devices would bleed conversation context into each other.
 
 **Fix:** Document `STACKCHAN_DEVICE_ID` in `.env.example` and require it to be set per-device (or derive it from a per-device config). Consider failing fast (or warning) if it's still `'default'`.
 

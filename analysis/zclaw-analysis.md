@@ -1,6 +1,6 @@
-# zclaw — Technical Analysis for the Stack-chan → Rosie ESP32 Node
+# zclaw — Technical Analysis for the Stack-chan → Agent A ESP32 Node
 
-**Repo:** `github.com/tnm/zclaw` (local: `/Volumes/1TBSSDClawd/stackchan-node/repos/zclaw`)
+**Repo:** `github.com/tnm/zclaw` (local: `<repo-root>/stackchan-node/repos/zclaw`)
 **Version analyzed:** 2.13.0 (git `main`, commit `e3ad271`)
 **License:** MIT
 **Analysis date:** 2026-08-17
@@ -92,7 +92,7 @@ app_main
 
 **None.** zclaw has **no STT, no TTS, no wake word, no microphone, no speaker, no Opus codec, no ESP-SR, no I2S audio driver.** It is a text-only agent.
 
-This is the single biggest gap versus what we need for a Stack-chan → Rosie voice node. We would have to add the entire audio stack (ESP-SR wake word + STT, TTS, I2S codec) ourselves — zclaw gives us nothing here.
+This is the single biggest gap versus what we need for a Stack-chan → Agent A voice node. We would have to add the entire audio stack (ESP-SR wake word + STT, TTS, I2S codec) ourselves — zclaw gives us nothing here.
 
 ---
 
@@ -129,7 +129,7 @@ The closest thing to a "bridge" is the **emulator LLM bridge** (`channel_llm_bri
 
 **None.** There is no wake word detection. Input is either a Telegram message (which "wakes" the agent) or a serial line. There is no always-on listening, no keyword spotting, no ESP-SR.
 
-For our Rosie node we'd need to add wake word detection from scratch (ESP-SR `wakenet` or similar).
+For our Agent A node we'd need to add wake word detection from scratch (ESP-SR `wakenet` or similar).
 
 ---
 
@@ -174,7 +174,7 @@ Honorable mentions: `main/config.h` (all tunables), `main/tools.c`/`tools_*.c` (
 
 ---
 
-## 11. What We Can Steal (for Stack-chan → Rosie node)
+## 11. What We Can Steal (for Stack-chan → Agent A node)
 
 zclaw is a **text agent**, so we steal its *agent/ops architecture*, not its I/O. Directly reusable:
 
@@ -182,10 +182,10 @@ zclaw is a **text agent**, so we steal its *agent/ops architecture*, not its I/O
 1. **The tool-calling agent loop** (`agent.c` + `json_util.c`): rolling history, tool registry, multi-round tool execution, retry/backoff, rate limiting. This is the core "agent on ESP32" pattern and is exactly what an OpenClaw node needs. We'd keep the loop and swap the LLM transport for an OpenClaw/MCP bridge.
 2. **Tool registry pattern** (`builtin_tools.def` + `tools.c` + `tools_*.c`): declarative tool definitions (name/description/JSON schema/handler) that get injected into the model prompt. Perfect for exposing Stack-chan hardware (servo, LED, mic, speaker) as tools. The "Build Your Own Tool" two-approach model (runtime user tools vs firmware C tools) is a great design.
 3. **LLM transport with custom endpoint override** (`llm.c` + `llm_api_url` NVS key): the ability to point at a custom URL is the cleanest hook for routing to an OpenClaw/MCP HTTP bridge or a local Ollama server. We can reuse the whole HTTP/TLS/backoff/NETDIAG stack.
-4. **NVS provisioning + credential model** (`memory.c`, `nvs_keys.h`, `scripts/provision.sh`): WiFi/LLM/Telegram creds stored in NVS, provisioned over serial without reflash. Directly applicable to Rosie.
+4. **NVS provisioning + credential model** (`memory.c`, `nvs_keys.h`, `scripts/provision.sh`): WiFi/LLM/Telegram creds stored in NVS, provisioned over serial without reflash. Directly applicable to Agent A.
 5. **Boot-loop protection + safe mode** (`boot_guard.c`, `local_admin.c`): boot counter, safe mode after N failures, USB serial recovery console (`/gpio`, `/diag`, `/reboot`, `/wifi`, `/factory-reset`). Excellent robustness pattern for a physical device.
 6. **HTTP gate mutex** (`http_gate.c`): serializes outbound HTTPS so long-poll and LLM calls don't overlap on small-heap targets. Important for any ESP32 node doing concurrent network I/O.
-7. **Scheduler** (`cron.c`): daily/periodic/once tasks with NTP time sync — useful for scheduled Rosie behaviors.
+7. **Scheduler** (`cron.c`): daily/periodic/once tasks with NTP time sync — useful for scheduled Agent A behaviors.
 8. **Build/size discipline**: 888 KiB budget, size-optimized sdkconfig, CI size/stack guards, host unit tests with mocks. The whole build+test harness is reusable.
 9. **Host bridge pattern** (`channel_llm_bridge_exchange` + `web_relay.py`/`qemu_live_llm_bridge.py`): device → serial → host proxy. This is the template for a device → OpenClaw bridge.
 

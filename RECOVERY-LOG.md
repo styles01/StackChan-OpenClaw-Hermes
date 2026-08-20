@@ -34,4 +34,4 @@ The "stock backup" at `backup_stackchan_stock.bin` was 16MB with valid headers, 
 7. **Modern ESP-IDF partition subtypes** differ from pre-v4.0 values — don't use old references
 8. **"LEDs on, black screen" = firmware not booting** — display is firmware-initialized
 
-Full flashing guide with all commands: `/Volumes/1TBSSDClawd/stackchan-node/FLASHING-GUIDE.md`
+Full flashing guide with all commands: `<repo-root>/stackchan-node/FLASHING-GUIDE.md`

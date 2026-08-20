@@ -4,13 +4,13 @@ Stack-chan End-to-End Test Harness
 Simulates the full firmware chat pipeline against the real OpenClaw Gateway.
 
 Tests:
-  1. Agent identity — does openclaw/rosie respond as Rosie?
+  1. Agent identity — does openclaw/agent-a respond as Agent A?
   2. Workspace access — can the agent read workspace files?
   3. Chat history — does multi-turn conversation work?
   4. Response parsing — firmware-style JSON parse + emoji strip + 200-char cap
   5. Error handling — bad model, empty response, malformed JSON
   6. Latency — response time under firmware timeout (65s)
-  7. Full pipeline — system prompt + user message → Rosie response → TTS-ready text
+  7. Full pipeline — system prompt + user message → Agent A response → TTS-ready text
 """
 
 import json
@@ -22,8 +22,8 @@ import urllib.error
 
 # ── Config ──────────────────────────────────────────────────────────────────
 GATEWAY_URL = "http://127.0.0.1:18789/v1/chat/completions"
-GATEWAY_AUTH = "Bearer clawdiomax"
-DEFAULT_MODEL = "openclaw/rosie"
+GATEWAY_AUTH = "Bearer <your-gateway-password>"
+DEFAULT_MODEL = "openclaw/agent-a"
 FIRMWARE_TIMEOUT_MS = 65000  # firmware http.setTimeout(65000)
 RESPONSE_CAP = 200  # firmware caps at 200 chars
 
@@ -169,7 +169,7 @@ def test(name, fn):
 # ── Tests ───────────────────────────────────────────────────────────────────
 
 def test_agent_identity():
-    """Test 1: Does openclaw/rosie respond as Rosie?"""
+    """Test 1: Does openclaw/agent-a respond as Agent A?"""
     resp, elapsed, err = send_chat([
         {"role": "system", "content": FIRMWARE_SYSTEM_ROLE},
         {"role": "user", "content": "Hello, who are you?"}
@@ -186,13 +186,13 @@ def test_agent_identity():
     
     log(f"Response ({len(content)} chars, {elapsed:.1f}s): \"{content}\"")
     
-    # Check for Rosie identity markers
+    # Check for Agent A identity markers
     lower = content.lower()
-    is_rosie = ("rosie" in lower or "household" in lower or "darling" in lower or 
+    is_agent-a = ("agent-a" in lower or "household" in lower or "darling" in lower or 
                 "operations" in lower or "nanny" in lower or "mrs.doubtfire" in lower.replace(" ", ""))
     
-    if not is_rosie:
-        log("Response doesn't contain Rosie identity markers", "WARN")
+    if not is_agent-a:
+        log("Response doesn't contain Agent A identity markers", "WARN")
     
     log(f"Latency: {elapsed:.2f}s (firmware timeout: 65s)", "INFO")
     return True and elapsed < 65
@@ -391,10 +391,10 @@ def test_full_pipeline():
     
     # Firmware template: 3 system messages (user_role, system_role, user_info)
     messages = [
-        {"role": "system", "content": "You are Rosie, a household operations director. You speak with a warm British accent and call people darling."},
+        {"role": "system", "content": "You are Agent A, a household operations director. You speak with a warm British accent and call people darling."},
         {"role": "system", "content": FIRMWARE_SYSTEM_ROLE},
         {"role": "system", "content": "User Info: James, co-head of household."},
-        {"role": "user", "content": "Hey Rosie, can you check if the dishes are done?"}
+        {"role": "user", "content": "Hey Agent A, can you check if the dishes are done?"}
     ]
     
     log(f"Sending {len(messages)} messages to Gateway...")
@@ -436,11 +436,11 @@ def test_full_pipeline():
         return False
 
 def test_model_routing():
-    """Test 8: Verify model routing — openclaw/rosie vs openclaw/main"""
-    # Test rosie
+    """Test 8: Verify model routing — openclaw/agent-a vs openclaw/main"""
+    # Test agent-a
     resp_r, _, err_r = send_chat([
         {"role": "user", "content": "What is your name?"}
-    ], model="openclaw/rosie")
+    ], model="openclaw/agent-a")
     
     # Test main
     resp_m, _, err_m = send_chat([
@@ -448,13 +448,13 @@ def test_model_routing():
     ], model="openclaw/main")
     
     if err_r or err_m:
-        log(f"Routing test failed — rosie: {err_r}, main: {err_m}", "FAIL")
+        log(f"Routing test failed — agent-a: {err_r}, main: {err_m}", "FAIL")
         return False
     
     content_r, _ = parse_response_firmware_style(resp_r)
     content_m, _ = parse_response_firmware_style(resp_m)
     
-    log(f"Rosie model: \"{content_r[:80]}...\"")
+    log(f"Agent A model: \"{content_r[:80]}...\"")
     log(f"Main model:  \"{content_m[:80]}...\"")
     
     # They should be different agents
@@ -476,14 +476,14 @@ def main():
     
     start_time = time.time()
     
-    test("1. Agent Identity — responds as Rosie", test_agent_identity)
+    test("1. Agent Identity — responds as Agent A", test_agent_identity)
     test("2. Workspace Access — can read workspace files", test_workspace_access)
     test("3. Multi-turn Conversation — chat history works", test_multi_turn_conversation)
     test("4. Response Parsing — emoji/markdown/200-char cap", test_response_parsing)
     test("5. Error Handling — bad model, API errors", test_error_handling)
     test("6. Latency — under firmware 65s timeout", test_latency)
     test("7. Full Pipeline — firmware message build → Gateway → TTS-ready", test_full_pipeline)
-    test("8. Model Routing — openclaw/rosie vs openclaw/main", test_model_routing)
+    test("8. Model Routing — openclaw/agent-a vs openclaw/main", test_model_routing)
     
     total_time = time.time() - start_time
     

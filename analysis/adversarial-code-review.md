@@ -1,8 +1,8 @@
 # Adversarial Code Review — StackChan-OpenClaw-Hermes Firmware
 
-**Reviewer:** Rosie (self-review, adversarial mode)
+**Reviewer:** Agent A (self-review, adversarial mode)
 **Date:** 2026-08-17 21:16 MDT
-**Files reviewed:** All source in `rosie-node/` against esp-openclaw-room-node contract
+**Files reviewed:** All source in `agent-node/` against esp-openclaw-room-node contract
 
 ## Summary
 
@@ -96,7 +96,7 @@ This is a SIGNIFICANT change — rewrite the entire RX section to use `i2s_chann
 
 We leave this as `{0}` (all NULL). The room-node code checks for NULL before calling, so it won't crash. But we miss the opportunity to:
 - Initialize the AW9523 IO expander (prepare_runtime)
-- Register custom robot commands like `rosie.look`, `rosie.emote` (register_commands)
+- Register custom robot commands like `agent-a.look`, `agent-a.emote` (register_commands)
 
 **Fix for Phase 1:** Leave as NULL — the robot works without custom commands. Add a `prepare_runtime` callback in Phase 2 to init the IO expander for display backlight.
 

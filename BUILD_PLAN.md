@@ -40,7 +40,7 @@ Give Stack-chan a smart brain with zero cloud API keys on the device. v1: swap p
           │ TTS: HTTP POST text → mini:18791/tts → WAV back
           ▼
 ┌──────────────────────────────────────────────────┐
-│  Clawdio-Mini — AUDIO PIPELINE SERVER            │
+│  <your-host> — AUDIO PIPELINE SERVER            │
 │                                                  │
 │  :18791  audio_pipeline.py (FastAPI)             │
 │    /stt   → WAV in → faster-whisper → text+conf  │
@@ -53,7 +53,7 @@ Give Stack-chan a smart brain with zero cloud API keys on the device. v1: swap p
 │    → WebSocket → Gateway                         │
 │                                                  │
 │  :18789  OpenClaw Gateway                         │
-│    Rosie agent · Tools · Memory · MCP            │
+│    Agent A agent · Tools · Memory · MCP            │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -176,8 +176,8 @@ def parse_body_commands(text):
 - Auto-start, auto-restart
 
 ### Piece 3: Agent Configuration (on gateway)
-- Configure "rosie-robot" agent session on OpenClaw Gateway
-- System prompt: Rosie's personality + body command format + short response instruction
+- Configure "agent-a-robot" agent session on OpenClaw Gateway
+- System prompt: Agent A's personality + body command format + short response instruction
 - Tools: household, printer, fridge, memory, Telegram
 - Voice: Kokoro British voice (server-side, not gateway's TTS)
 - LLM max tokens: 80 (Larry V2's setting — short responses = faster TTS)
@@ -210,7 +210,7 @@ Plaipin has a **custom wake word system** using MFCC + DTW via the `simplevox` l
 - **Speaker-dependent** (matches YOUR voice saying the word, not a general keyword) — fine for household robot
 - **Independent of STT/TTS/LLM pipeline** — swap-backends doesn't touch it
 
-**Plan:** Enable wake word in Phase 4 or 5. James records "Rosie" as the wake word. No code needed — just the registration flow via LLM function calling or a simple config UI.
+**Plan:** Enable wake word in Phase 4 or 5. James records "Agent A" as the wake word. No code needed — just the registration flow via LLM function calling or a simple config UI.
 
 ## Build Phases
 
@@ -219,7 +219,7 @@ Plaipin has a **custom wake word system** using MFCC + DTW via the `simplevox` l
 - [ ] Full 16MB flash backup (HARD RULE — `esptool read_flash 0 0x1000000 backup_stackchan_stock.bin`)
 - [ ] Save partition table: `esptool read_flash 0x8000 0x1000 backup_partition_table.bin`
 - [ ] Verify backup is exactly 16MB
-- [ ] Store backups on SSD: `/Volumes/1TBSSDClawd/stackchan-node/backups/`
+- [ ] Store backups on SSD: `<repo-root>/stackchan-node/backups/`
 - [ ] Fork from Stack-chan upstream (MIT) — NOT plaipin (no license)
 - [ ] Clone plaipin as reference (concepts only, not code)
 - [ ] Flash unmodified plaipin firmware to Stack-chan — verify body works
@@ -279,30 +279,30 @@ Plaipin has a **custom wake word system** using MFCC + DTW via the `simplevox` l
   - [ ] Keep `-DENABLE_WAKEWORD` (cores3)
 - [ ] Update config file on device: mini host IP, port 18791, no API keys
 - [ ] Flash to Stack-chan
-- [ ] **MILESTONE: Press button → speak → Rosie responds through robot speaker + body moves**
+- [ ] **MILESTONE: Press button → speak → Agent A responds through robot speaker + body moves**
 
 ### Phase 4: Agent Configuration (1 day)
-- [ ] Configure "rosie-robot" agent session on OpenClaw Gateway
+- [ ] Configure "agent-a-robot" agent session on OpenClaw Gateway
 - [ ] Write system prompt with:
-  - [ ] Rosie's personality (warm, funny, household ops director)
+  - [ ] Agent A's personality (warm, funny, household ops director)
   - [ ] Body command format: `[expression:happy] [gesture:nod] [led:blue]`
   - [ ] Instruction to keep responses short (<200 chars, ~20 seconds of speech)
   - [ ] Instruction to use body commands naturally (express emotion, look around)
   - [ ] Tool availability (household, printer, fridge, memory, Telegram)
 - [ ] Wire up tools:
-  - [ ] rosie_status (household summary)
-  - [ ] rosie_printer_status (3D printer)
-  - [ ] rosie_fridge_update (fridge dashboard)
-  - [ ] rosie_memory (memory search)
-  - [ ] rosie_say (Telegram voice notes)
-  - [ ] rosie_time
+  - [ ] agent-a_status (household summary)
+  - [ ] agent-a_printer_status (3D printer)
+  - [ ] agent-a_fridge_update (fridge dashboard)
+  - [ ] agent-a_memory (memory search)
+  - [ ] agent-a_say (Telegram voice notes)
+  - [ ] agent-a_time
 - [ ] Test: "What's the printer status?" → robot looks, thinks, speaks + body commands
-- [ ] Optional: record "Rosie" as custom wake word via plaipin's registration flow
+- [ ] Optional: record "Agent A" as custom wake word via plaipin's registration flow
 - [ ] **MILESTONE: Robot does useful agentic work through the pipeline**
 
 ### Phase 5: Polish & Testing (1-2 days)
-- [ ] End-to-end test: button → speak → Rosie responds + body commands execute
-- [ ] End-to-end test: wake word → speak → Rosie responds
+- [ ] End-to-end test: button → speak → Agent A responds + body commands execute
+- [ ] End-to-end test: wake word → speak → Agent A responds
 - [ ] Calibrate audio levels (mic gain, speaker volume)
 - [ ] Test all body commands (expression changes, servo gestures, LED states)
 - [ ] Error handling:
@@ -358,7 +358,7 @@ Plaipin has a **custom wake word system** using MFCC + DTW via the `simplevox` l
 ## File Structure
 
 ```
-/Volumes/1TBSSDClawd/stackchan-node/
+<repo-root>/stackchan-node/
 ├── analysis/                       # Research reports
 │   ├── swarm-*.md                  # Swarm 1 + 2 + 3 reports + synthesis
 │   └── *-repo-analysis.md          # Reference repo analyses
@@ -413,7 +413,7 @@ Plaipin has a **custom wake word system** using MFCC + DTW via the `simplevox` l
 | 1. Fork & Flash Stock | 1 day | Backup, fork from Stack-chan, flash, verify body |
 | 2. Audio Pipeline Server | 1-2 days | /stt + /tts endpoints, body command parser, curl-testable |
 | 3. Retarget Backends | 2-3 days | MiniSTT + MiniTTS + BodyCommandParser, flash |
-| 4. Agent Config | 1 day | Rosie on gateway, system prompt, tools, wake word |
+| 4. Agent Config | 1 day | Agent A on gateway, system prompt, tools, wake word |
 | 5. Polish | 1-2 days | Testing, calibration, README, commit |
 | **Total (v1)** | **~1-1.5 weeks** | Swap-backends working end-to-end |
 | v1.1 Thin Client | ~3-5 days | Collapse to single HTTP call, delete old classes |

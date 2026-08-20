@@ -129,7 +129,7 @@ Larry's client (`lobster_audio.py`) has a lot of machinery. Most of it is **not*
 |---|---|---|---|
 | **mDNS discovery** (`discover_server_url`, `avahi-browse _larry._tcp`) | ❌ Defer | ✅ | Stack-chan is a desk robot on a known LAN. Hardcode the mini's IP in config (plaipin already has `openclaw_s` host/port config). mDNS is a nice-to-have for Larry's roaming toy, not for a fixed desk robot. |
 | **Activity runtime** (`ActivityRuntime`, `activity_models`, `activity_store`) | ❌ Defer | ✅ | This is Larry's structured play-session engine (colour games, rounds, attempts). Completely out of scope for Stack-chan v1. |
-| **Character packs** (`active_character`, `characters/<char>/`) | ❌ Defer | ✅ | Larry's voice/sample theming. Stack-chan has one character (Rosie). Defer. |
+| **Character packs** (`active_character`, `characters/<char>/`) | ❌ Defer | ✅ | Larry's voice/sample theming. Stack-chan has one character (Agent A). Defer. |
 | **Sound machine** (`sound_machine_track`, pink_noise/lullaby) | ❌ Defer | ✅ | Larry's sleep/soothing feature. Not a Stack-chan v1 need. |
 | **Nightlight** (`nightlight_enabled`, `nightlight_rgb`) | ❌ Defer | ✅ | Larry's LED nightlight. Stack-chan has a WS2812 LED but it's for expressions, not nightlight. Defer. |
 | **Firmware OTA** (`sync_firmware_if_needed`, signed manifest) | ❌ Defer | ✅ | Larry's phone-pushed OTA. Stack-chan flashes via PlatformIO/esptool. Not needed. |
@@ -182,7 +182,7 @@ Larry's server calls LM Studio directly (`openai.OpenAI(base_url=LM_STUDIO_URL)`
 | **Sessions** | ✅ Python `SessionManager` (MAX_TURNS) | ✅ native gateway sessions |
 | **MCP** | ❌ | ✅ (deferred to v2 per BRIEF, but available) |
 | **Personality** | ✅ HEART.md in system prompt | ✅ system prompt + agent config |
-| **Multi-robot** | ❌ one hardcoded prompt | ✅ separate agent sessions (Rosie vs. Larry) |
+| **Multi-robot** | ❌ one hardcoded prompt | ✅ separate agent sessions (Agent A vs. Larry) |
 
 **The gateway is a strict upgrade** for the "agentic" goals (tools, memory, sessions). It replaces Larry's hand-rolled `SessionManager` and `MEMORY.md` rewriting with native gateway features.
 

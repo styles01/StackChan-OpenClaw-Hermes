@@ -1,6 +1,6 @@
 # stackchan-uiflow2 — Full Technical Analysis
 
-**Repo:** `https://github.com/haraisao/stackchan-uiflow2` (local: `/Volumes/1TBSSDClawd/stackchan-node/repos/stackchan-uiflow2/`)
+**Repo:** `https://github.com/haraisao/stackchan-uiflow2` (local: `<repo-root>/stackchan-node/repos/stackchan-uiflow2/`)
 **Purpose:** RT Corporation Stack-chan running on **M5Stack CoreS3** via **UIFlow2** (custom MicroPython).
 **License:** Apache 2.0. **Language:** Japanese comments throughout.
 **Latest commit:** `82cee41 Update util.py` (branch `main`).

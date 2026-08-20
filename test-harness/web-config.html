@@ -149,11 +149,11 @@
       <div class="row">
         <div>
           <label for="oc-model">Model</label>
-          <input type="text" id="oc-model" value="openclaw/rosie">
+          <input type="text" id="oc-model" value="openclaw/agent-a">
         </div>
         <div>
           <label for="oc-agent-id">Agent ID</label>
-          <input type="text" id="oc-agent-id" placeholder="rosie">
+          <input type="text" id="oc-agent-id" placeholder="agent-a">
           <div class="field-error" id="oc-agent-id-err">Agent ID is required</div>
         </div>
       </div>
@@ -180,7 +180,7 @@
         </div>
         <div>
           <label for="hermes-agent-id">Agent ID</label>
-          <input type="text" id="hermes-agent-id" placeholder="venus">
+          <input type="text" id="hermes-agent-id" placeholder="agent-b">
           <div class="field-error" id="hermes-agent-id-err">Agent ID is required</div>
         </div>
       </div>
@@ -227,7 +227,7 @@
       <div class="row">
         <div>
           <label for="hermes-apikey">Hermes API Key</label>
-          <input type="password" id="hermes-apikey" placeholder="sk-venus-...">
+          <input type="password" id="hermes-apikey" placeholder="sk-agent-b-...">
         </div>
       </div>
       <div class="actions">
@@ -435,7 +435,7 @@
         const oc = data.openclaw || {};
         document.getElementById('oc-host').value = oc.host || '';
         document.getElementById('oc-port').value = oc.port || 18789;
-        document.getElementById('oc-model').value = oc.model || 'openclaw/rosie';
+        document.getElementById('oc-model').value = oc.model || 'openclaw/agent-a';
         document.getElementById('oc-agent-id').value = oc.agent_id || '';
 
         const h = data.hermes || {};

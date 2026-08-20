@@ -14,7 +14,7 @@ We need to replace the default Stack-chan chatbot firmware (xiaozhi cloud) with 
 3. **xiaozhi-esp32** (78/xiaozhi-esp32) — current firmware on the device (what we're replacing)
 4. **zclaw** (tnm/zclaw) — text-only ESP32 agent (minimal relevance)
 
-The esp-openclaw-node firmware is a thin client: the device does zero LLM/STT/TTS locally. All intelligence lives on the OpenClaw Gateway. The device is just a WebRTC audio endpoint + command executor. This is exactly the architecture we want — Rosie's brain stays on the Gateway, the robot is just her hands and voice.
+The esp-openclaw-node firmware is a thin client: the device does zero LLM/STT/TTS locally. All intelligence lives on the OpenClaw Gateway. The device is just a WebRTC audio endpoint + command executor. This is exactly the architecture we want — Agent A's brain stays on the Gateway, the robot is just her hands and voice.
 
 ## Decision
 Use esp-openclaw-node as the firmware core, stolen verbatim. Write a new CoreS3 board port for the M5Stack Stack-chan hardware.

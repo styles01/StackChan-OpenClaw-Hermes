@@ -18,7 +18,7 @@ Usage:
   python3 native_test_harness.py --proxy-url http://localhost:18790/v1/chat/completions
   python3 native_test_harness.py --proxy-url http://localhost:18790/v1/chat/completions --api-key mykey
   python3 native_test_harness.py --input-wav test_audio.wav --proxy-url http://localhost:18790/v1/chat/completions
-  python3 native_test_harness.py --text "Hello Rosie" --proxy-url http://localhost:18790/v1/chat/completions
+  python3 native_test_harness.py --text "Hello Agent A" --proxy-url http://localhost:18790/v1/chat/completions
 """
 
 import argparse
@@ -576,7 +576,7 @@ def test_json_buffer_sizing():
             "id": "chatcmpl-test",
             "object": "chat.completion",
             "created": int(time.time()),
-            "model": "openclaw/rosie",
+            "model": "openclaw/agent-a",
             "choices": [{
                 "index": 0,
                 "message": {
@@ -828,11 +828,11 @@ def main():
     )
     parser.add_argument("--proxy-url", default="http://127.0.0.1:18789/v1/chat/completions",
                        help="Gateway OpenAI-compatible endpoint URL (default: http://127.0.0.1:18789/v1/chat/completions)")
-    parser.add_argument("--agent", default="openclaw/rosie",
-                       help="OpenClaw agent target (default: openclaw/rosie)")
+    parser.add_argument("--agent", default="openclaw/agent-a",
+                       help="OpenClaw agent target (default: openclaw/agent-a)")
     parser.add_argument("--api-key", default="",
                        help="Bearer token for the REST proxy")
-    parser.add_argument("--model", default="openclaw/rosie",
+    parser.add_argument("--model", default="openclaw/agent-a",
                        help="Model name to send in the request")
     parser.add_argument("--system-prompt", default="",
                        help="System prompt for the LLM")

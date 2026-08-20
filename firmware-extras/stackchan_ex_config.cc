@@ -18,14 +18,14 @@ ex_config_s StackchanExConfig::Load() {
     // OpenClaw config
     config.openclaw.host = settings.GetString("oc_host", "");
     config.openclaw.port = settings.GetInt("oc_port", 18789);
-    config.openclaw.agent_id = settings.GetString("oc_agent_id", "rosie");
-    config.openclaw.default_model = settings.GetString("oc_def_model", "openclaw/rosie");
+    config.openclaw.agent_id = settings.GetString("oc_agent_id", "your-agent");
+    config.openclaw.default_model = settings.GetString("oc_def_model", "openclaw/your-agent");
     
     // Hermes config
     config.hermes.host = settings.GetString("hm_host", "");
     config.hermes.port = settings.GetInt("hm_port", 8643);
     config.hermes.agent_id = settings.GetString("hm_agent_id", "hermes");
-    config.hermes.default_model = settings.GetString("hm_def_model", "hermes/venus");
+    config.hermes.default_model = settings.GetString("hm_def_model", "hermes/your-agent");
     
     return config;
 }

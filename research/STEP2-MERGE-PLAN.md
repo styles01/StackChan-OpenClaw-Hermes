@@ -38,7 +38,7 @@ We have 3 source repos that each solve part of the puzzle, but they're all based
   - `ShowActivationCode()` gutted (no cloud binding)
   - Wi-Fi disconnect shows Hermes error face
 - **`ai-server/`** — TypeScript bridge:
-  - `src/openclaw.ts` — OpenClaw Gateway HTTP client (routes LLM to `openclaw/rosie` via `/v1/chat/completions`, per-device session keys)
+  - `src/openclaw.ts` — OpenClaw Gateway HTTP client (routes LLM to `openclaw/agent-a` via `/v1/chat/completions`, per-device session keys)
   - WebSocket server on port 8765 (firmware connects here)
   - Opus audio decode/encode, STT, TTS
   - MCP tools (13 robot control tools: camera, servos, LED, etc.)
@@ -120,7 +120,7 @@ We have 3 source repos that each solve part of the puzzle, but they're all based
 ## Key Files (Where Things Will Live in Our Repo)
 
 ```
-/Volumes/1TBSSDClawd/stackchan-node/
+<repo-root>/stackchan-node/
 ├── firmware/                    # Official StackChan firmware (from Repo 1)
 │   ├── main/                    # Stack-chan body code
 │   ├── xiaozhi-esp32/            # Pulled by fetch_repos.py (v2.2.4)

@@ -19,4 +19,4 @@ set(EXTRA_COMPONENT_DIRS
 
 set(COMPONENTS main)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(rosie_node)
+project(agent-a_node)

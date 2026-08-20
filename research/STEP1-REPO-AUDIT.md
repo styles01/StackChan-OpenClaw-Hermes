@@ -1,7 +1,7 @@
 # STEP 1 — Repo Audit: stackchan-node
 
 **Audit date:** 2026-08-19
-**Repo:** `/Volumes/1TBSSDClawd/stackchan-node` (GitHub: `styles01/StackChan-OpenClaw-Hermes`)
+**Repo:** `<repo-root>/stackchan-node` (GitHub: `styles01/StackChan-OpenClaw-Hermes`)
 **Branch:** `main`
 
 ---
@@ -95,20 +95,20 @@ The firmware and repos dirs are **deliberately not tracked** in this repo. They 
 | `e2e_test_harness.py` | 18KB | End-to-end test harness |
 | `native_test_harness.py` | 34KB | Native device test harness |
 | `test_agent_binding.py` | 36KB | **Strict agent binding validation** for OpenClaw + Hermes (36KB — the most substantial file) |
-| `workspace_write_test.py` | 8.7KB | Stack-chan → Rosie workspace file I/O test |
+| `workspace_write_test.py` | 8.7KB | Stack-chan → Agent A workspace file I/O test |
 | `web-config.html` | 24KB | **MODIFIED (unstaged)** — web config UI |
 | `index.html` | 232B | **UNTRACKED** |
 | `STACKCHAN_HANDSHAKE.txt` | 163B | Handshake marker (written by firmware→gateway test) |
 | `VALIDATION_RESULTS.md` | 2KB | Results |
 | `UX_REVIEW.md` | 23KB | **UNTRACKED** — UX review |
 
-**Key finding:** The test harness is the most mature code in the repo. `test_agent_binding.py` validates: OpenClaw/Rosie + Hermes/Venus HTTP endpoints, session-key persistence, agent isolation, auth rejection, session/channel headers, and the `/v1/models` endpoint. These tests were committed and are the "proof" of the binding mechanism.
+**Key finding:** The test harness is the most mature code in the repo. `test_agent_binding.py` validates: OpenClaw/Agent A + Hermes/Agent B HTTP endpoints, session-key persistence, agent isolation, auth rejection, session/channel headers, and the `/v1/models` endpoint. These tests were committed and are the "proof" of the binding mechanism.
 
 ### 2. `config-editor/` — REAL, WORKING CODE (Node.js)
 
 - `server.js` (4.4KB) — Express server on port 5570, proxies `/config` and `/config_set` to the robot over HTTP, saves config locally. Includes a JSON→YAML converter. **This is functional, self-contained, and commit-worthy.**
 - `public/` — `index.html`, `app.js`, `style.css` — web UI
-- `config.yaml` — current config (backend 0=OpenClaw, host 192.168.2.173, port 18789, model `openclaw/rosie`, agent `rosie`)
+- `config.yaml` — current config (backend 0=OpenClaw, host <your-server-ip>, port 18789, model `openclaw/agent-a`, agent `agent-a`)
 - `package.json` — express dependency only
 - `node_modules/` — installed (committed)
 
@@ -165,7 +165,7 @@ There are **two parallel firmware/back-end tracks** in progress:
 
 ## Test Harness (see Code Files above)
 
-Summary: **6 Python test files + web UI**, all functional and committed. `test_agent_binding.py` is the flagship — strict binding validation for both OpenClaw and Hermes agents, session persistence, agent isolation, auth rejection. `workspace_write_test.py` proves the full chain: firmware-sim → Gateway → Rosie → workspace file write.
+Summary: **6 Python test files + web UI**, all functional and committed. `test_agent_binding.py` is the flagship — strict binding validation for both OpenClaw and Hermes agents, session persistence, agent isolation, auth rejection. `workspace_write_test.py` proves the full chain: firmware-sim → Gateway → Agent A → workspace file write.
 
 ---
 

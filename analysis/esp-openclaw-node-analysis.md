@@ -1,8 +1,8 @@
 # Technical Analysis: `esp-openclaw-node`
 
-**Repo:** github.com/openclaw/esp-openclaw-node (local: `/Volumes/1TBSSDClawd/stackchan-node/repos/esp-openclaw-node`)
+**Repo:** github.com/openclaw/esp-openclaw-node (local: `<repo-root>/stackchan-node/repos/esp-openclaw-node`)
 **Analyzed:** 2026-08-17
-**Purpose:** Build a custom ESP32 OpenClaw node to replace the default Stack-chan chatbot firmware (target: M5Stack CoreS3 → "Rosie" node).
+**Purpose:** Build a custom ESP32 OpenClaw node to replace the default Stack-chan chatbot firmware (target: M5Stack CoreS3 → "Agent A" node).
 
 ---
 
@@ -15,7 +15,7 @@
 - **Target hardware:** ESP32 family — ESP32-S3 (Waveshare AMOLED room node), ESP32-P4 (M5Stack Tab5), generic ESP32/ESP32-C6 (esp32-node example), ESP-BOX-3.
 - **License:** Apache-2.0 (room-node has one Espressif-modified-MIT file for a pinned AEC closure).
 
-**Key architectural fact:** This is *not* a chatbot firmware. It is a **thin, gateway-owned device**. The device does **no LLM inference, no STT, no TTS locally**. It is a **WebRTC audio endpoint + command executor** that the OpenClaw Gateway (running on a PC/server) drives. The "brain" (LLM, STT, TTS, wake routing) lives on the Gateway and its providers. This is the opposite of Stack-chan's self-contained chatbot model — and it's exactly the model we want for a Rosie node.
+**Key architectural fact:** This is *not* a chatbot firmware. It is a **thin, gateway-owned device**. The device does **no LLM inference, no STT, no TTS locally**. It is a **WebRTC audio endpoint + command executor** that the OpenClaw Gateway (running on a PC/server) drives. The "brain" (LLM, STT, TTS, wake routing) lives on the Gateway and its providers. This is the opposite of Stack-chan's self-contained chatbot model — and it's exactly the model we want for a Agent A node.
 
 ### Repository layout
 - `components/esp-openclaw-node/` — core transport/pairing/command component (the reusable library).
@@ -149,7 +149,7 @@ This is the clever part. The device does **not** do WebRTC signaling itself. Ins
 - **Customization:** The model is **compiled in** (`CONFIG_SR_WN_WN9_HIESP=y`). The README explicitly notes: *"an arbitrary text trigger cannot replace a compiled local WakeNet model."* To change the wake word you must build with a different WakeNet model (esp-sr ships several: `wn9_hiesp`, `wn9_nihaoxiaoan`, `wn9_nihaotiancai`, etc.) or train a custom one. The wake callback is `room_afe_wake()` → `wake_callback("hiesp", ...)`.
 - **Behavior:** On wake, the room-node checks state (operator ready, no active call/camera), sets UI to CONNECTING, plays a "surprise" face gesture, and notifies the talk-start worker to open a Talk session.
 - **Gateway routing:** The Gateway can push `voicewake.changed` events, but the *local* trigger is always the compiled WakeNet model. (A console `wake` command simulates the wake word for testing.)
-- **For Rosie:** If we want a custom wake word (e.g. "Rosie"), we'd need to either (a) use a different prebuilt WakeNet model, (b) train/customize a WakeNet model via Espressif's tooling, or (c) keep "Hi ESP" and rely on the Gateway for routing. This is the main customization constraint.
+- **For Agent A:** If we want a custom wake word (e.g. "Agent A"), we'd need to either (a) use a different prebuilt WakeNet model, (b) train/customize a WakeNet model via Espressif's tooling, or (c) keep "Hi ESP" and rely on the Gateway for routing. This is the main customization constraint.
 
 ---
 
@@ -189,7 +189,7 @@ This is the clever part. The device does **not** do WebRTC signaling itself. Ins
 
 2. **`components/esp-openclaw-node/src/esp_openclaw_node_protocol.c`** (34 KB) — The OpenClaw wire protocol: `connect.challenge` signing, `connect` request construction, `hello-ok` handling, `node.invoke.request` dispatch, `node.invoke.result` replies, gateway RPCs. The heart of OpenClaw integration.
 
-3. **`components/esp-openclaw-room-node/esp_openclaw_room_node.c`** (50 KB) — The canonical product: dual node/operator sessions, Talk lifecycle state machine, wake-word → Talk flow, reconnect policy, command registration, camera serialization, diagnostics. The blueprint for a Rosie room node.
+3. **`components/esp-openclaw-room-node/esp_openclaw_room_node.c`** (50 KB) — The canonical product: dual node/operator sessions, Talk lifecycle state machine, wake-word → Talk flow, reconnect policy, command registration, camera serialization, diagnostics. The blueprint for a Agent A room node.
 
 4. **`components/esp-openclaw-room-node/room_media.c`** — The audio pipeline: AFE/AEC capture source, WakeNet ambient wake, Opus Talk sink, av_render player with render tap (face mouth), ambient↔Talk capture ownership switching. Everything about audio/wake.
 
@@ -199,9 +199,9 @@ This is the clever part. The device does **not** do WebRTC signaling itself. Ins
 
 ---
 
-## 11. What We Can Steal for the Stack-chan → Rosie Node
+## 11. What We Can Steal for the Stack-chan → Agent A Node
 
-This repo is essentially a **turnkey OpenClaw voice-node reference design**. For a CoreS3-based Rosie node, the highest-value reuse:
+This repo is essentially a **turnkey OpenClaw voice-node reference design**. For a CoreS3-based Agent A node, the highest-value reuse:
 
 1. **The entire `esp-openclaw-node` core component** — WebSocket transport, Ed25519 identity, pairing, saved-session reconnect, command dispatch. Use it verbatim (it's a published ESP-IDF component, `espressif`-managed deps). Zero reason to reimplement.
 
@@ -221,13 +221,13 @@ This repo is essentially a **turnkey OpenClaw voice-node reference design**. For
 
 ### What we must build / customize ourselves
 - **A new board port** (`examples/m5stack-cores3-room-node/`) filling the port struct — this is the main engineering work, but it's *thin* (the Waveshare port is ~300 lines of board code).
-- **Wake word:** decide on "Hi ESP" (free, works) vs. a custom "Rosie" WakeNet model (needs Espressif model tooling / training). This is the one hard customization constraint.
+- **Wake word:** decide on "Hi ESP" (free, works) vs. a custom "Agent A" WakeNet model (needs Espressif model tooling / training). This is the one hard customization constraint.
 - **Face/UI tuning** for the small 320×240 CoreS3 screen (safe_inset, Canvas layout, face geometry).
 - **Stack-chan-specific hardware** (servo/neck, if we keep it) — the room-node has no servo support; we'd add a `servo.*` command via the board's `register_commands` hook.
 - **Gateway-side config:** `gateway.bind lan`, command allowlist, and a Gateway that supports `gateway-control-v1` Talk.
 
 ### Key architectural decision to carry forward
-**The device is a gateway-owned thin client, not a self-contained chatbot.** All intelligence (LLM, STT, TTS, wake routing) lives on the OpenClaw Gateway. This is a fundamentally different (and more powerful) model than Stack-chan's on-device chatbot — Rosie becomes a voice/display/actuator endpoint in the OpenClaw network, with the full agent toolchain available. We should embrace this rather than try to replicate Stack-chan's local-chatbot behavior.
+**The device is a gateway-owned thin client, not a self-contained chatbot.** All intelligence (LLM, STT, TTS, wake routing) lives on the OpenClaw Gateway. This is a fundamentally different (and more powerful) model than Stack-chan's on-device chatbot — Agent A becomes a voice/display/actuator endpoint in the OpenClaw network, with the full agent toolchain available. We should embrace this rather than try to replicate Stack-chan's local-chatbot behavior.
 
 ---
 

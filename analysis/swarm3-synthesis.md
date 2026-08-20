@@ -105,7 +105,7 @@ The BRIEF describes TWO contradictory response formats:
 | 22 | Repo name oversells Hermes — rename now | gamma | HIGH |
 | 23 | "No API keys on device" is the strongest selling point — lead with it | gamma | HIGH |
 | 24 | "Pilot for Larry" framing is a liability for community adoption | gamma | HIGH |
-| 25 | Ship agent template, keep Larry/Rosie personalities private | gamma | MEDIUM |
+| 25 | Ship agent template, keep Larry/Agent A personalities private | gamma | MEDIUM |
 | 26 | Gateway tools → robot actions is the best demo — spell it out in README | gamma | MEDIUM |
 
 ### Future: Streaming (James's v3 vision)

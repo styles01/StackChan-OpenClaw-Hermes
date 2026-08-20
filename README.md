@@ -41,15 +41,15 @@ Each Stack-chan has a **profile** that binds it to a specific backend + agent:
 
 | Robot | Backend | Agent | Port | Session Key |
 |-------|---------|-------|------|------------|
-| Robot A | OpenClaw | Rosie (household ops) | 18789 | `agent:rosie:stackchan:robot-a` |
-| Robot B | Hermes | Venus (product strategy) | 8643 | `venus-stackchan:robot-b` |
+| Robot A | OpenClaw | Agent A (household ops) | 18789 | `agent:agent-a:stackchan:robot-a` |
+| Robot B | Hermes | Agent B (product strategy) | 8643 | `agent-b-stackchan:robot-b` |
 | Robot C | OpenClaw | custom agent | 18789 | `agent:custom:stackchan:robot-c` |
 
 Profiles are configured via BLE provisioning or the web config editor — no reflashing needed. The `backend` field in config selects OpenClaw (0) or Hermes (1), and the agent binding headers/routes follow accordingly.
 
 ### Why Both Backends?
 
-OpenClaw and Hermes have different strengths. OpenClaw gives agents workspace file I/O, channel persistence, and tool use. Hermes gives agents voice-first interaction, MCP tools, and a TUI dashboard. Some robots serve as household assistants (OpenClaw/Rosie), others as research companions (Hermes/Venus). Profile binding lets one fleet of robots span both worlds.
+OpenClaw and Hermes have different strengths. OpenClaw gives agents workspace file I/O, channel persistence, and tool use. Hermes gives agents voice-first interaction, MCP tools, and a TUI dashboard. Some robots serve as household assistants (OpenClaw/Agent A), others as research companions (Hermes/Agent B). Profile binding lets one fleet of robots span both worlds.
 
 ## What We Built
 
@@ -65,13 +65,13 @@ Extended the Stack-chan ESP32 firmware to talk to the OpenClaw Gateway instead o
 
 ```cpp
 // Firmware config struct (StackchanExConfig.h)
-// Replace "rosie" with your agent's id
+// Replace "agent-a" with your agent's id
 struct openclaw_s {
   String host;
   uint16_t port;
-  String agent_id;      // e.g. "rosie"
+  String agent_id;      // e.g. "agent-a"
   String bot_token;     // Gateway auth
-  String default_model; // e.g. "openclaw/rosie"
+  String default_model; // e.g. "openclaw/agent-a"
 };
 ```
 
@@ -131,7 +131,7 @@ ESP32 Stack-chan                    ai-server (bridge)                 HermesAge
 └─────────────┘  Opus audio stream  └──────────────┘  message.done   └─────────────┘
 ```
 
-- Dedicated port per profile (Venus on 8643)
+- Dedicated port per profile (Agent B on 8643)
 - Auth: `Authorization: Bearer <profile_api_key>`
 - Session: `X-Hermes-Session-Key: <agent>-stackchan-<device>`
 - MCP tools: `stackchan_take_photo`, `stackchan_set_head_angles`, `stackchan_set_led_color`, etc.
@@ -168,7 +168,7 @@ OpenClaw channels (Telegram, Discord, WhatsApp) have **stable identities** that 
 
 ### Key Findings
 
-- **`model: openclaw/rosie`** routes to the target agent with full workspace access (read + write) ✅
+- **`model: openclaw/agent-a`** routes to the target agent with full workspace access (read + write) ✅
 - **`user: "stackchan:<device_id>"`** creates persistent agent-bound sessions ✅
 - **Bare session keys route to the wrong agent** — `x-openclaw-session-key: stackchan:*` gets re-scoped to the default agent. Must use agent-prefixed key: `agent:<agent_id>:stackchan:*` ✅
 - **4am reset rotates `sessionId`, not `sessionKey`** — the channel identity and session key survive, only the conversation context resets. This is by design (dreaming/compaction). ✅
@@ -182,18 +182,18 @@ The firmware has **three development paths**. The official M5Stack firmware uses
 
 The official [m5stack/StackChan](https://github.com/m5stack/StackChan) firmware is **native ESP-IDF (C++)**, NOT Arduino/PlatformIO. It's a fork of xiaozhi-esp32 v2.2.4. Firmware version: 1.4.3.
 
-**Toolchain:** ESP-IDF v5.5.4 (installed at `/Volumes/1TBSSDClawd/esp-idf/`)
+**Toolchain:** ESP-IDF v5.5.4 (installed at `<repo-root>/esp-idf/`)
 
 ```bash
 # Activate ESP-IDF (must be in same shell as build/flash)
-export IDF_PATH=/Volumes/1TBSSDClawd/esp-idf
+export IDF_PATH=<repo-root>/esp-idf
 . "$IDF_PATH/export.sh"
 
-cd /Volumes/1TBSSDClawd/stackchan-node/repos/StackChan/firmware
+cd <repo-root>/stackchan-node/repos/StackChan/firmware
 idf.py set-target esp32s3                     # first time only
 python3 ./fetch_repos.py                      # fetch deps
 idf.py build                                  # build (~2 min, 2493 steps)
-idf.py -p /dev/cu.usbmodem211301 flash         # flash (~30 sec)
+idf.py -p /dev/cu.usbmodemXXXX flash         # flash (~30 sec)
 
 # Host-side tests (NO HARDWARE NEEDED — just CMake!)
 cmake -S tests -B build-host-tests
@@ -206,12 +206,12 @@ ctest --test-dir build-host-tests --output-on-failure
 **Dependencies:** mooncake v2.3.3, xiaozhi-esp32 v2.2.4 (patched), ArduinoJson v7.4.2, esp-now, smooth_ui_toolkit v2.12.0
 **AI layer:** xiaozhi-esp32 v2.2.4 — WebSocket/MQTT client to XiaoZhi cloud. This is the integration point for OpenClaw.
 
-**Factory restore:** `/Volumes/1TBSSDClawd/stackchan-node/backups/cores3_factory_uiflow2_v2.5.1.bin`
+**Factory restore:** `<repo-root>/stackchan-node/backups/cores3_factory_uiflow2_v2.5.1.bin`
 ```bash
-esptool.py --chip esp32s3 -p /dev/cu.usbmodem211301 -b 460800 \
+esptool.py --chip esp32s3 -p /dev/cu.usbmodemXXXX -b 460800 \
   --before=default_reset --after=hard_reset \
   write_flash --flash_mode dio --flash_size 16MB --flash_freq 80m \
-  0x0 /Volumes/1TBSSDClawd/stackchan-node/backups/cores3_factory_uiflow2_v2.5.1.bin
+  0x0 <repo-root>/stackchan-node/backups/cores3_factory_uiflow2_v2.5.1.bin
 ```
 
 ### Path 2: UIFlow2 Python (Recommended for rapid development)
@@ -250,9 +250,9 @@ The firmware lives in a fork of [plaipin-openclaw-stackchan](https://github.com/
 openclaw:
   host: "192.168.x.x"     # Gateway host (LAN or tailnet)
   port: 18789              # Gateway port
-  agent_id: "rosie"        # Your agent's id
+  agent_id: "agent-a"        # Your agent's id
   bot_token: "..."         # Gateway auth token
-  default_model: "openclaw/rosie"  # openclaw/<agent_id>
+  default_model: "openclaw/agent-a"  # openclaw/<agent_id>
 hermes:
   host: ""
   port: 0
@@ -302,13 +302,13 @@ python3 test-harness/workspace_write_test.py
 |---|---|---|---|
 | Agent binding (strict) | 12 | 12 ✅ | ~2min |
 
-All 12 tests use strict identity validation: Rosie must say "rosie", Venus must say "venus", session persistence must contain "testbot". No false positives.
+All 12 tests use strict identity validation: Agent A must say "agent-a", Agent B must say "agent-b", session persistence must contain "testbot". No false positives.
 
 ```bash
 # Run all tests (requires live OpenClaw + Hermes gateways)
 python3 test-harness/test_agent_binding.py \
   --oc-key <gateway_password> \
-  --hermes-key <venus_api_key> \
+  --hermes-key <agent_b_api_key> \
   --hermes-url http://127.0.0.1:8643
 
 # Unit tests only (no network)
@@ -347,19 +347,19 @@ Deep research into OpenClaw's channel plugin architecture, session lifecycle, an
 - Research phase 2 — 5 deep code reads
 - API reference — both Option A (multiplex) and Option B (dedicated port) documented
 - Code review V2 — 4 critical, 8 recommended findings (see `CODE_REVIEW_V2.md`)
-- Hermes Venus setup — dedicated port 8643 with own API key (Option B)
+- Hermes Agent B setup — dedicated port 8643 with own API key (Option B)
 - Official ESP-IDF firmware built + flashed (v1.4.3, working on CoreS3)
 - Working reference repos collected (5 repos in `repos/working-repos/`)
 - **Hermes-StackChan reference** — circlemouth fork analyzed as primary architecture reference
-- **Profile binding validated** — Rosie on OpenClaw:18789, Venus on Hermes:8643, strict identity tests pass
+- **Profile binding validated** — Agent A on OpenClaw:18789, Agent B on Hermes:8643, strict identity tests pass
 - **Three-repo merge** — official v1.4.3 + circlemouth ai-server + plaipin config layer
-- **Web config server** — GET/POST /config on device port 80, HTML editor, mDNS (`clawdio-mini.local`)
-- **Device connected to ai-server** — full chain: device → mDNS → WS → ai-server → OpenClaw → Rosie
+- **Web config server** — GET/POST /config on device port 80, HTML editor, mDNS (`<your-host>.local`)
+- **Device connected to ai-server** — full chain: device → mDNS → WS → ai-server → OpenClaw → Agent A
 - **English voice** — TTS (`en-GB-LibbyNeural`), STT (faster-whisper, English), English fast-acks
 - **OpenClaw auth** — Bearer token working, HTTP 200
 - **Firmware crash fixed** — WiFi power save + TCP reconnect cleanup, 61KB free SRAM (up from 29KB)
 - **Device talks and survives** — full conversation cycles: listening → speaking → listening (no crash!)
-- **Custom wake word** — "Hey Rosie" WakeNet9 model trained on DGX Spark, flashed to model partition
+- **Custom wake word** — "Hey Agent A" WakeNet9 model trained on DGX Spark, flashed to model partition
 - **Compiled-in wake word disabled** — firmware uses our custom model, not the stock "Hi Stack Chan"
 - **Volume control fixed** — correct MCP tool name (`self.audio_speaker.set_volume`), boot volume boost on connect
 - **Response truncation fixed** — streaming segment alignment bug found and fixed, full sentences now speak
@@ -373,7 +373,7 @@ Deep research into OpenClaw's channel plugin architecture, session lifecycle, an
 - **R1:** Cap `chatHistory` length (prevent unbounded growth)
 - **R2:** Add mutex around chat/speech (thread safety)
 - **STT/VAD tuning** — raise VAD threshold (0.025 too low), increase max duration, fix segment limit (1 sentence cut-off)
-- **Wake word** — submit Espressif request for "Hey Rosie" custom WakeNet, or use "Hey, Ivy" temporarily
+- **Wake word** — submit Espressif request for "Hey Agent A" custom WakeNet, or use "Hey, Ivy" temporarily
 - **POST /config crash** — 16384 stack built but untested (device was disconnected)
 - **P1:** Fix PlatformIO build: `board = esp32-s3-devkitc-1`, add `-mfix-esp32-psram-cache-issue -DESP32S3 -DBOARD_HAS_PSRAM`, update M5Unified to `^0.2.20`
 - **P2:** Or migrate to official ESP-IDF build system (recommended)

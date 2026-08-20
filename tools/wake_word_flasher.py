@@ -13,7 +13,7 @@ Three modes:
 Usage:
   python3 wake_word_flasher.py list
   python3 wake_word_flasher.py pack --model wn9_heyivy_tts2
-  python3 wake_word_flasher.py flash --model wn9_heyivy_tts2 [--port /dev/cu.usbmodem211301]
+  python3 wake_word_flasher.py flash --model wn9_heyivy_tts2 [--port /dev/cu.usbmodemXXXX]
   python3 wake_word_flasher.py sdcard --model wn9_heyivy_tts2 --output /sdcard-models/
 
 Available English models:
@@ -203,7 +203,7 @@ def cmd_pack(args):
 def cmd_flash(args):
     """Pack and flash a wake word model to the device."""
     model_id = args.model
-    port = args.port or "/dev/cu.usbmodem211301"
+    port = args.port or "/dev/cu.usbmodemXXXX"
     model_path = os.path.join(ESP_SR_MODELS, model_id)
 
     if not os.path.exists(model_path):
@@ -219,14 +219,14 @@ def cmd_flash(args):
     esptool = shutil.which("esptool.py") or shutil.which("esptool")
     if not esptool:
         # Try ESP-IDF's esptool
-        idf_path = os.environ.get("IDF_PATH", "/Volumes/1TBSSDClawd/esp-idf")
+        idf_path = os.environ.get("IDF_PATH", "<repo-root>/esp-idf")
         esptool_py = os.path.join(os.path.expanduser("~/.espressif/python_env/idf5.5_py3.9_env"),
                                   "bin", "esptool.py")
         if os.path.exists(esptool_py):
             esptool = esptool_py
         else:
             print(f"❌ esptool not found. Activate ESP-IDF first:")
-            print(f"   export IDF_PATH=/Volumes/1TBSSDClawd/esp-idf")
+            print(f"   export IDF_PATH=<repo-root>/esp-idf")
             print(f"   . $IDF_PATH/export.sh")
             sys.exit(1)
 
@@ -329,7 +329,7 @@ def main():
     # flash
     p_flash = sub.add_parser("flash", help="Pack and flash a model to the device")
     p_flash.add_argument("--model", required=True, help="Model ID (e.g. wn9_heyivy_tts2)")
-    p_flash.add_argument("--port", default="/dev/cu.usbmodem211301", help="Serial port")
+    p_flash.add_argument("--port", default="/dev/cu.usbmodemXXXX", help="Serial port")
 
     # sdcard
     p_sd = sub.add_parser("sdcard", help="Generate SD card folder format")

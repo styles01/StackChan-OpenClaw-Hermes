@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Rosie MCP Server for Stack-chan via xiaozhi.me broker.
+Agent A MCP Server for Stack-chan via xiaozhi.me broker.
 
 The xiaozhi.me broker connects Stack-chan (ESP32-S3 robot) to us.
-We are the MCP SERVER — we expose Rosie's household tools to the robot.
-The robot becomes a physical node of Rosie — it can ask about household
+We are the MCP SERVER — we expose Agent A's household tools to the robot.
+The robot becomes a physical node of Agent A — it can ask about household
 status, send messages, check the printer, update the fridge dashboard, etc.
 
 Architecture:
@@ -12,7 +12,7 @@ Architecture:
         ↕ WebSocket (xiaozhi-esp32 firmware)
     xiaozhi.me Cloud MCP Broker
         ↕ WSS (MCP protocol — broker is client, we are server)
-    Rosie MCP Server (this script, on Clawdio-Mini)
+    Agent A MCP Server (this script, on <your-host>)
         ↕ subprocess/MQTT/API calls
     Household systems (printer, fridge, Telegram, memory, calendar)
 
@@ -57,11 +57,11 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%H:%M:%S"
 )
-log = logging.getLogger("rosie-stackchan")
+log = logging.getLogger("agent-a-stackchan")
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 
-WORKSPACE = "<your-home>/openclaw-workspaces/rosie"
+WORKSPACE = "<your-home>/openclaw-workspaces/agent-a"
 TTS_SCRIPT = "<your-home>/.openclaw/workspace/tts-machine/run_tts.py"
 BAMBU_ACCESS_CODE_FILE = "<your-home>/.config/bambu/a1mini-access-code.txt"
 FRIDGE_DATA_DIR = os.path.expanduser("~/.hermes/workspace/eink-fridge/data")
@@ -77,8 +77,8 @@ CHAT_IDS = {
 
 ROSIE_TOOLS = [
     {
-        "name": "rosie_status",
-        "description": "Get Rosie's household status summary — chores, printer, weather, and upcoming events.",
+        "name": "agent-a_status",
+        "description": "Get Agent A's household status summary — chores, printer, weather, and upcoming events.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -87,8 +87,8 @@ ROSIE_TOOLS = [
         }
     },
     {
-        "name": "rosie_say",
-        "description": "Have Rosie send a voice note or text message to James, Gabby, or the household group via Telegram.",
+        "name": "agent-a_say",
+        "description": "Have Agent A send a voice note or text message to James, Gabby, or the household group via Telegram.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -100,12 +100,12 @@ ROSIE_TOOLS = [
         }
     },
     {
-        "name": "rosie_printer_status",
+        "name": "agent-a_printer_status",
         "description": "Check the 3D printer (Bambu Lab A1 Mini) status — state, progress, temperatures, errors.",
         "inputSchema": {"type": "object", "properties": {}}
     },
     {
-        "name": "rosie_fridge_update",
+        "name": "agent-a_fridge_update",
         "description": "Update the fridge E-Ink dashboard with notes or todos.",
         "inputSchema": {
             "type": "object",
@@ -118,8 +118,8 @@ ROSIE_TOOLS = [
         }
     },
     {
-        "name": "rosie_memory",
-        "description": "Search Rosie's memory for household information, preferences, or past events.",
+        "name": "agent-a_memory",
+        "description": "Search Agent A's memory for household information, preferences, or past events.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -129,12 +129,12 @@ ROSIE_TOOLS = [
         }
     },
     {
-        "name": "rosie_time",
+        "name": "agent-a_time",
         "description": "Get the current time and date in the household timezone (Eastern Time).",
         "inputSchema": {"type": "object", "properties": {}}
     },
     {
-        "name": "rosie_echo",
+        "name": "agent-a_echo",
         "description": "Simple echo tool for testing connectivity. Returns what you send.",
         "inputSchema": {
             "type": "object",
@@ -147,33 +147,33 @@ ROSIE_TOOLS = [
 # ─── Tool Handlers ────────────────────────────────────────────────────────────
 
 async def handle_tool_call(name, args):
-    """Execute a Rosie tool and return the result as a string."""
+    """Execute a Agent A tool and return the result as a string."""
     log.info(f"Tool call: {name} args={json.dumps(args)[:200]}")
 
-    if name == "rosie_echo":
-        return f"Rosie says: {args.get('text', '...')} 👋"
+    if name == "agent-a_echo":
+        return f"Agent A says: {args.get('text', '...')} 👋"
 
-    if name == "rosie_time":
+    if name == "agent-a_time":
         now = datetime.datetime.now()
         return f"Household time (ET): {now.strftime('%I:%M %p on %A, %B %d, %Y')}"
 
-    if name == "rosie_status":
+    if name == "agent-a_status":
         detail = args.get("detail", "brief")
         now = datetime.datetime.now()
         baby_days = (now - datetime.datetime(2026, 8, 1)).days
         if detail == "brief":
-            return f"Rosie online. Household time: {now.strftime('%I:%M %p ET, %A')}. Baby is {baby_days} days old. All systems nominal, darling."
+            return f"Agent A online. Household time: {now.strftime('%I:%M %p ET, %A')}. Baby is {baby_days} days old. All systems nominal, darling."
         else:
             return (
-                f"Rosie Household Status Report\n"
+                f"Agent A Household Status Report\n"
                 f"Time: {now.strftime('%I:%M %p ET, %A %B %d')}\n"
                 f"Baby: {baby_days} days old\n"
                 f"Postpartum tips: Running daily at 7 AM ET\n"
-                f"3D Printer: Use rosie_printer_status for details\n"
+                f"3D Printer: Use agent-a_printer_status for details\n"
                 f"Status: All systems nominal, darling."
             )
 
-    if name == "rosie_say":
+    if name == "agent-a_say":
         msg = args.get("message", "")
         target = args.get("target", "james")
         voice = args.get("voice", False)
@@ -183,7 +183,7 @@ async def handle_tool_call(name, args):
             try:
                 result = subprocess.run(
                     ["python3", TTS_SCRIPT, msg,
-                     "--agent", "rosie", "--send-telegram", "--chat-id", chat_id],
+                     "--agent", "agent-a", "--send-telegram", "--chat-id", chat_id],
                     capture_output=True, text=True, timeout=30
                 )
                 if result.returncode == 0:
@@ -197,7 +197,7 @@ async def handle_tool_call(name, args):
             try:
                 result = subprocess.run(
                     ["openclaw", "message", "send",
-                     "--account", "rosie", "--channel", "telegram",
+                     "--account", "agent-a", "--channel", "telegram",
                      "--target", chat_id, "--message", msg],
                     capture_output=True, text=True, timeout=15
                 )
@@ -208,7 +208,7 @@ async def handle_tool_call(name, args):
             except Exception as e:
                 return f"Text message error: {e}"
 
-    if name == "rosie_printer_status":
+    if name == "agent-a_printer_status":
         try:
             result = subprocess.run(
                 ["python3", "-c", '''
@@ -224,7 +224,7 @@ def on_msg(c,u,m):
     d = json.loads(m.payload)
     if "print" in d and d["print"].get("command")=="push_status" and len(d["print"])>30:
         got.append(d["print"])
-cli = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="rosie_sc")
+cli = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="agent-a_sc")
 cli.username_pw_set("bblp", ACCESS_CODE)
 cli.on_connect = on_connect
 cli.on_message = on_msg
@@ -255,7 +255,7 @@ else:
         except Exception as e:
             return f"Printer error: {e}"
 
-    if name == "rosie_fridge_update":
+    if name == "agent-a_fridge_update":
         action = args.get("action", "add")
         item_type = args.get("type", "note")
         text = args.get("text", "")
@@ -278,7 +278,7 @@ else:
 
         return f"Fridge {action} {item_type}: needs text for add/remove"
 
-    if name == "rosie_memory":
+    if name == "agent-a_memory":
         query = args.get("query", "")
         try:
             result = subprocess.run(
@@ -312,17 +312,17 @@ async def handle_message(ws, data):
                     "roots": {"listChanged": False}
                 },
                 "serverInfo": {
-                    "name": "rosie-household-ops",
+                    "name": "agent-a-household-ops",
                     "version": "1.0.0",
-                    "description": "Rosie — Household Operations Director. Manages chores, printer, fridge dashboard, reminders, and family logistics."
+                    "description": "Agent A — Household Operations Director. Manages chores, printer, fridge dashboard, reminders, and family logistics."
                 }
             }
         }
         await ws.send(json.dumps(resp))
-        log.info("initialize → sent server info (Rosie v1.0.0)")
+        log.info("initialize → sent server info (Agent A v1.0.0)")
 
     elif method == "notifications/initialized":
-        log.info("Broker confirmed initialization — Rosie tools are live!")
+        log.info("Broker confirmed initialization — Agent A tools are live!")
 
     elif method == "tools/list":
         resp = {
@@ -371,7 +371,7 @@ async def run():
         log.error("No STACKCHAN_TOKEN set! Put it in .env or environment.")
         return
 
-    log.info("🤖 Rosie MCP Server for Stack-chan")
+    log.info("🤖 Agent A MCP Server for Stack-chan")
     log.info(f"   Connecting to xiaozhi.me broker...")
 
     while True:

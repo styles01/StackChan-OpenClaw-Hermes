@@ -1,4 +1,4 @@
-# Adversarial Review: Stack-chan → Rosie OpenClaw Node
+# Adversarial Review: Stack-chan → Agent A OpenClaw Node
 
 **Reviewer:** Senior embedded systems engineer (adversarial)
 **Date:** 2026-08-17
@@ -42,10 +42,10 @@ zclaw is text-only (no audio, no wake word, no MCP, no OpenClaw). The plan's "sm
 ### 3.1 ❌ WRONG PORT: The Gateway is on 18789, not 19001
 **Evidence:** The live gateway listens on `*:18789` (`lsof`), config `gateway.port = 18789`, and `openclaw.json` has `"port": 18789`. Port **19001 is the `--dev` profile default** (`dist/cli-startup-metadata.json`: "default gateway port 19001"), not the production port. The plan's architecture diagram (`ws://gateway:19001`), BUILD_PLAN (`ws://host:19001`), and TODO (`ws://localhost:19001`) are all wrong.
 
-**Fix:** Use `ws://<Clawdio-Mini-LAN-IP>:18789`. The gateway is bound to `lan` and listening on all interfaces, so it's reachable over Wi-Fi. Generate the setup code with `openclaw qr --voice-node --setup-code-only` (the Waveshare README documents this exact flow) — the setup code embeds the correct URL, so the firmware doesn't hardcode the port.
+**Fix:** Use `ws://<<your-host>-LAN-IP>:18789`. The gateway is bound to `lan` and listening on all interfaces, so it's reachable over Wi-Fi. Generate the setup code with `openclaw qr --voice-node --setup-code-only` (the Waveshare README documents this exact flow) — the setup code embeds the correct URL, so the firmware doesn't hardcode the port.
 
 ### 3.2 ❌ WRONG AUTH MODEL: The gateway uses password auth, and `gateway.nodes.commands.allow` is unset
-**Evidence:** `openclaw.json` has `"auth": {"mode": "password", "password": "clawdiomax"}`. The esp-openclaw-node supports `gateway password <ws://host:port> <password>` (documented in `docs/getting-started.md`), so this is workable — but the plan's pairing flow only mentions setup codes and never accounts for the password auth mode. Worse, `gateway.nodes.commands.allow` is **not set** (only `denyCommands` is). The esp-openclaw-node getting-started doc explicitly warns: "If the gateway does not allow the example's commands, the node can connect and still show `commands: []`."
+**Evidence:** `openclaw.json` has `"auth": {"mode": "password", "password": "<your-gateway-password>"}`. The esp-openclaw-node supports `gateway password <ws://host:port> <password>` (documented in `docs/getting-started.md`), so this is workable — but the plan's pairing flow only mentions setup codes and never accounts for the password auth mode. Worse, `gateway.nodes.commands.allow` is **not set** (only `denyCommands` is). The esp-openclaw-node getting-started doc explicitly warns: "If the gateway does not allow the example's commands, the node can connect and still show `commands: []`."
 
 **Fix:** Before pairing, run `openclaw config set gateway.nodes.commands.allow '<json-array-from-example>' --strict-json` and `openclaw gateway restart`. Decide the auth path: either use a setup code (requires the gateway to issue one) or the password mode. The plan must add this as an explicit Phase-1 step, not leave it implicit.
 
@@ -87,17 +87,17 @@ The **port contract** (the `esp_openclaw_room_node_config_t` struct) is 100% reu
 
 **Fix:** Re-baseline to **2–3 weeks** of focused work, with the wake word as a parallel/decoupled track (see §3.6).
 
-### 3.6 ❌ WRONG: "Custom Hey Rosie wake word via ESP-SR" is a 2–5 hour task — it's a research + external-vendor problem
-**Evidence:** There is **no self-service online generator** for ESP-SR custom wake words. The ESP-SR customization process is a **submission to Espressif** — the official path is the GitHub issue "Want to suggest a wake word?" (`espressif/esp-sr#88`, still open and updated 2026-08-17) or an application form. Espressif trains the model for you; there is turnaround time and no guarantee they accept "Hey Rosie" (English, non-standard). The esp-openclaw-node README itself states: "an arbitrary text trigger cannot replace a compiled local WakeNet model."
+### 3.6 ❌ WRONG: "Custom Hey Agent A wake word via ESP-SR" is a 2–5 hour task — it's a research + external-vendor problem
+**Evidence:** There is **no self-service online generator** for ESP-SR custom wake words. The ESP-SR customization process is a **submission to Espressif** — the official path is the GitHub issue "Want to suggest a wake word?" (`espressif/esp-sr#88`, still open and updated 2026-08-17) or an application form. Espressif trains the model for you; there is turnaround time and no guarantee they accept "Hey Agent A" (English, non-standard). The esp-openclaw-node README itself states: "an arbitrary text trigger cannot replace a compiled local WakeNet model."
 
 **What's actually available:**
-- **Pre-trained WakeNet models** ship with esp-sr (e.g. `wn9_hiesp`, `wn9_nihaoxiaoan`, `wn9_jarvis_tts`). None is "Hey Rosie."
+- **Pre-trained WakeNet models** ship with esp-sr (e.g. `wn9_hiesp`, `wn9_nihaoxiaoan`, `wn9_jarvis_tts`). None is "Hey Agent A."
 - **MultiNet** (the `USE_CUSTOM_WAKE_WORD` path) supports up to 200 command words and is the xiaozhi-assets-generator flow — but the model must still be trained externally (via the assets generator / Espressif tooling).
 - **The StackChan firmware already has a custom model** (`HISTACKCHAN_TTS3` = "Hi StackChan") — proof it's possible, but it was trained by/for M5Stack, not self-served.
 
 **Fix:** Treat the wake word as a **decoupled research track with a fallback**, not a Phase-3 task:
 1. **Immediate (works today):** Ship with a stock WakeNet model (`wn9_hiesp` = "Hi ESP") or the StackChan `HISTACKCHAN_TTS3` ("Hi StackChan") to get the device working end-to-end. Change the wake callback string in `room_media.c:61` (`wake_callback("hiesp", ...)`) to match.
-2. **Parallel research:** Submit "Hey Rosie" to Espressif (issue #88 / application form) and/or evaluate the `xiaozhi-assets-generator` MultiNet flow. This is a **days-to-weeks external dependency**, not 2–5 hours.
+2. **Parallel research:** Submit "Hey Agent A" to Espressif (issue #88 / application form) and/or evaluate the `xiaozhi-assets-generator` MultiNet flow. This is a **days-to-weeks external dependency**, not 2–5 hours.
 3. **Fallback:** Keep "Hi StackChan" or "Hi ESP" and rely on the Gateway for routing (the room-node already handles `voicewake.changed` events). This is a perfectly acceptable v1.
 
 ---
@@ -128,7 +128,7 @@ The StackChan servos use **UART1** (GPIO6/7, `_scs_bus.begin(UART_NUM_1, 1000000
 
 ### 5.3 ✅ Gateway connection — the protocol is supported, but the port is 18789 (not 19001) and auth is password (see §3.1, §3.2). The "verify ws://localhost:19001" TODO is testing the wrong port.
 
-### 5.4 ✅ Wake word model generation — there is NO online self-service generator; it's a submission to Espressif (see §3.6). The "research if Espressif has an online generator" TODO is answered: **it does not.** Use a stock model + fallback, and submit "Hey Rosie" as a parallel track.
+### 5.4 ✅ Wake word model generation — there is NO online self-service generator; it's a submission to Espressif (see §3.6). The "research if Espressif has an online generator" TODO is answered: **it does not.** Use a stock model + fallback, and submit "Hey Agent A" as a parallel track.
 
 ---
 
@@ -147,10 +147,10 @@ esp-openclaw-node's room-node already has a procedural LVGL face (`room_face.c`)
 The room-node has `esp_openclaw_room_node_try_acquire_camera()` / `release_camera()` to serialize camera capture against Talk media. The StackChan camera code doesn't know about this. If you add camera vision while a voice call is active, you can corrupt the audio pipeline. **Mitigation:** wire the camera capture through the room-node's camera-acquire/release API.
 
 ### 6.5 ⚠️ The gateway's `denyCommands` blocks `camera.snap`/`camera.clip`
-The live gateway config denies `camera.snap` and `camera.clip`. If the plan's "Show me [image]" → camera capture feature relies on a `camera.*` command, it will be blocked. **Mitigation:** either remove those from `denyCommands` or use a differently-named custom command (e.g. `rosie.vision`) via the board's `register_commands` hook.
+The live gateway config denies `camera.snap` and `camera.clip`. If the plan's "Show me [image]" → camera capture feature relies on a `camera.*` command, it will be blocked. **Mitigation:** either remove those from `denyCommands` or use a differently-named custom command (e.g. `agent-a.vision`) via the board's `register_commands` hook.
 
 ### 6.6 ⚠️ No OTA/rollback plan for the new firmware
-The StackChan firmware has dual-OTA + rollback (`CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE`). The plan doesn't mention OTA for the new `rosie-node`. For a physical device you'll iterate on, a bricked flash is a real risk. **Mitigation:** keep the dual-OTA partition table and rollback from the start.
+The StackChan firmware has dual-OTA + rollback (`CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE`). The plan doesn't mention OTA for the new `agent-node`. For a physical device you'll iterate on, a bricked flash is a real risk. **Mitigation:** keep the dual-OTA partition table and rollback from the start.
 
 ### 6.7 ⚠️ The `server.py` MCP fallback is a trap
 ADR-004 keeps `server.py` as a fallback. But the xiaozhi cloud path (which `server.py` bridges) is a **different protocol** (xiaozhi WebSocket hello + Opus) than the OpenClaw node protocol. The fallback is not a drop-in — it's a separate integration. **Mitigation:** treat `server.py` as a genuinely separate interim system, not a "fallback" for the firmware work. Don't let it absorb effort from the primary path.
@@ -166,7 +166,7 @@ Grounded in the actual source, here is a realistic re-baseline:
 | **0. Gateway prep** | (missing) | **0.5 day** | Set `gateway.nodes.commands.allow`, confirm port 18789, decide auth (password vs setup code). |
 | **1. Core bring-up** | 1–2 days | **2–3 days** | CoreS3 board port is real work: ILI9342 display init, AW88298+ES7210 TDM audio, AXP2101 PMIC, FT6336 touch. Waveshare is a structural template, not a code template. |
 | **2. Robot layer** | 2–3 days | **3–5 days** | Extract servo+motion (portable) + re-parent avatar onto room-node display (or use built-in face) + standalone camera. The "cleanly separable" claim is false for display/camera. |
-| **3. Wake word** | 2–5 hours | **1–2 days (fallback) + parallel research (days–weeks)** | No self-service generator. Ship stock model now; submit "Hey Rosie" to Espressif as a decoupled track. |
+| **3. Wake word** | 2–5 hours | **1–2 days (fallback) + parallel research (days–weeks)** | No self-service generator. Ship stock model now; submit "Hey Agent A" to Espressif as a decoupled track. |
 | **4. Gateway config** | 1 hour | **1 hour** | Unchanged. |
 | **5. Polish** | 1–2 days | **2–3 days** | Audio calibration, wake sensitivity, servo-speech coordination, camera vision. |
 | **Total** | **~1 week** | **~2.5–3 weeks** | Plus the wake word is an external dependency that may not land in that window. |
@@ -174,7 +174,7 @@ Grounded in the actual source, here is a realistic re-baseline:
 **Key de-risking moves (in priority order):**
 1. **Verify the Talk voice path first** (the `gateway-control-v1` capability) — this is the make-or-break unknown. Do it in Phase 1, not Phase 5.
 2. **Use the room-node's built-in procedural face** for v1 instead of porting the StackChan avatar — zero work, already wired to Talk state.
-3. **Ship with a stock wake word** ("Hi ESP" or "Hi StackChan") and submit "Hey Rosie" as a parallel external track.
+3. **Ship with a stock wake word** ("Hi ESP" or "Hi StackChan") and submit "Hey Agent A" as a parallel external track.
 4. **Extract only the servo+motion code** from StackChan (the genuinely portable, high-value piece); treat camera and sensors as later, separate tasks.
 5. **Fix the port to 18789 and set `gateway.nodes.commands.allow`** before any device work.
 

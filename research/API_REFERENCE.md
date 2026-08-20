@@ -25,7 +25,7 @@ Authorization: Bearer <GATEWAY_PASSWORD>
 ```
 - This is the **only** agent selector for the HTTP endpoint
 - Bindings config is NOT consulted for HTTP requests (only channel plugins)
-- Example: `"model": "openclaw/rosie"` → routes to Rosie agent
+- Example: `"model": "openclaw/agent-a"` → routes to Agent A agent
 
 ### Session Control (2 headers)
 ```
@@ -33,7 +33,7 @@ x-openclaw-session-key: agent:<agent_id>:stackchan:<device_id>
 x-openclaw-message-channel: stackchan
 ```
 - `x-openclaw-session-key` — persistent channel identity, survives 4am reset
-  - MUST be agent-prefixed: `agent:rosie:stackchan:device-001`
+  - MUST be agent-prefixed: `agent:agent-a:stackchan:device-001`
   - Bare keys (like `stackchan:device-001`) silently route to default agent
 - `x-openclaw-message-channel` — delivery routing label
   - Does NOT affect agent selection or session key construction
@@ -44,10 +44,10 @@ x-openclaw-message-channel: stackchan
 curl -X POST http://127.0.0.1:18789/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <GATEWAY_PASSWORD>" \
-  -H "x-openclaw-session-key: agent:rosie:stackchan:device-001" \
+  -H "x-openclaw-session-key: agent:agent-a:stackchan:device-001" \
   -H "x-openclaw-message-channel: stackchan" \
   -d '{
-    "model": "openclaw/rosie",
+    "model": "openclaw/agent-a",
     "messages": [
       {"role": "user", "content": "Tell me your name and role."}
     ]
@@ -62,7 +62,7 @@ Standard OpenAI Chat Completions JSON:
     {
       "message": {
         "role": "assistant",
-        "content": "I'm Rosie, your household operations director..."
+        "content": "I'm Agent A, your household operations director..."
       }
     }
   ]
@@ -76,8 +76,8 @@ Standard OpenAI Chat Completions JSON:
 - Multi-turn: reuse same `x-openclaw-session-key` across requests
 
 ### Verified Test (2026-08-18)
-- Sent: `model: openclaw/rosie` + session key + channel header
-- Response: "I'm Rosie, your household operations director..."
+- Sent: `model: openclaw/agent-a` + session key + channel header
+- Response: "I'm Agent A, your household operations director..."
 - ✅ Agent binding works, session key works, auth works
 - ✅ Auth rejection: 401 on missing/invalid bearer token
 
@@ -85,7 +85,7 @@ Standard OpenAI Chat Completions JSON:
 
 ## Hermes Gateway
 
-Hermes offers **two options** for reaching a specific named profile (like Venus) via HTTP. Both require a Bearer token (`API_SERVER_KEY`).
+Hermes offers **two options** for reaching a specific named profile (like Agent B) via HTTP. Both require a Bearer token (`API_SERVER_KEY`).
 
 ### Option A — Multiplex Mode (shared port)
 
@@ -96,7 +96,7 @@ All profiles share the default gateway's API server on port 8642. Each profile g
 gateway:
   multiplex_profiles: true
   multiplex_profile_allowlist:
-    - venus
+    - agent-b
     - default
 ```
 Requires restarting the default Hermes gateway.
@@ -166,10 +166,10 @@ X-Hermes-Session-Key: <stable-channel-id>  # persists, scopes long-term memory
 
 ### Full Example — Option A (Multiplex)
 ```bash
-curl -X POST http://127.0.0.1:8642/p/venus/v1/chat/completions \
+curl -X POST http://127.0.0.1:8642/p/agent-b/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <DEFAULT_API_SERVER_KEY>" \
-  -H "X-Hermes-Session-Key: venus-stackchan-device-001" \
+  -H "X-Hermes-Session-Key: agent-b-stackchan-device-001" \
   -d '{
     "model": "hermes-agent",
     "messages": [
@@ -183,7 +183,7 @@ curl -X POST http://127.0.0.1:8642/p/venus/v1/chat/completions \
 curl -X POST http://127.0.0.1:8643/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <VENUS_API_SERVER_KEY>" \
-  -H "X-Hermes-Session-Key: venus-stackchan-device-001" \
+  -H "X-Hermes-Session-Key: agent-b-stackchan-device-001" \
   -d '{
     "model": "hermes-agent",
     "messages": [
@@ -208,12 +208,12 @@ GET  /v1/runs/{id}/events                # SSE event stream
 ```
 
 ### Verified Test (2026-08-18)
-- Venus running on dedicated port 8643 (Option B)
-- Sent: `model: hermes-agent` + `Authorization: Bearer <venus_key>` + `X-Hermes-Session-Key`
-- Response: "Venus" (correct profile identity)
+- Agent B running on dedicated port 8643 (Option B)
+- Sent: `model: hermes-agent` + `Authorization: Bearer <agent-b_key>` + `X-Hermes-Session-Key`
+- Response: "Agent B" (correct profile identity)
 - ✅ Agent binding works, session key works, auth works
 - ✅ Auth rejection: 401 on missing/invalid bearer token
-- ❌ Multiplex (Option A) NOT enabled — when tested with `/p/venus/` prefix, silently fell through to default profile (Maïs). This is expected behavior when `multiplex_profiles: false`.
+- ❌ Multiplex (Option A) NOT enabled — when tested with `/p/agent-b/` prefix, silently fell through to default profile (Maïs). This is expected behavior when `multiplex_profiles: false`.
 
 ---
 
@@ -238,22 +238,22 @@ GET  /v1/runs/{id}/events                # SSE event stream
 
 ## For Stack-chan Firmware
 
-### v1: OpenClaw (Rosie)
+### v1: OpenClaw (Agent A)
 ```
 POST http://<mini_ip>:18789/v1/chat/completions
 Authorization: Bearer <GATEWAY_PASSWORD>
-x-openclaw-session-key: agent:rosie:stackchan:<device_id>
+x-openclaw-session-key: agent:agent-a:stackchan:<device_id>
 x-openclaw-message-channel: stackchan
 Content-Type: application/json
 
-{"model": "openclaw/rosie", "messages": [...]}
+{"model": "openclaw/agent-a", "messages": [...]}
 ```
 
-### v2: Hermes (Venus, Option B — dedicated port)
+### v2: Hermes (Agent B, Option B — dedicated port)
 ```
 POST http://<mini_ip>:8643/v1/chat/completions
 Authorization: Bearer <VENUS_API_SERVER_KEY>
-X-Hermes-Session-Key: venus-stackchan-<device_id>
+X-Hermes-Session-Key: agent-b-stackchan-<device_id>
 Content-Type: application/json
 
 {"model": "hermes-agent", "messages": [...]}
@@ -270,5 +270,5 @@ Content-Type: application/json
 Both OpenClaw and Hermes support `"stream": true` in the request body for Server-Sent Events. Each `data: <json>` chunk contains a `delta.content` field with text fragments. The ESP32 can feed these to TTS as they arrive for lower-latency voice output. Stream terminates with `data: [DONE]`.
 
 ### Reference Document
-- Hermes handoff doc: `~/.hermes/workspace/esp32-venus-api-handoff/HANDOFF.md`
+- Hermes handoff doc: `~/.hermes/workspace/esp32-agent-b-api-handoff/HANDOFF.md`
 - Contains full ESP32 Arduino pseudo-code for both non-streaming and streaming modes

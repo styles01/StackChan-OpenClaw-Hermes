@@ -123,7 +123,7 @@ This means:
 - There's no per-user session management
 - The agent doesn't know WHO is talking (no speaker identification)
 
-**Is this a problem?** For v1, no. The robot is a household device, not a personal assistant. Rosie knows she's talking to the household. If we want per-user personalization later, that's a v2 feature (would require voice biometrics or face recognition).
+**Is this a problem?** For v1, no. The robot is a household device, not a personal assistant. Agent A knows she's talking to the household. If we want per-user personalization later, that's a v2 feature (would require voice biometrics or face recognition).
 
 **But the docs should mention it.** "v1: single session, all users share one agent conversation. v2: per-user sessions (requires speaker ID or face recognition)."
 

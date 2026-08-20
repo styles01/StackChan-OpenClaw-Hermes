@@ -107,7 +107,7 @@
    - Configure proxy on mini, systemd service
    - Configure WiFi (plaipin's existing SD/SmartConfig)
    - Flash, first voice test through gateway
-   - **MILESTONE: Stack-chan talks to Rosie through OpenClaw**
+   - **MILESTONE: Stack-chan talks to Agent A through OpenClaw**
 
 2. **Body commands via system prompt markers** (2-3 days)
    - System prompt instructs agent to append `[expression:happy] [gesture:nod] [led:blue]` markers
@@ -117,10 +117,10 @@
    - **MILESTONE: Agent drives robot body via text markers**
 
 3. **Agent configuration** (1-2 days)
-   - Rosie system prompt for robot interaction (includes marker format)
+   - Agent A system prompt for robot interaction (includes marker format)
    - Wire up tools (printer, fridge, memory, Telegram, household status)
    - Map body commands to natural language triggers
-   - **MILESTONE: "What's the printer status?" → robot looks, thinks, speaks with Rosie personality**
+   - **MILESTONE: "What's the printer status?" → robot looks, thinks, speaks with Agent A personality**
 
 4. **Polish & testing** (2-3 days)
    - End-to-end testing across interaction modes
@@ -139,7 +139,7 @@
 - **Upstream PR to Stack-chan** (post-v1) — ship first, PR after validation
 
 ### What's throwaway:
-- `rosie-node/` ESP-IDF project — confirmed throwaway, Architecture A artifact
+- `agent-node/` ESP-IDF project — confirmed throwaway, Architecture A artifact
 
 ---
 

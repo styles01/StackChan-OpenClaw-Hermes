@@ -70,7 +70,7 @@ The firmware is architected to work with **either** OpenClaw **or** Hermes as th
 │  Your Agent (choose one)                  │
 │                                          │
 │  OpenClaw Gateway          Hermes Agent   │
-│  - Rosie, Claude, etc.    - Local agent   │
+│  - Agent A, Claude, etc.    - Local agent   │
 │  - Tools, memory, TTS     - Custom logic  │
 │  - Telegram, Notion, etc. - MCP tools      │
 └──────────────────────────────────────────┘
@@ -192,7 +192,7 @@ idf.py menuconfig
 
 ```
 StackChan-OpenClaw-Hermes/
-├── rosie-node/               # ESP-IDF firmware project
+├── agent-node/               # ESP-IDF firmware project
 │   ├── CMakeLists.txt
 │   ├── partitions.csv         # Dual-OTA + SPIFFS model partition
 │   └── main/

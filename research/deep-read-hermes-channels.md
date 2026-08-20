@@ -219,7 +219,7 @@ From `~/.openclaw/openclaw.json`:
     "agent": "hermes",
     "backend": "acpx",
     "mode": "persistent",
-    "cwd": "/Users/clawdio"
+    "cwd": "/Users/<your-host>"
   }
 }
 ```

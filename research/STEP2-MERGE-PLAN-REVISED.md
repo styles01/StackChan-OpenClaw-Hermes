@@ -108,7 +108,7 @@
 
 ### Phase 4: Per-device backend binding in ai-server
 
-22. Add `devices.json` config to ai-server: `{ "device_id": { "backend": "openclaw|hermes", "agent_id": "rosie" } }`
+22. Add `devices.json` config to ai-server: `{ "device_id": { "backend": "openclaw|hermes", "agent_id": "agent-a" } }`
 23. ai-server reads `Device-Id` from WebSocket hello handshake
 24. ai-server looks up device → backend+agent, routes to `openclaw.ts` or `hermes.ts` per-device
 25. Device sends configured `backend` + `agent_id` in WS hello (from NVS config set in Phase 3)
@@ -139,7 +139,7 @@
 ## File Layout (Our Repo After Merge)
 
 ```
-/Volumes/1TBSSDClawd/stackchan-node/
+<repo-root>/stackchan-node/
 ├── firmware/                        # Official StackChan firmware (clean source)
 │   ├── main/                        # Stack-chan body code
 │   ├── patches/

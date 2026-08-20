@@ -2,24 +2,24 @@
 // Maps device MAC address (Device-Id header from WS handshake) to backend + agent
 //
 // backend: "openclaw" or "hermes"
-// agent_id: the OpenClaw/Hermes agent to route to (e.g. "rosie", "hermes")
+// agent_id: the OpenClaw/Hermes agent to route to (e.g. "your-agent", "hermes")
 // session_key_prefix: used to construct per-device session keys
 //
 // Devices not listed here fall back to DEFAULT_BACKEND + DEFAULT_AGENT
 {
   "default": {
     "backend": "openclaw",
-    "agent_id": "rosie"
+    "agent_id": "your-agent"
   },
   "devices": {
     "AA:BB:CC:DD:EE:01": {
       "backend": "openclaw",
-      "agent_id": "rosie",
+      "agent_id": "your-agent",
       "label": "Robot A (kitchen)"
     },
     "AA:BB:CC:DD:EE:02": {
       "backend": "hermes",
-      "agent_id": "venus",
+      "agent_id": "your-agent",
       "label": "Robot B (workshop)"
     }
   }

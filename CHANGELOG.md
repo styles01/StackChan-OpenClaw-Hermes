@@ -4,9 +4,9 @@
 
 ### What's Working
 - **Full voice conversation loop** — device connects to ai-server via WebSocket, streams Opus audio, gets STT → LLM → TTS back
-- **Custom wake word** — "Hey Rosie" WakeNet9 model trained on DGX Spark, flashed to model partition
+- **Custom wake word** — "Hey Agent A" WakeNet9 model trained on DGX Spark, flashed to model partition
 - **Stock wake word disabled** — compiled-in "Hi Stack Chan" removed from sdkconfig
-- **ai-server bridge** — TypeScript WebSocket server (port 8765), connects device to OpenClaw agent (Rosie)
+- **ai-server bridge** — TypeScript WebSocket server (port 8765), connects device to OpenClaw agent (Agent A)
 - **English voice** — TTS (`en-GB-LibbyNeural`), STT (faster-whisper, English), English fast-acks
 - **Fast-ack** — "Yes, darling?" on wake word detection
 - **VAD + cooldown** — local VAD for speech detection, 3s post-TTS cooldown to prevent self-triggering
@@ -26,7 +26,7 @@
 - `bootloader.bin` — 24KB bootloader (0x0)
 - `partition-table.bin` — 3KB partition table (0x8000)
 - `ota_data_initial.bin` — 8KB OTA data (0xd000)
-- Flash with ESP-IDF: `idf.py -p /dev/cu.usbmodem211301 flash`
+- Flash with ESP-IDF: `idf.py -p /dev/cu.usbmodemXXXX flash`
 - Or esptool: see FLASHING-GUIDE.md
 
 ---
@@ -57,14 +57,14 @@
 - **mDNS confirmed working** — `CONFIG_LWIP_DNS_SUPPORT_MDNS_QUERIES=y` already in sdkconfig; `gethostbyname()` resolves `.local` via lwip multicast DNS. No firmware code change needed.
 
 ### 2026-08-19 — Phase 4: Device Connected to ai-server (DONE)
-- **Device connects to `ws://clawdio-mini.local:8765/ws`** via mDNS — NO IP address!
+- **Device connects to `ws://<your-host>.local:8765/ws`** via mDNS — NO IP address!
 - `start_ai_on_boot = true` written to `"xiaozhi"` NVS namespace (key `"boot_ai"`)
 - Device skips Mooncake launcher, goes straight to AI Agent on boot
 - ai-server accepts WS connection, reads `Device-Id` from handshake (MAC address)
-- Backend routing: `openclaw` → `agent=rosie`
+- Backend routing: `openclaw` → `agent=agent-a`
 - Audio pipeline active: VAD detects speech, STT/LLM/TTS chain running
 - Minor issue: TTS fast-ack Python script not found (`spawn python3 ENOENT`) — non-blocking
-- **Full connection chain: device → mDNS → WS → ai-server → OpenClaw → Rosie**
+- **Full connection chain: device → mDNS → WS → ai-server → OpenClaw → Agent A**
 
 ### Why
 The device is a thin audio client — STT/LLM/TTS happen on the server, not the device. The old BUILD_PLAN v1 assumed device-side STT/TTS seams that don't exist in the ESP-IDF firmware. The correct architecture is: device streams OPUS over WebSocket → ai-server does STT/LLM/TTS → streams audio back. Circlemouth already built this; we merge it into our repo.

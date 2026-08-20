@@ -39,17 +39,17 @@ static esp_err_t cores3_prepare_network(void *ctx)
 }
 
 // register_commands: called to register custom robot commands.
-// Phase 2: register rosie.look, rosie.emote, rosie.led, rosie.gesture
+// Phase 2: register agent-a.look, agent-a.emote, agent-a.led, agent-a.gesture
 static esp_err_t cores3_register_commands(void *ctx, esp_openclaw_node_handle_t node)
 {
     (void)ctx;
     (void)node;
     ESP_LOGI(TAG, "register_commands: robot commands (Phase 2 TODO)");
     // TODO Phase 2: register custom commands:
-    //   rosie.look <x> <y>    — servo lookAt
-    //   rosie.emote <emotion> — set emotion state
-    //   rosie.led <state>     — LED state machine
-    //   rosie.gesture <name>  — servo gesture (nod/shake/look-around)
+    //   agent-a.look <x> <y>    — servo lookAt
+    //   agent-a.emote <emotion> — set emotion state
+    //   agent-a.led <state>     — LED state machine
+    //   agent-a.gesture <name>  — servo gesture (nod/shake/look-around)
     return ESP_OK;
 }
 

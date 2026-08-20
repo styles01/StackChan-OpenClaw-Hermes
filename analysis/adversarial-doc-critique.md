@@ -1,6 +1,6 @@
 # Adversarial Doc Critique — StackChan-OpenClaw-Hermes
 
-**Reviewer:** Rosie (self-critique, since subagent spawn and code_execution both failed)
+**Reviewer:** Agent A (self-critique, since subagent spawn and code_execution both failed)
 **Date:** 2026-08-17 21:47 MDT
 **Method:** Read all docs + code + reference repos, answer 10 questions with evidence
 

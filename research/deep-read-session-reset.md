@@ -10,7 +10,7 @@
 
 The "4am reset" is **not** a proactive cron job that wipes sessions. It is a **lazy, on-next-message evaluation** of a per-session freshness policy. When a new message arrives and the current `sessionId` is older than the daily reset boundary (default 4am local), the Gateway **rotates the `sessionId`** (generates a new UUID) but **keeps the session key and all channel/delivery bindings intact**. The old transcript is archived; a fresh transcript starts under the same key.
 
-**The channel is the stable anchor.** The session key encodes the channel+peer (`agent:rosie:telegram:direct:8112145924`), and that key never changes across resets. The `route`, `deliveryContext`, `lastChannel`, `lastTo`, `lastAccountId`, and `origin` fields are all preserved through the rotation. Live evidence: Rosie's session key has survived **21 sessionId rotations** with the Telegram binding fully intact.
+**The channel is the stable anchor.** The session key encodes the channel+peer (`agent:agent-a:telegram:direct:<your-chat-id>`), and that key never changes across resets. The `route`, `deliveryContext`, `lastChannel`, `lastTo`, `lastAccountId`, and `origin` fields are all preserved through the rotation. Live evidence: Agent A's session key has survived **21 sessionId rotations** with the Telegram binding fully intact.
 
 **HTTP endpoint sessions are treated identically.** A `user`-derived session key (`agent:<agentId>:<prefix>-user:<user>`) is stable and lives in the same session store, so it gets the same daily reset — the key survives, the sessionId rotates. **Stack-chan does NOT need a channel to survive resets** — a stable HTTP session key is sufficient. But a channel provides additional benefits (outbound delivery, presence, pairing) that a bare HTTP key does not.
 
@@ -23,7 +23,7 @@ The "4am reset" is **not** a proactive cron job that wipes sessions. It is a **l
 There is **no 4am cron job** that resets sessions. The cron list (`openclaw cron list`) shows only:
 - `Memory Dreaming Promotion` at `0 3 * * *` (3am ET) — this is the **memory-core dreaming sweep**, which consolidates memory into `MEMORY.md`/`DREAMS.md`. It does **not** touch session state.
 - `vault-daily-enhance` at `0 4 * * *` — unrelated.
-- Various Rosie/albert/podcast/trading crons — unrelated.
+- Various Agent A/albert/podcast/trading crons — unrelated.
 
 The dreaming cron (3am) and the session reset (4am) are **separate mechanisms**. Dreaming consolidates memory; session reset rotates conversation context. They happen to be near each other in the night, which is why they're conflated.
 
@@ -85,7 +85,7 @@ The old transcript is archived (`.jsonl` → `.jsonl.deleted.<timestamp>` or arc
 
 | Item | Survives? | Evidence |
 |------|-----------|----------|
-| **Session key** (`agent:rosie:telegram:direct:8112145924`) | ✅ Yes | Key is the store bucket; never re-derived on reset |
+| **Session key** (`agent:agent-a:telegram:direct:<your-chat-id>`) | ✅ Yes | Key is the store bucket; never re-derived on reset |
 | **Channel binding** (`route`, `deliveryContext`, `lastChannel`, `lastTo`, `lastAccountId`) | ✅ Yes | Explicitly copied into `nextEntry` in `performGatewaySessionReset` |
 | **Agent binding** | ✅ Yes | Key embeds `agentId`; store is per-agent |
 | **Session key pattern** (so a new session gets created with same key) | ✅ Yes | The key IS the anchor; new sessionId is written under the same key |
@@ -94,22 +94,22 @@ The old transcript is archived (`.jsonl` → `.jsonl.deleted.<timestamp>` or arc
 | **Model override** | ✅ Yes | Preserved via `resolveResetPreservedSelection` |
 | **Compaction count** | ❌ No | Reset to 0 |
 
-**Live proof from `~/.openclaw/agents/rosie/sessions/sessions.json`:**
+**Live proof from `~/.openclaw/agents/agent-a/sessions/sessions.json`:**
 
 ```json
-"agent:rosie:telegram:direct:8112145924": {
+"agent:agent-a:telegram:direct:<your-chat-id>": {
   "sessionId": "572353f4-...",          // current
   "usageFamilySessionIds": [            // 21 prior sessionIds — all under the SAME key
     "27eb94a6-...", "a5204d9d-...", ..., "572353f4-..."
   ],
-  "route": { "channel": "telegram", "accountId": "rosie",
-             "target": { "to": "telegram:8112145924" } },
-  "deliveryContext": { "channel": "telegram", "to": "telegram:8112145924",
-                       "accountId": "rosie" },
+  "route": { "channel": "telegram", "accountId": "agent-a",
+             "target": { "to": "telegram:<your-chat-id>" } },
+  "deliveryContext": { "channel": "telegram", "to": "telegram:<your-chat-id>",
+                       "accountId": "agent-a" },
   "lastChannel": "telegram",
-  "lastTo": "telegram:8112145924",
-  "lastAccountId": "rosie",
-  "origin": { "label": "James A (@j_aita) id:8112145924", ... }
+  "lastTo": "telegram:<your-chat-id>",
+  "lastAccountId": "agent-a",
+  "origin": { "label": "James A (@j_aita) id:<your-chat-id>", ... }
 }
 ```
 
@@ -121,14 +121,14 @@ The key has survived **21 sessionId rotations** with the Telegram binding fully 
 
 The flow on each inbound message (from `get-reply-OTG64ybi.js` `initSessionStateAttemptLocked`):
 
-1. **Resolve the session key** from the inbound context. For Telegram DM, `resolveSessionKey()` derives `agent:rosie:telegram:direct:8112145924` from the channel+peer. This is deterministic — same channel+peer always yields the same key.
+1. **Resolve the session key** from the inbound context. For Telegram DM, `resolveSessionKey()` derives `agent:agent-a:telegram:direct:<your-chat-id>` from the channel+peer. This is deterministic — same channel+peer always yields the same key.
 2. **Load the existing entry** for that key from `sessions.json`.
 3. **Evaluate freshness** via `evaluateSessionFreshness()`. If `sessionStartedAt < dailyResetAt` (4am), the entry is `stale`.
 4. **If stale:** the code takes the `else` branch — generates a **new `sessionId`** (`crypto.randomUUID()`), sets `isNewSession = true`, and **rebuilds the entry** with `...baseEntry` (preserving all channel/delivery fields) but with the new sessionId, `sessionStartedAt = now`, and zeroed tokens.
 5. **The new session is written under the SAME session key.** The old transcript is archived.
 6. The agent runs with the fresh context, and replies go to the preserved `lastChannel`/`lastTo`/`lastAccountId`.
 
-So: **the Gateway creates a new session under the same channel key automatically.** No manual intervention needed. The next morning, James sends a message to the same Telegram bot, and a fresh session is created under `agent:rosie:telegram:direct:8112145924` with a new sessionId.
+So: **the Gateway creates a new session under the same channel key automatically.** No manual intervention needed. The next morning, James sends a message to the same Telegram bot, and a fresh session is created under `agent:agent-a:telegram:direct:<your-chat-id>` with a new sessionId.
 
 ---
 
@@ -150,8 +150,8 @@ function resolveSessionKey(params) {
 ```
 
 Three cases:
-- **`x-openclaw-session-key` header present** → used verbatim (e.g. `agent:rosie:stackchan:main`). Stable across calls.
-- **`user` field present** → derives `agent:<agentId>:<prefix>-user:<user>` (e.g. `agent:rosie:http-user:stackchan`). **Stable** across calls that reuse the same `user` value.
+- **`x-openclaw-session-key` header present** → used verbatim (e.g. `agent:agent-a:stackchan:main`). Stable across calls.
+- **`user` field present** → derives `agent:<agentId>:<prefix>-user:<user>` (e.g. `agent:agent-a:http-user:stackchan`). **Stable** across calls that reuse the same `user` value.
 - **Neither** → `agent:<agentId>:<prefix>:<randomUUID>` — **stateless**, a new key every call.
 
 All three write to the **same session store** (`~/.openclaw/agents/<agentId>/sessions/sessions.json`) and are subject to the **same daily reset** logic. The `user`-derived and explicit keys are stable, so they survive resets exactly like Telegram keys — the sessionId rotates, the key stays, and the delivery fields (which for HTTP are the synthetic channel context) are preserved.
@@ -203,15 +203,15 @@ There is no per-session `persistent: true` or `protected: true` flag in the sche
 
 ## 6. How does Telegram handle this?
 
-**Concretely, for Rosie's Telegram DM:**
+**Concretely, for Agent A's Telegram DM:**
 
-1. James messages the Rosie bot at, say, 8am after a 4am reset.
-2. The Telegram plugin receives the message, derives the session key `agent:rosie:telegram:direct:8112145924` (from channel=telegram, account=rosie, peer=8112145924).
+1. James messages the Agent A bot at, say, 8am after a 4am reset.
+2. The Telegram plugin receives the message, derives the session key `agent:agent-a:telegram:direct:<your-chat-id>` (from channel=telegram, account=agent-a, peer=<your-chat-id>).
 3. The Gateway loads the entry, sees `sessionStartedAt` is before today's 4am boundary → **stale**.
 4. It generates a new `sessionId`, archives the old transcript, and writes a fresh entry **under the same key**.
-5. The agent runs with fresh context (re-boots from AGENTS.md/MEMORY.md per the boot sequence), and replies to `telegram:8112145924` via the `rosie` account.
+5. The agent runs with fresh context (re-boots from AGENTS.md/MEMORY.md per the boot sequence), and replies to `telegram:<your-chat-id>` via the `agent-a` account.
 
-**The key `agent:rosie:telegram:direct:8112145924` never changes.** This is confirmed by the 21 prior sessionIds in `usageFamilySessionIds`. The channel is the stable anchor that the session hangs off.
+**The key `agent:agent-a:telegram:direct:<your-chat-id>` never changes.** This is confirmed by the 21 prior sessionIds in `usageFamilySessionIds`. The channel is the stable anchor that the session hangs off.
 
 ---
 
@@ -219,7 +219,7 @@ There is no per-session `persistent: true` or `protected: true` flag in the sche
 
 **The channel is the stable anchor.** Technically:
 
-- **Session key derivation** (`dist/session-key-OlXf3EQR.js`): `resolveSessionKey()` builds the key from the inbound context. For DMs with `dmScope: "per-channel-peer"` (Rosie's config), the key is `agent:<agentId>:<channel>:direct:<peerId>`. The channel+peer are baked into the key.
+- **Session key derivation** (`dist/session-key-OlXf3EQR.js`): `resolveSessionKey()` builds the key from the inbound context. For DMs with `dmScope: "per-channel-peer"` (Agent A's config), the key is `agent:<agentId>:<channel>:direct:<peerId>`. The channel+peer are baked into the key.
 - **Deterministic re-derivation:** every message from the same channel+peer re-derives the *same* key. So even if the entry were deleted entirely, the next message would recreate it under the same key.
 - **Reset preserves the key:** the reset logic never changes the key — it only rotates the `sessionId` under that key.
 - **Delivery fields preserved:** `route`, `deliveryContext`, `lastChannel`, `lastTo`, `lastAccountId` are copied into the new entry, so replies route back to the same channel.
@@ -232,7 +232,7 @@ So the channel is not just an anchor — it's the **primary key** of the session
 
 **No — a stable HTTP session key is sufficient to survive resets.** Here's the reasoning:
 
-1. **HTTP sessions live in the same store and get the same reset treatment.** A `user`-derived key (`agent:rosie:http-user:stackchan`) or explicit `x-openclaw-session-key` (`agent:rosie:stackchan:main`) is stable and survives resets exactly like a Telegram key. The sessionId rotates; the key and its delivery fields persist.
+1. **HTTP sessions live in the same store and get the same reset treatment.** A `user`-derived key (`agent:agent-a:http-user:stackchan`) or explicit `x-openclaw-session-key` (`agent:agent-a:stackchan:main`) is stable and survives resets exactly like a Telegram key. The sessionId rotates; the key and its delivery fields persist.
 
 2. **What a channel adds (beyond reset survival):**
    - **Outbound push delivery** — a real channel (Telegram, etc.) lets the Gateway push replies. HTTP is request/response; Stack-chan must poll or send a request to get the response.
@@ -266,9 +266,9 @@ So the channel is not just an anchor — it's the **primary key** of the session
 | `docs/concepts/dreaming.md` | Dreaming (memory consolidation — separate from session reset) |
 | `docs/gateway/openai-http-api.md` | HTTP endpoint session behavior |
 
-## Appendix: Config State (Rosie)
+## Appendix: Config State (Agent A)
 
 - `session.dmScope: "per-channel-peer"` — DMs isolated by channel+peer.
 - **No explicit `session.reset` block** → uses default `mode: "daily", atHour: 4`.
 - `memory-core` dreaming: `enabled: true`, `timezone: "America/Toronto"`, cron `0 3 * * *` (3am — memory, not session).
-- Rosie Telegram account: `allowFrom: ["8112145924", "8261476039"]`, `dmPolicy: "allowlist"`.
+- Agent A Telegram account: `allowFrom: ["<your-chat-id>", "<your-chat-id>"]`, `dmPolicy: "allowlist"`.

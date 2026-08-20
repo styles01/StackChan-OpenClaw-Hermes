@@ -315,4 +315,4 @@ The STT → LLM → TTS pipeline stays exactly as-is. We're only fixing the LLM 
 4. Flash to a Stack-chan device
 5. Open `test-harness/web-config.html` in a browser, connect to the device, configure it
 6. Run the test harness against the live device
-7. Test STT → Rosie → TTS end-to-end on hardware
+7. Test STT → Agent A → TTS end-to-end on hardware

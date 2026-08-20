@@ -88,7 +88,7 @@ Casts `robot->llm` to `RealtimeLLMBase*` and calls `webSocketProcess()`, `getAud
 
 ## 3. "Stack-chan body stays untouched" — FALSE for camera/vision/face-tracking
 
-**The claim:** BRIEF says "Face, servo, camera, LED, petting, scanning — all stay as-is." TODO Phase 5 says test "camera vision ('Hey Rosie, what do you see?')".
+**The claim:** BRIEF says "Face, servo, camera, LED, petting, scanning — all stay as-is." TODO Phase 5 says test "camera vision ('Hey Agent A, what do you see?')".
 
 **The reality:**
 - **`ENABLE_CAMERA` is NOT defined in any build env** in `platformio.ini`. The camera code (`Camera.cpp`, `camera_init()`, `camera_capture_base64()`) is all behind `#if defined(ENABLE_CAMERA)`. **The camera is not compiled in by default.**

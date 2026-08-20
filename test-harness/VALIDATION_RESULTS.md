@@ -10,35 +10,35 @@
 - Session key structure validation: 6/6 cases (agent-prefixed valid, bare keys invalid)
 - Hermes dedicated port URL construction: no `/p/` prefix needed
 
-### OpenClaw / Rosie ✅
+### OpenClaw / Agent A ✅
 - Auth rejection: 401 without token, 401 with invalid token
-- Models endpoint: 17 agents listed including `openclaw/rosie`
-- **Identity validation (STRICT):** "I'm Rosie, your household operations director..." ✅ contains "rosie"
+- Models endpoint: 17 agents listed including `openclaw/agent-a`
+- **Identity validation (STRICT):** "I'm Agent A, your household operations director..." ✅ contains "agent-a"
 - Session persistence: "Your name is TestBot." ✅ contains "testbot"
 
-### Hermes / Venus (dedicated port 8643, Option B) ✅
+### Hermes / Agent B (dedicated port 8643, Option B) ✅
 - Auth rejection: 401 without token, 401 with invalid token
-- Models endpoint: lists `venus`
-- **Identity validation (STRICT):** "I'm Venus, a product strategist and market researcher..." ✅ contains "venus"
+- Models endpoint: lists `agent-b`
+- **Identity validation (STRICT):** "I'm Agent B, a product strategist and market researcher..." ✅ contains "agent-b"
 - Session persistence: "Your name is TestBot." ✅ contains "testbot"
 
 ### Cross-System Isolation ✅
-- Rosie says: "Rosie."
-- Venus says: "Venus"
+- Agent A says: "Agent A."
+- Agent B says: "Agent B"
 - Confirmed: completely separate agents with correct identities
 
 ## Architecture Validated
 
 ```
-ESP32 → HTTP POST → [OpenClaw Gateway :18789] → Rosie (agent:rosie:stackchan:device)
+ESP32 → HTTP POST → [OpenClaw Gateway :18789] → Agent A (agent:agent-a:stackchan:device)
          OR
-ESP32 → HTTP POST → [Hermes Gateway :8643] → Venus (X-Hermes-Session-Key)
+ESP32 → HTTP POST → [Hermes Gateway :8643] → Agent B (X-Hermes-Session-Key)
 ```
 
 Both paths work. Both require Bearer auth. Both maintain sessions across requests. Both agents correctly identify themselves with strict validation.
 
 ## Previous False Positive (fixed)
-- Initial test used loose keyword matching → Venus test accepted "Maïs" (default profile) as valid
-- Multiplex was OFF, so `/p/venus/` prefix was silently ignored → hit default profile
-- Fix: Venus now runs on dedicated port 8643 (Option B) with her own API_SERVER_KEY
-- Fix: Tests now use STRICT identity validation (must contain "rosie" / "venus")
+- Initial test used loose keyword matching → Agent B test accepted "Maïs" (default profile) as valid
+- Multiplex was OFF, so `/p/agent-b/` prefix was silently ignored → hit default profile
+- Fix: Agent B now runs on dedicated port 8643 (Option B) with her own API_SERVER_KEY
+- Fix: Tests now use STRICT identity validation (must contain "agent-a" / "agent-b")

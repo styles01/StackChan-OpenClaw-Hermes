@@ -8,7 +8,7 @@
 
 There is **no existing "robot channel"** in OpenClaw — no `stackchan`, `device`, or `robot` channel plugin exists on this machine. But there are **three mature, working patterns** that already solve the exact problems Stack-chan needs:
 
-1. **The Node pattern** (Clawdio-Mini, iPhone) — a physical device binds to the Gateway as a `role: node` over WebSocket, with device pairing, capability/command allowlists, and per-device tokens. This is the **canonical device-to-agent pattern** and the closest thing to what Stack-chan should be.
+1. **The Node pattern** (<your-host>, iPhone) — a physical device binds to the Gateway as a `role: node` over WebSocket, with device pairing, capability/command allowlists, and per-device tokens. This is the **canonical device-to-agent pattern** and the closest thing to what Stack-chan should be.
 2. **The OpenAI HTTP endpoint pattern** — the Gateway serves `/v1/chat/completions` where the `model` field selects the agent and a stable `user`/`x-openclaw-session-key` gives session continuity. This is the **pragmatic fit for an ESP32** (no WS handshake, no pairing, no crypto).
 3. **The channel-plugin pattern** (Telegram/Discord/WhatsApp) — a first-class messaging channel with `bindings` routing to agents. This is what James means by "channel key, not session key" — the **channel is the stable identity** that survives 4am session resets.
 
@@ -18,11 +18,11 @@ The **robot-bridge** project (a separate-machine Python FastAPI bridge speaking 
 
 ## 1. What reference projects exist for device/hardware integration?
 
-### 1a. The Node pattern — Clawdio-Mini & iPhone (WORKING, ON THIS MACHINE)
+### 1a. The Node pattern — <your-host> & iPhone (WORKING, ON THIS MACHINE)
 
 The **most important reference project** is the node infrastructure already running here. From `~/.openclaw/nodes/paired.json` and `~/.openclaw/devices/paired.json`:
 
-**Clawdio-Mini** (the macOS node, `nodeId 9c730436...`):
+**<your-host>** (the macOS node, `nodeId <node-id>...`):
 - `clientId: "openclaw-macos"`, `clientMode: "ui"`, `role: node` (also `operator`)
 - `deviceFamily: "Mac"`, `modelIdentifier: "Mac16,10"`
 - **caps**: `["canvas", "screen", "browser"]`
@@ -31,12 +31,12 @@ The **most important reference project** is the node infrastructure already runn
 - **bins**: `osascript, shortcuts, sqlite3, python3, git, node, nano-pdf, curl, oracle, jq`
 - Has both an `operator` token and a `node` token (separate scopes)
 
-**iPhone** (`nodeId 2f63bdd2...`):
+**iPhone** (`nodeId <node-id>...`):
 - `clientId: "openclaw-ios"`, `clientMode: "ui"` (and a second entry `clientMode: "node"`)
 - **caps**: `["canvas", "screen", "camera", "voiceWake", "device", "talk", "watch", "photos", "contacts", "calendar", "reminders", "motion"]`
 - **commands**: `system.notify`, `talk.ptt.start/stop/cancel/once`, `camera.list`, `device.status/info`, `photos.latest`, `contacts.search`, `calendar.events`, `reminders.list`, `motion.activity/pedometer`
 - **permissions**: `camera: true`, `microphone: true`, `screenRecording: true`, `speechRecognition: true`
-- `remoteIp: "192.168.2.155"` (LAN)
+- `remoteIp: "<your-server-ip>"` (LAN)
 
 **Key takeaway:** A node is a **peripheral**, not a gateway. It connects to the Gateway WebSocket with `role: "node"`, presents a device identity, gets paired (device pairing), and exposes a **command surface** (`canvas.*`, `camera.*`, `device.*`, `system.*`) via `node.invoke`. Nodes do **not** run the gateway service, and channel messages (Telegram etc.) land on the gateway, not on nodes.
 
@@ -44,7 +44,7 @@ The **most important reference project** is the node infrastructure already runn
 
 ### 1b. The robot-bridge project (MOST PRODUCTION-MATURE STACK-CHAN INTEGRATION)
 
-From Rosie's earlier research (in `analysis/` and the `robot-bridge` repo), this is a **separate-machine Python FastAPI bridge** that:
+From Agent A's earlier research (in `analysis/` and the `robot-bridge` repo), this is a **separate-machine Python FastAPI bridge** that:
 - Speaks the **XiaoZhi WebSocket protocol** to the ESP32 (stock firmware)
 - Runs ASR (SenseVoiceSmall), TTS (Sherpa-ONNX Matcha → Opus), face tracking, LED state machine, multi-user face recognition
 - Backed by **Hermes** (Nous Research agent) via MCP tools + webhook-driven conversation
@@ -88,7 +88,7 @@ The **reference projects for the "profile/channel side"** James mentioned. From 
 ### 2b. The robot-bridge project (ACTIVE, separate machine)
 The Python FastAPI bridge described in §1b. It's a **middleman** between the ESP32 (stock XiaoZhi firmware) and Hermes. It handles the XiaoZhi WS protocol, audio, vision, and MCP tool execution. **This is the "robot-bridge" James referenced in earlier research.**
 
-**How it handles the channel/session question:** It uses **Hermes webhooks** (`hermes webhook subscribe stackchan --prompt "..." --deliver log`) and **per-person Hermes sessions** (`X-Hermes-Session-Id: stackchan-{name}`). Each person gets their own session namespace. This is the Hermes analog of OpenClaw's `agent:rosie:stackchan:<name>` session keys.
+**How it handles the channel/session question:** It uses **Hermes webhooks** (`hermes webhook subscribe stackchan --prompt "..." --deliver log`) and **per-person Hermes sessions** (`X-Hermes-Session-Id: stackchan-{name}`). Each person gets their own session namespace. This is the Hermes analog of OpenClaw's `agent:agent-a:stackchan:<name>` session keys.
 
 ---
 
@@ -107,12 +107,12 @@ The Python FastAPI bridge described in §1b. It's a **middleman** between the ES
     "talk.start", "talk.stop", "face.set", "face.gesture",
     "canvas.present", "canvas.navigate", "canvas.hide", "canvas.snapshot",
     "canvas.a2ui.pushJSONL", "canvas.a2ui.push", "canvas.a2ui.reset",
-    "rosie.status", "rosie.servo.look", "rosie.servo.home", "rosie.vision.capture"
+    "agent-a.status", "agent-a.servo.look", "agent-a.servo.home", "agent-a.vision.capture"
   ]
 }
 ```
 
-**Critical finding:** The `allowCommands` list **already contains robot commands** — `rosie.status`, `rosie.servo.look`, `rosie.servo.home`, `rosie.vision.capture`, plus `face.set`, `face.gesture`, `talk.start`, `talk.stop`. This is the **closest thing to a device binding for Stack-chan that already exists.** Someone (Rosie's team) already anticipated the robot command surface.
+**Critical finding:** The `allowCommands` list **already contains robot commands** — `agent-a.status`, `agent-a.servo.look`, `agent-a.servo.home`, `agent-a.vision.capture`, plus `face.set`, `face.gesture`, `talk.start`, `talk.stop`. This is the **closest thing to a device binding for Stack-chan that already exists.** Someone (Agent A's team) already anticipated the robot command surface.
 
 **How nodes authenticate and connect:**
 1. Node connects to Gateway WebSocket (same port 18789) with `role: "node"` and a device identity
@@ -177,7 +177,7 @@ From the actual config, `bindings` maps channel accounts to agents:
 ```json5
 bindings: [
   { agentId: "main",   match: { accountId: "default", channel: "telegram" } },
-  { agentId: "rosie",  match: { accountId: "rosie",   channel: "telegram" } },
+  { agentId: "agent-a",  match: { accountId: "agent-a",   channel: "telegram" } },
   ...
 ]
 ```
@@ -189,7 +189,7 @@ bindings: [
 ```
 agent:<agentId>:<channel>:direct:<peerId>
 ```
-e.g. `agent:rosie:telegram:direct:<chatId>`. Groups: `...:group:<peerId>`, threads append `:thread:<id>`.
+e.g. `agent:agent-a:telegram:direct:<chatId>`. Groups: `...:group:<peerId>`, threads append `:thread:<id>`.
 
 **The channel is the stable identity.** Sessions hang off channels. When sessions reset at 4am, the channel survives and a new session is created under it. This is exactly what James described.
 
@@ -197,12 +197,12 @@ e.g. `agent:rosie:telegram:direct:<chatId>`. Groups: `...:group:<peerId>`, threa
 
 From `docs/gateway/openai-http-api.md` — the Gateway serves `/v1/chat/completions` (enabled on this machine: `gateway.http.endpoints.chatCompletions.enabled: true`). This is the **pragmatic fit for an ESP32**:
 
-- **Agent selection** = `model` field: `openclaw/rosie` → Rosie agent (or `x-openclaw-agent-id: rosie` header)
-- **Session continuity** = stable OpenAI `user` string (auto-scoped to `agent:rosie:user:<value>`) OR `x-openclaw-session-key: agent:rosie:stackchan:<id>` (fully qualified)
+- **Agent selection** = `model` field: `openclaw/agent-a` → Agent A agent (or `x-openclaw-agent-id: agent-a` header)
+- **Session continuity** = stable OpenAI `user` string (auto-scoped to `agent:agent-a:user:<value>`) OR `x-openclaw-session-key: agent:agent-a:stackchan:<id>` (fully qualified)
 - **Channel identity** = `x-openclaw-message-channel: <channel>` header (sets synthetic ingress channel context)
 - **Auth** = `Authorization: Bearer <gateway-token/password>` (full operator-equivalent — keep on loopback/tailnet/private ingress)
 
-**Critical caveat from the research:** The session key is an **opaque bucket identifier scoped inside the selected agent** — it does NOT select the agent. Agent selection is `x-openclaw-agent-id` header → `model` field → default agent. A bare `stackchan:*` session key gets re-scoped to the default agent (Clawdio), which is why the earlier test routed to the wrong agent. **Fix:** always send `model: openclaw/rosie` + a fully-qualified `agent:rosie:stackchan:<id>` session key, or a stable `user` string.
+**Critical caveat from the research:** The session key is an **opaque bucket identifier scoped inside the selected agent** — it does NOT select the agent. Agent selection is `x-openclaw-agent-id` header → `model` field → default agent. A bare `stackchan:*` session key gets re-scoped to the default agent (<your-host>), which is why the earlier test routed to the wrong agent. **Fix:** always send `model: openclaw/agent-a` + a fully-qualified `agent:agent-a:stackchan:<id>` session key, or a stable `user` string.
 
 ### 5c. Channel docking (`session.identityLinks`)
 
@@ -210,9 +210,9 @@ From `docs/gateway/openai-http-api.md` — the Gateway serves `/v1/chat/completi
 
 ---
 
-## 6. What about the Clawdio-Mini node? How does it bind to the Gateway?
+## 6. What about the <your-host> node? How does it bind to the Gateway?
 
-**Clawdio-Mini is the reference for how a physical device binds to the Gateway.** From `~/.openclaw/nodes/paired.json`:
+**<your-host> is the reference for how a physical device binds to the Gateway.** From `~/.openclaw/nodes/paired.json`:
 
 - `clientId: "openclaw-macos"`, `clientMode: "ui"`, `role: node` (also `operator`)
 - Connects to the Gateway WebSocket on port 18789
@@ -227,7 +227,7 @@ From `docs/gateway/openai-http-api.md` — the Gateway serves `/v1/chat/completi
 - Pairing: `openclaw devices list` → `openclaw devices approve <requestId>` → `openclaw nodes status`
 - Exec approvals are **per node host** at `~/.openclaw/exec-approvals.json`
 
-**The pattern for Stack-chan:** Clawdio-Mini is a **full WS node** — too heavy for an ESP32. But the **conceptual model transfers**: Stack-chan should be a node with a declared command surface (`rosie.servo.look`, `rosie.vision.capture`, `talk.start`, etc.), filtered by `gateway.nodes.allowCommands`. The difference is the **transport** — ESP32 uses HTTP `/v1/chat/completions` (or a thin WebRTC Talk path) instead of the full WS control plane.
+**The pattern for Stack-chan:** <your-host> is a **full WS node** — too heavy for an ESP32. But the **conceptual model transfers**: Stack-chan should be a node with a declared command surface (`agent-a.servo.look`, `agent-a.vision.capture`, `talk.start`, etc.), filtered by `gateway.nodes.allowCommands`. The difference is the **transport** — ESP32 uses HTTP `/v1/chat/completions` (or a thin WebRTC Talk path) instead of the full WS control plane.
 
 ---
 
@@ -239,13 +239,13 @@ Based on all the reference patterns, the **channel binding question** resolves t
 Stack-chan should be treated as a **first-class channel identity**, not just a session. The stable identity is the **channel**, and sessions hang off it. Concretely:
 
 1. **Use the OpenAI HTTP endpoint** (`/v1/chat/completions`) as the transport — it's the pragmatic fit for an ESP32 (no WS handshake, no pairing, no crypto).
-2. **Select the agent via `model: openclaw/rosie`** (or `x-openclaw-agent-id: rosie`) — never rely on the session key for agent selection.
+2. **Select the agent via `model: openclaw/agent-a`** (or `x-openclaw-agent-id: agent-a`) — never rely on the session key for agent selection.
 3. **Give it a channel identity** via `x-openclaw-message-channel: stackchan` header — this is the "channel key" that survives session resets.
-4. **Use a stable, fully-qualified session key** `agent:rosie:stackchan:<device>` (or a stable `user` string) for conversation continuity within the channel.
-5. **Register the robot command surface** in `gateway.nodes.allowCommands` (already partially done: `rosie.status`, `rosie.servo.look`, `rosie.servo.home`, `rosie.vision.capture`).
+4. **Use a stable, fully-qualified session key** `agent:agent-a:stackchan:<device>` (or a stable `user` string) for conversation continuity within the channel.
+5. **Register the robot command surface** in `gateway.nodes.allowCommands` (already partially done: `agent-a.status`, `agent-a.servo.look`, `agent-a.servo.home`, `agent-a.vision.capture`).
 
 ### When a full channel plugin is warranted
-Only if Stack-chan must behave as a **native messaging network** (its own users/rooms/webhooks/outbound transport) or appear in `channels list`/status. For a single physical device talking to one agent (Rosie), the HTTP endpoint + headers is sufficient — **no channel plugin required**.
+Only if Stack-chan must behave as a **native messaging network** (its own users/rooms/webhooks/outbound transport) or appear in `channels list`/status. For a single physical device talking to one agent (Agent A), the HTTP endpoint + headers is sufficient — **no channel plugin required**.
 
 ### The voice path
 For realtime voice, the `esp-openclaw-talk` component (esp_webrtc + esp_capture + esp-sr WakeNet + AEC + Opus) is the native ESP-IDF path. The gateway-side `talk` config (`realtime.mode: "realtime"`, `brain: "direct-tools"`, `interruptOnSpeech: true`) is what it connects to.
@@ -257,8 +257,8 @@ The most production-mature Stack-chan integration (robot-bridge) proved the **"t
 
 ## Appendix: Key file references
 
-- `~/.openclaw/openclaw.json` — gateway config (auth password `clawdiomax`, port 18789, `nodes.allowCommands` with robot commands, `bindings`, `talk`, `session.dmScope: per-channel-peer`)
-- `~/.openclaw/nodes/paired.json` — Clawdio-Mini + iPhone node records (caps, commands, permissions, tokens)
+- `~/.openclaw/openclaw.json` — gateway config (auth password `<your-gateway-password>`, port 18789, `nodes.allowCommands` with robot commands, `bindings`, `talk`, `session.dmScope: per-channel-peer`)
+- `~/.openclaw/nodes/paired.json` — <your-host> + iPhone node records (caps, commands, permissions, tokens)
 - `~/.openclaw/devices/paired.json` — device pairing records (roles, scopes, tokens, public keys)
 - `~/.openclaw/identity/device.json` + `device-auth.json` — the CLI/operator device identity (Ed25519 keypair + operator token)
 - `docs/nodes/index.md` — node pairing, capabilities, permissions, node host

@@ -1,7 +1,7 @@
 # Analysis: M5Stack StackChan `app/` Directory
 
 **Date:** 2026-08-18
-**Repo:** `https://github.com/m5stack/StackChan` (local clone at `/Volumes/1TBSSDClawd/stackchan-node/repos/StackChan/`)
+**Repo:** `https://github.com/m5stack/StackChan` (local clone at `<repo-root>/stackchan-node/repos/StackChan/`)
 **Question answered:** "Is THIS how we're supposed to tweak the main firmware?" — **No.**
 
 ---

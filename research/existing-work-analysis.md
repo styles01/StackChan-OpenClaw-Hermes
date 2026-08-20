@@ -20,7 +20,7 @@ The real work is: **(1)** add an **OpenClaw HTTP backend** to Hermes-StackChan's
 
 ## 1. Existing Firmware Work (plaipin-openclaw-stackchan)
 
-Source root: `/Volumes/1TBSSDClawd/stackchan-node/repos/plaipin-openclaw-stackchan/firmware/src/`
+Source root: `<repo-root>/stackchan-node/repos/plaipin-openclaw-stackchan/firmware/src/`
 
 ### 1.1 File inventory (OpenClaw-related)
 
@@ -69,7 +69,7 @@ String url = String("http://") + host + ":" + String(port) + "/v1/chat/completio
 
 `json_OpenClawChatString` template:
 ```cpp
-{"model": "openclaw/rosie", "stream": false,
+{"model": "openclaw/agent-a", "stream": false,
  "messages": [
    {"role":"system","content":""},   // user-role slot
    {"role":"system","content":""},   // system-role slot
@@ -107,7 +107,7 @@ typedef struct OpenClawConf {
     String host;
     int port;
     String model;
-    String agent_id;         // NEW: agent binding (e.g. "rosie")
+    String agent_id;         // NEW: agent binding (e.g. "agent-a")
     String bot_token;        // NEW: Telegram bot token / gateway auth
     String default_model;    // NEW: default model string
 } openclaw_s;
@@ -145,11 +145,11 @@ typedef struct ExConfig {
 
 ## 2. Test Harness
 
-Root: `/Volumes/1TBSSDClawd/stackchan-node/test-harness/`
+Root: `<repo-root>/stackchan-node/test-harness/`
 
 ### 2.1 `test_agent_binding.py` — 12 test suites (the primary suite)
 
-Runs live OpenClaw (Rosie) + Hermes (Venus) agent-binding validation. Requires live gateways OR `--unit-tests-only`.
+Runs live OpenClaw (Agent A) + Hermes (Agent B) agent-binding validation. Requires live gateways OR `--unit-tests-only`.
 
 **Header builders (the exact conventions to port):**
 ```python
@@ -174,16 +174,16 @@ def build_hermes_url(base_url, profile):
 **The 12 suites:**
 1. **Unit tests** (no network): OpenClaw header construction, Hermes header construction, `validate_openclaw_session_key` (must be agent-prefixed, ≥4 parts), Hermes URL construction (`/p/<profile>/` vs bare).
 2. **OpenClaw auth rejection** — missing/invalid Bearer → expect 401.
-3. **OpenClaw models** — `GET /v1/models` lists agents (warns, not fails, if rosie absent).
-4. **OpenClaw Rosie identity** — POST `openclaw/rosie`, strict check: response must contain `"rosie"`.
+3. **OpenClaw models** — `GET /v1/models` lists agents (warns, not fails, if agent-a absent).
+4. **OpenClaw Agent A identity** — POST `openclaw/agent-a`, strict check: response must contain `"agent-a"`.
 5. **OpenClaw session persistence** — same session key, message 2 "What is my name?" must contain `"testbot"`.
 6. **Hermes auth rejection** — 401 on missing/invalid token (skips on connection-refused).
 7. **Hermes models** — `GET /v1/models`.
-8. **Hermes Venus identity** — `model: hermes-agent`, strict check: response contains `"venus"`; also detects WRONG profile (Maïs/mermaid → fail).
+8. **Hermes Agent B identity** — `model: hermes-agent`, strict check: response contains `"agent-b"`; also detects WRONG profile (Maïs/mermaid → fail).
 9. **Hermes session persistence** — same `X-Hermes-Session-Key`, must contain `"testbot"`.
-10. **Agent isolation** — Rosie says "rosie", Venus says "venus" (cross-system).
-11. **OpenClaw workspace write** — ask Rosie to create/update a file in `ROSIE_WORKSPACE_DIR`, verify exact content on disk.
-12. **Hermes workspace write** — same for Venus in `VENUS_WORKSPACE_DIR`.
+10. **Agent isolation** — Agent A says "agent-a", Agent B says "agent-b" (cross-system).
+11. **OpenClaw workspace write** — ask Agent A to create/update a file in `AGENT_A_WORKSPACE_DIR`, verify exact content on disk.
+12. **Hermes workspace write** — same for Agent B in `AGENT_B_WORKSPACE_DIR`.
 
 **Result (from README):** 12/12 passed with strict identity validation. Workspace writes confirmed on disk.
 
@@ -191,16 +191,16 @@ def build_hermes_url(base_url, profile):
 
 Simulates the full firmware chat path against the real Gateway:
 - `parse_response_firmware_style()` — replicates `OpenClawClient::chat` parsing: deserialize, check `error`, extract `choices[0].message.content`, stripEmoji, `\n`→space, strip `**`/`__`, 200-char cap.
-- 8 tests: agent identity, workspace access, multi-turn conversation, response parsing (emoji/markdown/cap), error handling (bad model), latency (< 65s), full pipeline (system prompts → Gateway → TTS-ready), model routing (`openclaw/rosie` vs `openclaw/main`).
-- Hardcodes `GATEWAY_AUTH = "Bearer clawdiomax"` and `GATEWAY_URL` to `127.0.0.1:18789`.
+- 8 tests: agent identity, workspace access, multi-turn conversation, response parsing (emoji/markdown/cap), error handling (bad model), latency (< 65s), full pipeline (system prompts → Gateway → TTS-ready), model routing (`openclaw/agent-a` vs `openclaw/main`).
+- Hardcodes `GATEWAY_AUTH = "Bearer <your-gateway-password>"` and `GATEWAY_URL` to `127.0.0.1:18789`.
 
 ### 2.3 `workspace_write_test.py` — the "real bar"
 
-Proves the full binding `Stack-chan firmware → Gateway (openclaw/rosie) → Rosie agent → workspace write`:
-1. Verify Rosie workspace exists.
+Proves the full binding `Stack-chan firmware → Gateway (openclaw/agent-a) → Agent A agent → workspace write`:
+1. Verify Agent A workspace exists.
 2. Clean slate (remove old handshake file).
-3. Send firmware-style write request through Gateway → `STACKCHAN_HANDSHAKE.txt` in Rosie's workspace.
-4. Verify file exists + content markers (handshake text, "rosie", "openclaw/rosie", timestamp).
+3. Send firmware-style write request through Gateway → `STACKCHAN_HANDSHAKE.txt` in Agent A's workspace.
+4. Verify file exists + content markers (handshake text, "agent-a", "openclaw/agent-a", timestamp).
 5. Read back through Gateway (proves read+write).
 
 **5/5 checks passed** per README.
@@ -210,7 +210,7 @@ Proves the full binding `Stack-chan firmware → Gateway (openclaw/rosie) → Ro
 - Standalone single-file HTML (no server). Talks directly to ESP32 `/config` on port 80.
 - **Find Stack-chan**: auto-scans `/24` subnet by GET `/config`, lists devices by `backend` + `agent_id`.
 - **Backend selector**: dropdown (OpenClaw=0 / Hermes=1), toggles which section shows.
-- **OpenClaw section**: host, port (default 18789), model (default `openclaw/rosie`), agent_id.
+- **OpenClaw section**: host, port (default 18789), model (default `openclaw/agent-a`), agent_id.
 - **Hermes section**: host, port (default 8643), model (default `hermes-agent`), agent_id.
 - **Actions**: Save Config (POST /config), Reload, Test Chat (GET /chat?text=), Show Raw JSON.
 - **API Keys section**: `saveApiKey('openclaw'|'hermes')` → `POST /apikey_set` with `{openclaw:{key}}` / `{hermes:{key}}`. Tokens NOT sent in the config POST body (per C3) — stored separately, shown masked.
@@ -247,7 +247,7 @@ Concrete HTTP call patterns (no secrets). The **authoritative reference for the 
 
 ### 3.3 `research/CURRENT_PLAN.md`
 
-James's direction: **"channel key not session key."** Sessions reset at 4am; the **channel** is the stable identity. Proved: `model: openclaw/rosie` works, `user:` auto-scopes, bare session keys route to wrong agent, agent-prefixed keys work. Not yet validated: channel surface recognition, session survival across 4am (it does survive, per FINAL_SYNTHESIS), channel key stability.
+James's direction: **"channel key not session key."** Sessions reset at 4am; the **channel** is the stable identity. Proved: `model: openclaw/agent-a` works, `user:` auto-scopes, bare session keys route to wrong agent, agent-prefixed keys work. Not yet validated: channel surface recognition, session survival across 4am (it does survive, per FINAL_SYNTHESIS), channel key stability.
 
 ### 3.4 `CODE_REVIEW_V2.md`
 
@@ -268,7 +268,7 @@ Dex's review of the plaipin firmware + harness. **Critical (C1–C4)** and **Rec
 
 ## 4. The Hermes-StackChan Fork (port target)
 
-Root: `/Volumes/1TBSSDClawd/stackchan-node/repos/working-repos/Hermes-StackChan/`
+Root: `<repo-root>/stackchan-node/repos/working-repos/Hermes-StackChan/`
 
 ### 4.1 Architecture (from code review)
 
@@ -326,8 +326,8 @@ To add OpenClaw as a backend, we add an **`OpenClawClient` (HTTP)** alongside `H
 |---|---|
 | `openclaw.host` | `OPENCLAW_HOST` env in `ai-server/.env` |
 | `openclaw.port` | `OPENCLAW_PORT` env (default 18789) |
-| `openclaw.model` | `OPENCLAW_MODEL` env (default `openclaw/rosie`) |
-| `openclaw.agent_id` | `OPENCLAW_AGENT_ID` env (e.g. `rosie`) |
+| `openclaw.model` | `OPENCLAW_MODEL` env (default `openclaw/agent-a`) |
+| `openclaw.agent_id` | `OPENCLAW_AGENT_ID` env (e.g. `agent-a`) |
 | `openclaw.bot_token` | `OPENCLAW_API_KEY` env (gateway password) |
 | `openclaw.default_model` | (unused in plaipin; drop or alias to model) |
 | `hermes.*` | Already handled by existing `HERMES_*` env + `HermesClient` |
@@ -341,7 +341,7 @@ The firmware SD `config.json` gains an optional `"backend": "openclaw"|"hermes"`
    ```json
    "backend": "openclaw",
    "openclaw": { "host": "192.168.1.100", "port": 18789,
-                 "model": "openclaw/rosie", "agent_id": "rosie" }
+                 "model": "openclaw/agent-a", "agent_id": "agent-a" }
    ```
    (token stays server-side in ai-server `.env`, not on the SD card — better security than plaipin's flash-stored token).
 2. **`hal/hal_mcp.cpp` / `get_websocket_url()`** — read optional `backend` + `openclaw.*` from Settings alongside `websocket_url`; expose via the bridge config.
@@ -370,8 +370,8 @@ The firmware SD `config.json` gains an optional `"backend": "openclaw"|"hermes"`
 **Concept (from README):** each physical robot has a profile that binds it to a backend + agent. Example fleet:
 | Robot | Backend | Agent | Port | Session Key |
 |---|---|---|---|---|
-| A | OpenClaw | Rosie | 18789 | `agent:rosie:stackchan:robot-a` |
-| B | Hermes | Venus | 8643 | `venus-stackchan:robot-b` |
+| A | OpenClaw | Agent A | 18789 | `agent:agent-a:stackchan:robot-a` |
+| B | Hermes | Agent B | 8643 | `agent-b-stackchan:robot-b` |
 | C | OpenClaw | custom | 18789 | `agent:custom:stackchan:robot-c` |
 
 **Implementation in Hermes-StackChan:**
@@ -407,7 +407,7 @@ The firmware SD `config.json` gains an optional `"backend": "openclaw"|"hermes"`
 - [ ] Port `test_agent_binding.py` header builders + strict identity/session-persistence/isolation logic as a TS test against the new ai-server (or keep Python, pointed at the ai-server's OpenClaw path).
 - [ ] Verify: OpenClaw backend routes to correct agent, session persists across turns, auth rejection (401), workspace I/O.
 - [ ] Verify: Hermes backend still works (regression).
-- [ ] Verify: profile binding (robot A → Rosie/OpenClaw, robot B → Venus/Hermes) on the same ai-server.
+- [ ] Verify: profile binding (robot A → Agent A/OpenClaw, robot B → Agent B/Hermes) on the same ai-server.
 
 ---
 
@@ -437,7 +437,7 @@ x-openclaw-message-channel: stackchan
   "messages": [ { "role": "user", "content": "..." } ] }
 ```
 
-**Hermes (dedicated port, Option B — used by Venus):**
+**Hermes (dedicated port, Option B — used by Agent B):**
 ```http
 POST http://<host>:8643/v1/chat/completions
 Authorization: Bearer <PROFILE_API_SERVER_KEY>
@@ -447,7 +447,7 @@ X-Hermes-Session-Key: <agent>-stackchan-<device_id>
 { "model": "hermes-agent", "messages": [...] }
 ```
 
-**Hermes (multiplex, Option A — not enabled for Venus):**
+**Hermes (multiplex, Option A — not enabled for Agent B):**
 ```http
 POST http://<host>:8642/p/<profile>/v1/chat/completions
 ```

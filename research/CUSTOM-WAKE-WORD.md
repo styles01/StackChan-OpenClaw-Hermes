@@ -1,8 +1,8 @@
-# Custom Wake Word: "Hey Rosie"
+# Custom Wake Word: "Hey Agent A"
 
 ## Research Summary
 
-**Goal:** Replace the default wake word "Hi, Stack Chan" (`wn9_histackchan_tts3`) with a custom "Hey Rosie" wake word on the ESP32-S3 CoreS3.
+**Goal:** Replace the default wake word "Hi, Stack Chan" (`wn9_histackchan_tts3`) with a custom "Hey Agent A" wake word on the ESP32-S3 CoreS3.
 
 ## How Wake Words Work in ESP-SR
 
@@ -43,7 +43,7 @@ To change the wake word, you must:
 
 Theoretically yes — `WakeNet supports up to 5 wake words` per the docs. You could enable multiple `CONFIG_SR_WN_*` options and the model packer would include all of them. But the firmware code only uses `model_name[0]` (the first one). You'd need to modify the firmware to iterate models and select one at boot — possible but requires C++ firmware changes.
 
-## Two Paths to "Hey Rosie"
+## Two Paths to "Hey Agent A"
 
 ### Path 1: Request a Free Custom Model from Espressif (RECOMMENDED — Free)
 
@@ -87,14 +87,14 @@ Available English wake words in the current ESP-SR catalog:
 | `wn9_computer_tts` | "Computer" |
 | `wn9_sophia_tts` | "Sophia" |
 
-None of these is "Hey Rosie." The closest phonetically would be:
+None of these is "Hey Agent A." The closest phonetically would be:
 - **"Hey, Ivy"** (`wn9_heyivy_tts2`) — similar "Hey" prefix, two syllables
 - **"Sophia"** (`wn9_sophia_tts`) — ends in similar "ee-uh" sound
 
 ### Path 3: Train a Custom Model Yourself (HARD — Not Recommended)
 
 ESP-SR does not ship a public training toolkit for WakeNet. The training pipeline is Espressif-internal. You would need:
-- Large dataset of "Hey Rosie" audio samples (1000+ clips, varied speakers/accents)
+- Large dataset of "Hey Agent A" audio samples (1000+ clips, varied speakers/accents)
 - TTS-generated synthetic training data
 - Espressif's internal training scripts (not publicly available)
 - GPU training time
@@ -104,7 +104,7 @@ ESP-SR does not ship a public training toolkit for WakeNet. The training pipelin
 ## Recommended Plan
 
 ### Step 1: Submit a wake word request to Espressif (NOW — Free, 2-4 weeks)
-- Post on [GitHub issue #88](https://github.com/espressif/esp-sr/issues/88) requesting "Hey, Rosie" as a wake word
+- Post on [GitHub issue #88](https://github.com/espressif/esp-sr/issues/88) requesting "Hey, Agent A" as a wake word
 - Also follow the [official customization process](https://docs.espressif.com/projects/esp-sr/en/latest/esp32s3/wake_word_engine/ESP_Wake_Words_Customization.html)
 - Include: wake word text, language (English), target chip (ESP32-S3), use case (robot assistant)
 
@@ -112,9 +112,9 @@ ESP-SR does not ship a public training toolkit for WakeNet. The training pipelin
 - Switch to `wn9_heyivy_tts2` ("Hey, Ivy") as a temporary wake word
 - Change sdkconfig: `CONFIG_SR_WN_WN9_HEYIVY_TTS2=y`, disable `CONFIG_SR_WN_WN9_HISTACKCHAN_TTS3`
 - Rebuild and flash
-- Device responds to "Hey, Ivy" until "Hey, Rosie" model is ready
+- Device responds to "Hey, Ivy" until "Hey, Agent A" model is ready
 
-### Step 3: Switch to "Hey, Rosie" when the model is available (2-4 weeks)
+### Step 3: Switch to "Hey, Agent A" when the model is available (2-4 weeks)
 - Once Espressif adds the model to ESP-SR, update the managed component
 - Change sdkconfig to the new model
 - Rebuild and flash
@@ -134,7 +134,7 @@ This is a **Phase 2 enhancement** — requires C++ firmware modifications to the
 | Path | Effort | Timeline | Quality |
 |------|--------|----------|---------|
 | Request from Espressif | 10 min to post | 2-4 weeks | Production-grade |
-| Temporary English word | 30 min (rebuild + flash) | Immediate | Good (not "Rosie") |
+| Temporary English word | 30 min (rebuild + flash) | Immediate | Good (not "Agent A") |
 | Train yourself | Weeks | Unknown | Unknown |
 | Config page selector | 2-3 days coding | Phase 2 | Best UX |
 

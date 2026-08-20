@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-18 (revised 23:30 MDT)
 **Status:** REVISED — addressing adversarial review (C1-C4, I1-I6)
-**Author:** Rosie
+**Author:** Agent A
 
 ---
 
@@ -46,7 +46,7 @@
            │ HermesAgent │      │  OpenClaw   │
            │ (optional   │      │  Gateway    │
            │  for STT/   │      │  (18789)    │
-           │  TTS only)  │      │  Rosie      │
+           │  TTS only)  │      │  Agent A      │
            └─────────────┘      └─────────────┘
 ```
 
@@ -127,8 +127,8 @@ export class OpenClawClient implements HermesSessionClient {
         const port = process.env.OPENCLAW_PORT ?? '18789'
         this.baseUrl = `http://${host}:${port}`
         this.apiKey = process.env.OPENCLAW_API_KEY ?? ''
-        this.model = process.env.OPENCLAW_MODEL ?? 'openclaw/rosie'
-        const agentId = process.env.OPENCLAW_AGENT_ID ?? 'rosie'
+        this.model = process.env.OPENCLAW_MODEL ?? 'openclaw/agent-a'
+        const agentId = process.env.OPENCLAW_AGENT_ID ?? 'agent-a'
         const deviceId = process.env.STACKCHAN_DEVICE_ID ?? 'default'
         this.sessionKey = `agent:${agentId}:stackchan:${deviceId}`
     }
@@ -260,8 +260,8 @@ STACKCHAN_BACKEND=hermes
 # OpenClaw backend (used when STACKCHAN_BACKEND=openclaw)
 OPENCLAW_HOST=127.0.0.1
 OPENCLAW_PORT=18789
-OPENCLAW_AGENT_ID=rosie
-OPENCLAW_MODEL=openclaw/rosie
+OPENCLAW_AGENT_ID=agent-a
+OPENCLAW_MODEL=openclaw/agent-a
 OPENCLAW_API_KEY=
 
 # WebSocket bind host (default 127.0.0.1 for security; set to 0.0.0.0 for LAN)

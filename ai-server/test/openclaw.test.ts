@@ -75,7 +75,7 @@ test('OpenClawClient submits prompt and returns content', async () => {
     const mock = mockFetch({
         status: 200,
         json: {
-            choices: [{ message: { content: 'Hello from Rosie!' } }],
+            choices: [{ message: { content: 'Hello from your-agent!' } }],
         },
     })
 
@@ -83,27 +83,27 @@ test('OpenClawClient submits prompt and returns content', async () => {
         host: '127.0.0.1',
         port: '18789',
         apiKey: 'test-key',
-        model: 'openclaw/rosie',
-        agentId: 'rosie',
+        model: 'openclaw/your-agent',
+        agentId: 'your-agent',
         deviceId: 'robot-a',
     })
 
     const result = await client.submitPrompt('こんにちは')
 
-    assert.equal(result, 'Hello from Rosie!')
+    assert.equal(result, 'Hello from your-agent!')
 
     assert.equal(mock.calls.length, 1)
     assert.equal(mock.calls[0].url, 'http://127.0.0.1:18789/v1/chat/completions')
 
     const body = JSON.parse(mock.calls[0].init.body as string)
-    assert.equal(body.model, 'openclaw/rosie')
+    assert.equal(body.model, 'openclaw/your-agent')
     assert.equal(body.stream, false)
     assert.equal(body.messages[0].role, 'user')
     assert.equal(body.messages[0].content, 'こんにちは')
 
     const headers = mock.calls[0].init.headers as Record<string, string>
     assert.equal(headers['Authorization'], 'Bearer test-key')
-    assert.equal(headers['x-openclaw-session-key'], 'agent:rosie:stackchan:robot-a')
+    assert.equal(headers['x-openclaw-session-key'], 'agent:your-agent:stackchan:robot-a')
     assert.equal(headers['Content-Type'], 'application/json')
 
     mock.restore()

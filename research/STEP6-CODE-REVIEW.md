@@ -35,14 +35,14 @@ It does **not** pass `deviceId`. Inside `OpenClawClient`, the session key defaul
 const deviceId = options?.deviceId ?? process.env.STACKCHAN_DEVICE_ID ?? 'default'
 this.sessionKey = `agent:${agentId}:stackchan:${deviceId}`
 ```
-Result: **every device routed to OpenClaw shares session key `agent:rosie:stackchan:default`** (unless `STACKCHAN_DEVICE_ID` env is set globally). The whole point of the iteration — separate sessions/memory per robot — is silently broken for OpenClaw. Two robots on the same agent would see each other's conversation context.
+Result: **every device routed to OpenClaw shares session key `agent:agent-a:stackchan:default`** (unless `STACKCHAN_DEVICE_ID` env is set globally). The whole point of the iteration — separate sessions/memory per robot — is silently broken for OpenClaw. Two robots on the same agent would see each other's conversation context.
 **Fix:** `session.ts` must pass `deviceId` into the `OpenClawClient` (it is available in the `DeviceBinding` / connection). The unused `constructSessionKey` helper in `device_config.ts` is the intended mechanism but is never called.
 
 ### B2 (HIGH) — `constructSessionKey` is dead code
 `device_config.ts` exports `constructSessionKey(binding, deviceId)` (builds `agent:<agent_id>:stackchan:<device_id>`) and `reloadConfig()`, but **neither is imported or called anywhere** in `server.ts` or `session.ts` (confirmed via grep). The session key is instead assembled implicitly inside `OpenClawClient` with a different separator/location. This is duplicated, unreconciled logic — two definitions of "the session key" that can drift. Either wire it in and use it as the single source, or delete it. Given B1, this is a strong hint the feature was half-implemented.
 
 ### B3 (MEDIUM) — Hermes backend ignores `agent_id` entirely
-When `binding.backend === 'hermes'`, session.ts does `new HermesClient()` with **no arguments** — `binding.agent_id` (e.g. `venus`) is discarded. HermesClient connects to the global `HERMES_DASHBOARD_URL`/token. So the per-device `agent_id` in `devices.json` is meaningless for the Hermes path. If Hermes is intended to support per-device agents, this is unimplemented; if not, the field is misleading and should be documented as OpenClaw-only.
+When `binding.backend === 'hermes'`, session.ts does `new HermesClient()` with **no arguments** — `binding.agent_id` (e.g. `agent-b`) is discarded. HermesClient connects to the global `HERMES_DASHBOARD_URL`/token. So the per-device `agent_id` in `devices.json` is meaningless for the Hermes path. If Hermes is intended to support per-device agents, this is unimplemented; if not, the field is misleading and should be documented as OpenClaw-only.
 
 ### B4 (MEDIUM) — `strip_emoji` erases 4 bytes unconditionally with a partial-boundary hazard
 ```cpp
@@ -115,7 +115,7 @@ Pure `std::string` + `cstdint`, no ESP-IDF calls — correct for a reusable util
 ```ts
 const binding = deps.deviceBinding ?? { backend: (process.env.STACKCHAN_BACKEND ?? 'hermes') as 'openclaw' | 'hermes', ... }
 ```
-The cast `as 'openclaw' | 'hermes'` bypasses runtime validation; if `STACKCHAN_BACKEND` is set to an unexpected string, it flows into the ternary as "not 'openclaw'" → silently routes to Hermes. Acceptable as a backward-compat fallback but worth noting. More importantly: **the default `agent_id` fallback is `'rosie'` while the backend default is `'hermes'`** — inconsistent (a Hermes-bound device defaulting to an OpenClaw agent name). Cosmetic-ish but confusing.
+The cast `as 'openclaw' | 'hermes'` bypasses runtime validation; if `STACKCHAN_BACKEND` is set to an unexpected string, it flows into the ternary as "not 'openclaw'" → silently routes to Hermes. Acceptable as a backward-compat fallback but worth noting. More importantly: **the default `agent_id` fallback is `'agent-a'` while the backend default is `'hermes'`** — inconsistent (a Hermes-bound device defaulting to an OpenClaw agent name). Cosmetic-ish but confusing.
 
 ### T4 (HIGH — ties to B1) — `OpenClawClient` deviceId not threaded
 The `DeviceBinding`/deviceId available in `server.ts` is not propagated into `OpenClawClient` (`deviceId` option exists on the constructor but session.ts omits it). This is the TS-side root cause of B1. Fix in `session.ts`.
@@ -180,7 +180,7 @@ Moved to ai-server per-device — ✅ directionally correct. The gap is the inco
 
 **Blocking (must fix before merge):**
 1. **C1** — Implement plan Blocker 2 for real: comment out `ota_->CheckVersion()`/`CheckNewVersion()` in the patch AND add `CONFIG_OTA_URL=""` to `sdkconfig.defaults`. Do not rely on the conditional local-WS guard.
-2. **B1/T4** — Thread `deviceId` into `OpenClawClient` from `server.ts`/`session.ts` so per-device session keys (`agent:rosie:stackchan:<mac>`) actually separate. Wire in `constructSessionKey` as the single source of truth (B2).
+2. **B1/T4** — Thread `deviceId` into `OpenClawClient` from `server.ts`/`session.ts` so per-device session keys (`agent:agent-a:stackchan:<mac>`) actually separate. Wire in `constructSessionKey` as the single source of truth (B2).
 3. **S3** — Add `cJSON_IsString`/`cJSON_IsNumber` guards in `config_post_handler` before dereferencing `valuestring`/`valueint` (prevents NULL-assign-to-`std::string` crash).
 4. **S1** — Add auth/origin-check (or at minimum clear LAN-only + a token) to the device HTTP `/config` POST endpoint. Document the new attack surface.
 5. **B3** — Resolve Hermes `agent_id`: either pass it to HermesClient and implement per-device Hermes routing, or remove the misleading field/document as OpenClaw-only.
@@ -194,7 +194,7 @@ Moved to ai-server per-device — ✅ directionally correct. The gap is the inco
 
 **Nice to have:**
 11. **B6** — Make `test_ws_e2e.py` actually verify STT→LLM→TTS round-trip (send real audio, assert audio/text response), not just connect+hello. Fix the config-endpoint test to target the device's port 80, or drop it.
-12. **T3** — Align default backend/agent (`hermes` + `rosie` mismatch); validate `STACKCHAN_BACKEND` at runtime.
+12. **T3** — Align default backend/agent (`hermes` + `agent-a` mismatch); validate `STACKCHAN_BACKEND` at runtime.
 13. **S4** — Note the Device-Id spoofing limitation for session hijack awareness (documented, not blocking).
 14. **S2** — Wire or remove the unused `bot_token` config fields.
 

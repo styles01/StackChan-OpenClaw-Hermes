@@ -27,9 +27,9 @@ function loadConfig() {
         cachedConfig = JSON.parse(raw);
     }
     catch {
-        // Fallback: default to OpenClaw + rosie
+        // Fallback: default to OpenClaw + your-agent
         cachedConfig = {
-            default: { backend: 'openclaw', agent_id: 'rosie' },
+            default: { backend: 'openclaw', agent_id: 'your-agent' },
             devices: {}
         };
     }

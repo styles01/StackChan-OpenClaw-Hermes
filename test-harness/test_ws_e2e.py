@@ -81,12 +81,12 @@ async def test_backend_routing(host: str, port: int):
     """Test that different Device-Ids route to different backends."""
     print(f"\n[test] === Backend routing test ===")
     
-    # Test device 1 (should route to OpenClaw/rosie per devices.json)
-    print(f"\n[test] Device 1 (OpenClaw/rosie):")
+    # Test device 1 (should route to OpenClaw/agent-a per devices.json)
+    print(f"\n[test] Device 1 (OpenClaw/agent-a):")
     result1 = await test_connection(host, port, "AA:BB:CC:DD:EE:01")
     
-    # Test device 2 (should route to Hermes/venus per devices.json)
-    print(f"\n[test] Device 2 (Hermes/venus):")
+    # Test device 2 (should route to Hermes/agent-b per devices.json)
+    print(f"\n[test] Device 2 (Hermes/agent-b):")
     result2 = await test_connection(host, port, "AA:BB:CC:DD:EE:02")
     
     # Test unknown device (should fall back to default)

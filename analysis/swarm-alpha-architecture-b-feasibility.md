@@ -8,13 +8,13 @@
 
 ## ⚡ EXECUTIVE VERDICT
 
-**Architecture B is FEASIBLE — and it is ALREADY BEING BUILT in this workspace as the `rosie-node` project.**
+**Architecture B is FEASIBLE — and it is ALREADY BEING BUILT in this workspace as the `agent-node` project.**
 
-The premise "start from Stack-chan firmware and add OpenClaw" is being executed as a **native ESP-IDF project** (`/Volumes/1TBSSDClawd/stackchan-node/rosie-node/`), NOT as a PlatformIO/Arduino project. This is the correct and only realistic path, because the esp-openclaw-room-node contract is **hard-wired to the ESP-IDF native audio/display stack** (esp_capture + esp_codec_dev + esp-sr + LVGL) and cannot be satisfied by M5Unified/M5GFX without a full rewrite of the room-node's audio pipeline.
+The premise "start from Stack-chan firmware and add OpenClaw" is being executed as a **native ESP-IDF project** (`<repo-root>/stackchan-node/agent-node/`), NOT as a PlatformIO/Arduino project. This is the correct and only realistic path, because the esp-openclaw-room-node contract is **hard-wired to the ESP-IDF native audio/display stack** (esp_capture + esp_codec_dev + esp-sr + LVGL) and cannot be satisfied by M5Unified/M5GFX without a full rewrite of the room-node's audio pipeline.
 
 **The critical finding:** The room-node's audio port does NOT just need "any audio handles" — it feeds `esp_codec_dev_handle_t` handles into a pinned `esp_capture` AFE (Audio Front End) source (`room_aec_src.c`) that runs esp-sr WakeNet + AEC + VAD. This is a deep, non-negotiable dependency on the ESP-IDF native audio stack. M5Unified's `M5.Speaker`/`M5.Mic` cannot be wrapped as these handles without reimplementing the entire AFE pipeline.
 
-**Bottom line:** Architecture B works, but "start from the Arduino firmware" must be reinterpreted as "**port the Stack-chan robot features (servo, camera, face, LED) into a native ESP-IDF project that already has the OpenClaw connection layer**" — which is exactly what `rosie-node` is doing. The Arduino firmware is a **reference for the robot features**, not a buildable base.
+**Bottom line:** Architecture B works, but "start from the Arduino firmware" must be reinterpreted as "**port the Stack-chan robot features (servo, camera, face, LED) into a native ESP-IDF project that already has the OpenClaw connection layer**" — which is exactly what `agent-node` is doing. The Arduino firmware is a **reference for the robot features**, not a buildable base.
 
 ---
 
@@ -35,7 +35,7 @@ The premise "start from Stack-chan firmware and add OpenClaw" is being executed 
 - The esp-openclaw components are **not** published as Arduino libraries and have no Arduino wrapper. There is no `esp-openclaw-node` Arduino library on the Arduino registry or PlatformIO lib registry.
 - esp-openclaw-node **is** published on the ESP Component Registry (`espressif/esp-openclaw-node` v1.0.0) — confirming it is an ESP-IDF-managed-component ecosystem, not Arduino.
 
-**Conclusion for Q1:** You **cannot** cleanly add these components to the existing `stackchan-mcp` PlatformIO Arduino project (`firmware/platformio.ini`, `framework = arduino`). The realistic path is to **invert the project**: make it ESP-IDF-native and pull the Stack-chan robot features in as C/C++ sources. This is what `rosie-node` does.
+**Conclusion for Q1:** You **cannot** cleanly add these components to the existing `stackchan-mcp` PlatformIO Arduino project (`firmware/platformio.ini`, `framework = arduino`). The realistic path is to **invert the project**: make it ESP-IDF-native and pull the Stack-chan robot features in as C/C++ sources. This is what `agent-node` does.
 
 ---
 
@@ -45,8 +45,8 @@ The premise "start from Stack-chan firmware and add OpenClaw" is being executed 
 
 - The room-node display port (`esp_openclaw_room_display_port_t` in `esp_openclaw_room_node.h`) requires an `lv_display_t *` from `start()`, plus `lock/unlock/set_brightness`. It is **LVGL-native**.
 - M5GFX **does** have working LVGL flush adapters in the wild (e.g. `go-go-golems/esp32-s3-m5/0025-cardputer-lvgl-demo/main/lvgl_port_m5gfx.cpp` — a working M5GFX→LVGL flush bridge). So bridging M5GFX to LVGL is proven possible.
-- **However:** the `rosie-node` project already implements the CoreS3 display **directly** with `esp_lcd` + LVGL (`main/board_cores3/cores3_display.c` — SPI ILI9342 via `esp_lcd_panel_ili9341` + LVGL 9.4.0), **bypassing M5GFX entirely**. This is cleaner and avoids the M5GFX/LVGL double-buffer and DMA complications.
-- **Recommendation:** Do NOT bridge M5GFX. Use the native `esp_lcd` + LVGL path already in `rosie-node`. The Stack-chan face GIFs (AnimatedGIF) can be re-rendered into LVGL, or the room-node's built-in procedural LVGL face (`room_face.c`) can be used.
+- **However:** the `agent-node` project already implements the CoreS3 display **directly** with `esp_lcd` + LVGL (`main/board_cores3/cores3_display.c` — SPI ILI9342 via `esp_lcd_panel_ili9341` + LVGL 9.4.0), **bypassing M5GFX entirely**. This is cleaner and avoids the M5GFX/LVGL double-buffer and DMA complications.
+- **Recommendation:** Do NOT bridge M5GFX. Use the native `esp_lcd` + LVGL path already in `agent-node`. The Stack-chan face GIFs (AnimatedGIF) can be re-rendered into LVGL, or the room-node's built-in procedural LVGL face (`room_face.c`) can be used.
 
 ### Audio (M5.Speaker/M5.Mic → esp_codec_dev): NO — this is the hard blocker.
 
@@ -57,9 +57,9 @@ The premise "start from Stack-chan firmware and add OpenClaw" is being executed 
   - Reads via `esp_codec_dev_read()` — `room_aec_src.c:344, 419`
   - Opens with `esp_codec_dev_open()` + `esp_codec_dev_sample_info_t` — `room_aec_src.c:580-587`
 - **M5Unified's `M5.Speaker`/`M5.Mic` are NOT esp_codec_dev handles and cannot be wrapped as such.** They use M5Unified's own I2S abstraction (legacy I2S driver), which conflicts with the new IDF I2S driver (`i2s_std`/`i2s_chan`) that esp_codec_dev uses. This is a known conflict (M5Stack community threads, esp-adf issue #1047, IDF I2S regressions).
-- **The correct path (already in `rosie-node`):** `main/board_cores3/cores3_audio.c` implements the audio port natively — AW88298 speaker + ES7210 mic via `esp_codec_dev` + STD I2S, adapted from the Waveshare room-node reference. This is the **only** way to satisfy the room-node audio contract.
+- **The correct path (already in `agent-node`):** `main/board_cores3/cores3_audio.c` implements the audio port natively — AW88298 speaker + ES7210 mic via `esp_codec_dev` + STD I2S, adapted from the Waveshare room-node reference. This is the **only** way to satisfy the room-node audio contract.
 
-**Conclusion for Q2:** Display bridging is possible but unnecessary (use native esp_lcd+LVGL). Audio bridging is **not feasible** — M5Unified's audio stack must be **replaced** by the esp_codec_dev pipeline. This is already done in `rosie-node`.
+**Conclusion for Q2:** Display bridging is possible but unnecessary (use native esp_lcd+LVGL). Audio bridging is **not feasible** — M5Unified's audio stack must be **replaced** by the esp_codec_dev pipeline. This is already done in `agent-node`.
 
 ---
 
@@ -77,32 +77,32 @@ The premise "start from Stack-chan firmware and add OpenClaw" is being executed 
 
 ## 4. Binary size — will it fit in 16MB flash?
 
-### YES — proven by the waveshare reference and the in-progress rosie-node build.
+### YES — proven by the waveshare reference and the in-progress agent-node build.
 
 **Reference: waveshare room-node** (`examples/waveshare-esp32-s3-touch-amoled-2.06-room-node/`):
 - `sdkconfig.defaults`: `CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y`, octal PSRAM, 240MHz
 - `partitions.csv`: `factory` app **8M** + `model` (spiffs) **2M** — within 16MB
 - This is the **full** room-node stack: WebRTC Talk + WakeNet9 HiESP + AEC + LVGL animated face + canvas + dual node/operator sessions. It builds a complete ESP32-S3 image.
 
-**In-progress rosie-node build** (`/Volumes/1TBSSDClawd/stackchan-node/rosie-node/`):
+**In-progress agent-node build** (`<repo-root>/stackchan-node/agent-node/`):
 - `sdkconfig.defaults`: 16MB flash, octal PSRAM, `SPIRAM_TRY_ALLOCATE_WIFI_LWIP`, `SPIRAM_MALLOC_ALWAYSINTERNAL=256`
 - `partitions.csv`: `ota_0` **6M** + `ota_1` **6M** + `model` (spiffs) **2M** — OTA-capable, within 16MB
 - `build/srmodels/srmodels.bin` = **291,142 bytes (~284 KB)** — this is the WakeNet9 HiESP model, already packaged.
 - The build was in progress (bootloader + partition table + srmodels built; main app .elf not yet produced).
 
 **Size estimate:**
-- The full room-node stack (WebRTC + esp-sr + LVGL + canvas + node) fits comfortably in **6-8MB** of app flash (waveshare uses 8M factory; rosie-node uses 6M OTA slots).
+- The full room-node stack (WebRTC + esp-sr + LVGL + canvas + node) fits comfortably in **6-8MB** of app flash (waveshare uses 8M factory; agent-node uses 6M OTA slots).
 - esp-sr models need a **2M spiffs partition** (already configured in both).
 - **Stack-chan robot features add minimal flash** — servo (SCSCL UART), camera (esp_capture/esp_video), LED (WS2812), face (LVGL or GIF arrays). These are small compared to the WebRTC/esp-sr/LVGL stack already present.
-- **RAM is the real constraint, not flash.** The waveshare README documents extensive internal-RAM pressure: task stacks, DMA buffers, and the `SPIRAM_MALLOC_RESERVE_INTERNAL=262144` (256KB internal reserve) and `SPIRAM_MALLOC_ALWAYSINTERNAL=256` settings. CoreS3 has 8MB octal PSRAM, which is sufficient, but internal RAM (512KB) is tight. The rosie-node sdkconfig already mirrors these settings.
+- **RAM is the real constraint, not flash.** The waveshare README documents extensive internal-RAM pressure: task stacks, DMA buffers, and the `SPIRAM_MALLOC_RESERVE_INTERNAL=262144` (256KB internal reserve) and `SPIRAM_MALLOC_ALWAYSINTERNAL=256` settings. CoreS3 has 8MB octal PSRAM, which is sufficient, but internal RAM (512KB) is tight. The agent-node sdkconfig already mirrors these settings.
 
-**Conclusion for Q4:** **YES, fits in 16MB.** Realistic app size ~6-8MB + 2MB model partition. The constraint is internal RAM, not flash — and the rosie-node config already handles this.
+**Conclusion for Q4:** **YES, fits in 16MB.** Realistic app size ~6-8MB + 2MB model partition. The constraint is internal RAM, not flash — and the agent-node config already handles this.
 
 ---
 
-## 5. The decisive finding: `rosie-node` IS Architecture B
+## 5. The decisive finding: `agent-node` IS Architecture B
 
-`/Volumes/1TBSSDClawd/stackchan-node/rosie-node/` is a **native ESP-IDF project** that already implements Architecture B:
+`<repo-root>/stackchan-node/agent-node/` is a **native ESP-IDF project** that already implements Architecture B:
 
 - **CMakeLists.txt** — `EXTRA_COMPONENT_DIRS` points at `../repos/esp-openclaw-node` for all 4 esp-openclaw components + all 6 esp-webrtc-solution components + esp_websocket_client.
 - **main/idf_component.yml** — declares `esp_codec_dev ^1.5.0`, `esp-sr ^2.4.7`, `esp_lcd_ili9341`, `esp_new_jpeg`, `lvgl ^9.4.0`, plus override_paths for all esp-openclaw/webrtc components.
@@ -113,7 +113,7 @@ The premise "start from Stack-chan firmware and add OpenClaw" is being executed 
   - `cores3_servo.c` — SCSCL bus servos
   - `cores3_led.c` — WS2812 LED
   - `cores3_touch.c` — FT6336 touch
-- **main/main.c** — implements the room-node services port (`prepare_runtime`/`prepare_network`/`register_commands`) with Phase 2 stubs for `rosie.look`, `rosie.emote`, `rosie.led`, `rosie.gesture`.
+- **main/main.c** — implements the room-node services port (`prepare_runtime`/`prepare_network`/`register_commands`) with Phase 2 stubs for `agent-a.look`, `agent-a.emote`, `agent-a.led`, `agent-a.gesture`.
 - **main/robot/** — empty directory reserved for robot feature code (Phase 2).
 - **managed_components/** — all dependencies already downloaded: `espressif__esp-sr`, `espressif__esp_capture`, `espressif__esp_codec_dev`, `espressif__esp_audio_codec`, `lvgl__lvgl`, `espressif__esp_libsrtp`, etc.
 
@@ -125,7 +125,7 @@ The premise "start from Stack-chan firmware and add OpenClaw" is being executed 
 
 From `stackchan-mcp` repo analysis + `firmware/src/main.cpp`:
 
-| Feature | Arduino source | Reusable in rosie-node? |
+| Feature | Arduino source | Reusable in agent-node? |
 |---------|---------------|------------------------|
 | Servo gestures (nod/shake) | `servo_service.cpp` | YES — logic pattern, port to `cores3_servo.c` |
 | Servo angle ranges (yaw ±128°, pitch 5-85°) | `servo_service.cpp` | YES — confirmed ranges |
@@ -147,7 +147,7 @@ From `stackchan-mcp` repo analysis + `firmware/src/main.cpp`:
 1. **UNKNOWN — needs hardware testing:** GC0308 camera pin mapping. `stackchan-mcp` and `robot-bridge` repos disagree on the pin config. Must verify on the physical CoreS3 board revision before camera bring-up.
 2. **UNKNOWN — needs hardware testing:** Microphone geometry / AEC performance on CoreS3. The waveshare README explicitly lists "Microphone geometry, speaker gain, false accepts, acoustic echo performance, thermals" as requiring physical-board validation. CoreS3's AW88298/ES7210 layout differs from waveshare's ES8311/ES7210.
 3. **UNKNOWN — needs hardware testing:** Whether the STD I2S stereo path (MIC1+MIC3) gives acceptable AEC reference on CoreS3. The `cores3_audio.c` comment notes the TDM→STD switch was made because IDF I2S doesn't support mixed modes; this needs board validation.
-4. **Internal RAM pressure** — the room-node stack is RAM-hungry. Adding camera + servo + LED on top needs careful task-stack budgeting. The rosie-node sdkconfig already reserves 256KB internal, but the full robot feature set may need tuning.
+4. **Internal RAM pressure** — the room-node stack is RAM-hungry. Adding camera + servo + LED on top needs careful task-stack budgeting. The agent-node sdkconfig already reserves 256KB internal, but the full robot feature set may need tuning.
 5. **esp-sr is single-instance** — the room-node owns WakeNet exclusively. Any custom wake-word handling must go through the room-node's AFE, not a second esp-sr instance.
 6. **esp_capture 1.0.2 doesn't expose AFE wake events** — the room-node carries a pinned copy of the AEC source (`room_aec_src.c`) to work around this. This is a maintenance burden but already handled.
 
@@ -155,19 +155,19 @@ From `stackchan-mcp` repo analysis + `firmware/src/main.cpp`:
 
 ## 8. Recommendation
 
-**Proceed with Architecture B as implemented in `rosie-node`.** Do NOT attempt to bolt esp-openclaw components onto the PlatformIO/Arduino project. Instead:
+**Proceed with Architecture B as implemented in `agent-node`.** Do NOT attempt to bolt esp-openclaw components onto the PlatformIO/Arduino project. Instead:
 
-1. **Treat `rosie-node` as the Architecture B codebase** (it already is).
-2. **Port Stack-chan robot features from `stackchan-mcp` firmware** into `rosie-node/main/robot/` and `main/board_cores3/`:
+1. **Treat `agent-node` as the Architecture B codebase** (it already is).
+2. **Port Stack-chan robot features from `stackchan-mcp` firmware** into `agent-node/main/robot/` and `main/board_cores3/`:
    - Servo gestures (nod/shake) → `cores3_servo.c`
    - Camera bring-up → `cores3_camera.c` (verify GC0308 pins first)
    - LED state machine → `cores3_led.c`
    - Face (LVGL procedural or GIF) → display layer
    - Audio-gate pattern → audio layer
 3. **Register robot commands** in `cores3_register_commands()` (Phase 2 stubs already in `main.c`).
-4. **Complete the rosie-node build** (it was in progress — main app .elf not yet produced) and validate on hardware.
+4. **Complete the agent-node build** (it was in progress — main app .elf not yet produced) and validate on hardware.
 
-**The "start from Stack-chan firmware" framing is best understood as "start from the Stack-chan feature set, ported into the native ESP-IDF OpenClaw project"** — which is exactly what `rosie-node` is doing. The Arduino firmware is the feature reference, not the buildable base.
+**The "start from Stack-chan firmware" framing is best understood as "start from the Stack-chan feature set, ported into the native ESP-IDF OpenClaw project"** — which is exactly what `agent-node` is doing. The Arduino firmware is the feature reference, not the buildable base.
 
 ---
 
@@ -184,10 +184,10 @@ From `stackchan-mcp` repo analysis + `firmware/src/main.cpp`:
 - `esp-openclaw-node/examples/waveshare-esp32-s3-touch-amoled-2.06-room-node/main/main.c` — reference board port (audio via esp_codec_dev, display via LVGL)
 - `esp-openclaw-node/examples/waveshare-esp32-s3-touch-amoled-2.06-room-node/sdkconfig.defaults` — 16MB flash, PSRAM, internal-RAM tuning
 - `esp-openclaw-node/examples/waveshare-esp32-s3-touch-amoled-2.06-room-node/partitions.csv` — 8M factory + 2M model
-- `rosie-node/CMakeLists.txt` — EXTRA_COMPONENT_DIRS for all esp-openclaw/webrtc components
-- `rosie-node/main/idf_component.yml` — managed deps (esp-sr, esp_codec_dev, lvgl 9.4.0, etc.)
-- `rosie-node/main/board_cores3/cores3_audio.c` — CoreS3 AW88298/ES7210 via esp_codec_dev (STD I2S)
-- `rosie-node/main/board_cores3/cores3_display.c` — CoreS3 ILI9342 via esp_lcd + LVGL
-- `rosie-node/main/main.c` — room-node services port with Phase 2 stubs
-- `rosie-node/partitions.csv` — 6M ota_0 + 6M ota_1 + 2M model
-- `rosie-node/build/srmodels/srmodels.bin` — 291KB WakeNet9 HiESP model (already packaged)
+- `agent-node/CMakeLists.txt` — EXTRA_COMPONENT_DIRS for all esp-openclaw/webrtc components
+- `agent-node/main/idf_component.yml` — managed deps (esp-sr, esp_codec_dev, lvgl 9.4.0, etc.)
+- `agent-node/main/board_cores3/cores3_audio.c` — CoreS3 AW88298/ES7210 via esp_codec_dev (STD I2S)
+- `agent-node/main/board_cores3/cores3_display.c` — CoreS3 ILI9342 via esp_lcd + LVGL
+- `agent-node/main/main.c` — room-node services port with Phase 2 stubs
+- `agent-node/partitions.csv` — 6M ota_0 + 6M ota_1 + 2M model
+- `agent-node/build/srmodels/srmodels.bin` — 291KB WakeNet9 HiESP model (already packaged)

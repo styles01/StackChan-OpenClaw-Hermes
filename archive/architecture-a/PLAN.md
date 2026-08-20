@@ -2,8 +2,8 @@
 
 ## Two Work Streams
 
-### A. Wake Word: "Hey Rosie" (firmware recompile)
-### B. Make the robot actually route to Rosie (MCP integration depth)
+### A. Wake Word: "Hey Agent A" (firmware recompile)
+### B. Make the robot actually route to Agent A (MCP integration depth)
 
 ---
 
@@ -23,7 +23,7 @@ ESP-SR supports custom wake words. The firmware has a "Wake Word Customization" 
    - Clone `https://github.com/78/xiaozhi-esp32`
    - Configure for the M5Stack CoreS3 board (stackchan board profile)
 
-2. **Generate a custom ESP-SR wake word model for "Hey Rosie"**
+2. **Generate a custom ESP-SR wake word model for "Hey Agent A"**
    - ESP-SR uses Espressif's wake word model format
    - Options:
      a. Use Espressif's online wake word generator (if available)
@@ -39,21 +39,21 @@ ESP-SR supports custom wake words. The firmware has a "Wake Word Customization" 
 4. **Compile and flash**
    - `idf.py build` → `idf.py flash`
    - Flash via USB (plug Stack-chan into the Mac)
-   - The device reboots with "Hey Rosie" as the wake word
+   - The device reboots with "Hey Agent A" as the wake word
 
 5. **Verify**
-   - Say "Hey Rosie" → device transitions from Standby to Listening
-   - Say "Hey Rosie, what's the printer status?" → Quick Wake mode (skips greeting, goes straight to processing)
+   - Say "Hey Agent A" → device transitions from Standby to Listening
+   - Say "Hey Agent A, what's the printer status?" → Quick Wake mode (skips greeting, goes straight to processing)
 
 ### What we need from James
 - Stack-chan plugged into USB on a machine with ESP-IDF installed
-- We can do the build on Clawdio-Mini (macOS arm64) — ESP-IDF supports macOS
+- We can do the build on <your-host> (macOS arm64) — ESP-IDF supports macOS
 - OR James's laptop if that's easier
 
 ### Research still needed
 - [ ] Read the exact "Wake Word Customization" doc from xiaozhi.me (page d12)
 - [ ] Check if ESP-SR has a simple config option or requires full model training
-- [ ] Check if there's a pre-built "Hey Rosie" wake word model or if we need to generate one
+- [ ] Check if there's a pre-built "Hey Agent A" wake word model or if we need to generate one
 - [ ] Find the exact menuconfig/board-config settings for custom wake words
 - [ ] Check the stackchan board profile in the firmware repo
 
@@ -66,11 +66,11 @@ ESP-SR supports custom wake words. The firmware has a "Wake Word Customization" 
 
 ---
 
-## B. MCP Integration Depth — Why the robot doesn't feel like Rosie
+## B. MCP Integration Depth — Why the robot doesn't feel like Agent A
 
 ### Current state
 - Our MCP server is connected to the xiaozhi.me broker
-- We expose 7 tools (rosie_status, rosie_say, rosie_printer_status, etc.)
+- We expose 7 tools (agent-a_status, agent-a_say, agent-a_printer_status, etc.)
 - The broker accepted our tools
 - BUT: zero tool calls have come through
 
@@ -80,29 +80,29 @@ The xiaozhi.me cloud handles the full pipeline:
 User speaks → device sends audio to xiaozhi cloud → cloud STT → cloud LLM (Qwen/DeepSeek) → cloud TTS → audio back to device
 ```
 Our MCP tools are available to the cloud LLM, but:
-1. The cloud LLM has its own system prompt (xiaozhi's, not Rosie's)
+1. The cloud LLM has its own system prompt (xiaozhi's, not Agent A's)
 2. The LLM only calls MCP tools when the conversation context makes it relevant
 3. If you just chat, it uses its own brain — our tools sit idle
-4. The LLM needs to "know" that Rosie exists and what Rosie tools are for
+4. The LLM needs to "know" that Agent A exists and what Agent A tools are for
 
 ### What we need to investigate
 - [ ] Can we configure the agent's system prompt on xiaozhi.me console?
 - [ ] Does the broker pass our tool descriptions to the cloud LLM?
-- [ ] Can we make Rosie the primary "personality" instead of xiaozhi's default?
+- [ ] Can we make Agent A the primary "personality" instead of xiaozhi's default?
 - [ ] Is there a way to route ALL conversations through our MCP server instead of xiaozhi's LLM?
 
 ### Option 1: Configure the xiaozhi agent prompt (simplest)
 - Log into xiaozhi.me console
 - Find the agent settings for our agentId (2253920)
-- Set a system prompt like: "You are Rosie, a household operations director. When asked about household status, chores, printer, or schedule, use the rosie_* tools."
-- This makes the cloud LLM aware of Rosie and more likely to call our tools
+- Set a system prompt like: "You are Agent A, a household operations director. When asked about household status, chores, printer, or schedule, use the agent-a_* tools."
+- This makes the cloud LLM aware of Agent A and more likely to call our tools
 
 ### Option 2: Self-host the xiaozhi server (full control)
 - Run `xinnan-tech/xiaozhi-esp32-server` (Python) on this machine
 - Point the device at our server instead of xiaozhi.me cloud
 - We control the LLM, the system prompt, the TTS voice, everything
 - The MCP broker becomes local too
-- More work but full control — Rosie IS the brain, not a tool provider
+- More work but full control — Agent A IS the brain, not a tool provider
 
 ### Option 3: Hybrid — xiaozhi cloud for STT/TTS, our server for LLM
 - Keep xiaozhi cloud for audio pipeline (fast STT/TTS)
@@ -110,9 +110,9 @@ Our MCP tools are available to the cloud LLM, but:
 - This would need investigation — may not be supported
 
 ### Recommendation
-Try **Option 1 first** — check the xiaozhi.me console for agent prompt configuration. If we can set Rosie's personality as the system prompt, the cloud LLM will naturally route to our tools when household questions come up. That's the 80/20 solution.
+Try **Option 1 first** — check the xiaozhi.me console for agent prompt configuration. If we can set Agent A's personality as the system prompt, the cloud LLM will naturally route to our tools when household questions come up. That's the 80/20 solution.
 
-If the console doesn't allow prompt customization, **Option 2** (self-host) is the real path. We'd run the full xiaozhi server stack locally with Rosie as the brain. More work but that's how we make Stack-chan truly a node of Rosie.
+If the console doesn't allow prompt customization, **Option 2** (self-host) is the real path. We'd run the full xiaozhi server stack locally with Agent A as the brain. More work but that's how we make Stack-chan truly a node of Agent A.
 
 ---
 
@@ -121,11 +121,11 @@ If the console doesn't allow prompt customization, **Option 2** (self-host) is t
 | Step | Task | Effort | Dependency |
 |------|------|--------|------------|
 | 1 | Research xiaozhi.me console agent settings | 30 min | James's login |
-| 2 | Set Rosie system prompt on xiaozhi agent | 15 min | Step 1 |
+| 2 | Set Agent A system prompt on xiaozhi agent | 15 min | Step 1 |
 | 3 | Test tool calls from the robot | 30 min | Step 2 |
 | 4 | Research ESP-IDF wake word customization | 1 hour | — |
 | 5 | Set up ESP-IDF build environment | 1-2 hours | — |
-| 6 | Generate "Hey Rosie" wake word model | 30 min-2 hours | Step 4 |
+| 6 | Generate "Hey Agent A" wake word model | 30 min-2 hours | Step 4 |
 | 7 | Compile + flash firmware | 30 min | Steps 5,6 |
 | 8 | Test wake word | 15 min | Step 7 |
 | 9 | (If needed) Self-host xiaozhi server | 4-8 hours | Step 3 fails |

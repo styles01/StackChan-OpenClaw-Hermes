@@ -1,4 +1,4 @@
-// CoreS3 ILI9342 display driver for Rosie Node
+// CoreS3 ILI9342 display driver for Agent A Node
 // Adapted from StackChan firmware display init + esp-openclaw-room-node display contract
 
 #include "cores3_board.h"

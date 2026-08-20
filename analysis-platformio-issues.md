@@ -193,7 +193,7 @@ The official M5CoreS3 library uses `M5Unified@^0.1.6` (which resolves to a newer
 
 ## 7. StackChan-BSP
 
-The `StackChan-BSP` repo (cloned to `/Volumes/1TBSSDClawd/stackchan-node/repos/StackChan-BSP/`) is an **Arduino library**, not a board definition. It:
+The `StackChan-BSP` repo (cloned to `<repo-root>/stackchan-node/repos/StackChan-BSP/`) is an **Arduino library**, not a board definition. It:
 - Depends on `M5Unified`, `M5GFX`, `IRremoteESP8266`, `M5Unit-NFC`
 - Provides `M5StackChan.h` / `M5StackChan.cpp` with `M5StackChan.begin()` which calls `M5.begin()` then `io_expander_init()` (for the **robot body's** PY32 IO expander, servos, RGB LEDs, INA226 power monitor)
 - Does **not** define a PlatformIO board or `platformio.ini`
@@ -204,7 +204,7 @@ The `StackChan-BSP` repo (cloned to `/Volumes/1TBSSDClawd/stackchan-node/repos/S
 
 ## 8. What the Official StackChan `firmware/` Directory Contains
 
-The official StackChan firmware (`/Volumes/1TBSSDClawd/stackchan-node/repos/StackChan/firmware/`) is a **pure ESP-IDF v5.5.4 project**:
+The official StackChan firmware (`<repo-root>/stackchan-node/repos/StackChan/firmware/`) is a **pure ESP-IDF v5.5.4 project**:
 
 - **Build system**: `idf.py build` (CMake-based ESP-IDF), with `fetch_repos.py` to pull dependencies (mooncake, smooth_ui_toolkit, xiaozhi-esp32, etc.)
 - **`sdkconfig.defaults`**: `CONFIG_IDF_TARGET="esp32s3"`, `CONFIG_SPIRAM=y`, `CONFIG_SPIRAM_SPEED_80M=y`, `CONFIG_BOARD_TYPE_M5STACK_STACK_CHAN=y`, 16 MB flash, QIO

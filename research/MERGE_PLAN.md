@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-18
 **Status:** DRAFT — pending adversarial review + James signoff
-**Author:** Rosie (synthesized from dex, ernest, gordon subagent analyses)
+**Author:** Agent A (synthesized from dex, ernest, gordon subagent analyses)
 
 ---
 
@@ -46,8 +46,8 @@
                     ▼                     ▼
            ┌─────────────┐      ┌─────────────┐
            │ HermesAgent │      │  OpenClaw   │
-           │ (Venus:8643)│      │  Gateway    │
-           │             │      │  (Rosie:    │
+           │ (Agent B:8643)│      │  Gateway    │
+           │             │      │  (Agent A:    │
            │ STT/LLM/TTS │      │  18789)     │
            │ MCP tools   │      │  Workspace  │
            └─────────────┘      │  File I/O   │
@@ -115,8 +115,8 @@ STACKCHAN_BACKEND=hermes
 # OpenClaw backend (used when STACKCHAN_BACKEND=openclaw)
 OPENCLAW_HOST=127.0.0.1
 OPENCLAW_PORT=18789
-OPENCLAW_AGENT_ID=rosie
-OPENCLAW_MODEL=openclaw/rosie
+OPENCLAW_AGENT_ID=agent-a
+OPENCLAW_MODEL=openclaw/agent-a
 OPENCLAW_API_KEY=  # Gateway password
 ```
 
@@ -156,8 +156,8 @@ Each robot has a profile defined in SD `config.json`:
 
 | Robot | `backend` | `agent_id` (config) | ai-server routes to | Session Key |
 |-------|-----------|---------------------|---------------------|-------------|
-| A | `openclaw` | `rosie` | OpenClaw:18789 | `agent:rosie:stackchan:robot-a` |
-| B | `hermes` | `venus` | Hermes:8643 | `venus-stackchan-robot-b` |
+| A | `openclaw` | `agent-a` | OpenClaw:18789 | `agent:agent-a:stackchan:robot-a` |
+| B | `hermes` | `agent-b` | Hermes:8643 | `agent-b-stackchan-robot-b` |
 | C | `openclaw` | `dex` | OpenClaw:18789 | `agent:dex:stackchan:robot-c` |
 
 - `backend` + `agent_id` stored in SD config, sent to ai-server in `hello` message
@@ -195,9 +195,9 @@ Each robot has a profile defined in SD `config.json`:
 
 ### Testing
 - [ ] Port `test_agent_binding.py` header builders as TS test against ai-server
-- [ ] Verify: OpenClaw backend → correct agent (rosie says "rosie")
-- [ ] Verify: Hermes backend → correct agent (venus says "venus")
-- [ ] Verify: Profile binding (robot A → Rosie, robot B → Venus) on same ai-server
+- [ ] Verify: OpenClaw backend → correct agent (agent-a says "agent-a")
+- [ ] Verify: Hermes backend → correct agent (agent-b says "agent-b")
+- [ ] Verify: Profile binding (robot A → Agent A, robot B → Agent B) on same ai-server
 - [ ] Verify: Auth rejection (401 on missing/invalid key) for both backends
 
 ---
@@ -237,8 +237,8 @@ Each robot has a profile defined in SD `config.json`:
 1. Create `OpenClawClient` in ai-server
 2. Backend selection via `STACKCHAN_BACKEND` env
 3. Keep Hermes STT/TTS pipeline
-4. Test with one robot → Rosie/OpenClaw
-5. Test regression → Venus/Hermes
+4. Test with one robot → Agent A/OpenClaw
+5. Test regression → Agent B/Hermes
 6. No firmware changes needed
 
 ### v2 (Per-Device Profile Binding)

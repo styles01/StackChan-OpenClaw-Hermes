@@ -21,7 +21,7 @@ Port the StackChan robot layer (servos, face, camera, sensors) as command handle
 
 ## Consequences
 - We reuse proven hardware drivers instead of writing from scratch
-- Servo/face/camera become Gateway-controllable — Rosie can move the head, show expressions, take photos
+- Servo/face/camera become Gateway-controllable — Agent A can move the head, show expressions, take photos
 - Need to resolve UART1 conflict (StackChan uses UART1 for servos — check if esp-openclaw-node needs it)
 - Need to map esp-openclaw-node talk states (idle/listening/speaking) to StackChan face emotions
 - Build target is ESP-IDF v5.5.4+ (both repos use compatible versions)

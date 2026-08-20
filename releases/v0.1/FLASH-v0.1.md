@@ -7,7 +7,7 @@ Firmware for M5Stack CoreS3 that turns Stack-chan into a voice agent client. Con
 **Version:** 0.1 (Aug 19, 2026)
 **Hardware:** M5Stack CoreS3 (ESP32-S3, 16MB flash)
 **Firmware base:** Official Stack-chan v1.4.3 (ESP-IDF v5.5.4)
-**Custom wake word:** "Hey Rosie" (WakeNet9)
+**Custom wake word:** "Hey Agent A" (WakeNet9)
 
 ## Flashing
 
@@ -20,13 +20,13 @@ export IDF_PATH=/path/to/esp-idf
 
 cd firmware
 idf.py set-target esp32s3
-idf.py -p /dev/cu.usbmodem211301 flash
+idf.py -p /dev/cu.usbmodemXXXX flash
 ```
 
 ### Option B: esptool (no ESP-IDF needed)
 
 ```bash
-esptool.py --chip esp32s3 -p /dev/cu.usbmodem211301 -b 460800 \
+esptool.py --chip esp32s3 -p /dev/cu.usbmodemXXXX -b 460800 \
   --before=default_reset --after=hard_reset \
   write_flash --flash_mode dio --flash_size 16MB --flash_freq 80m \
   0x0     bootloader.bin \
@@ -47,7 +47,7 @@ esptool.py --chip esp32s3 -p /dev/cu.usbmodem211301 -b 460800 \
 
 ## Wake Word
 
-Custom "Hey Rosie" WakeNet9 model is flashed separately to the model partition at 0xE00000 using `tools/wake_word_flasher.py`. The stock "Hi Stack Chan" wake word is disabled in this build.
+Custom "Hey Agent A" WakeNet9 model is flashed separately to the model partition at 0xE00000 using `tools/wake_word_flasher.py`. The stock "Hi Stack Chan" wake word is disabled in this build.
 
 ## ai-server Setup
 
@@ -66,7 +66,7 @@ The device connects to `ws://<server-hostname>.local:8765/ws` via mDNS.
 If something goes wrong, flash the original M5Stack UIFlow2 firmware:
 
 ```bash
-esptool.py --chip esp32s3 -p /dev/cu.usbmodem211301 -b 460800 \
+esptool.py --chip esp32s3 -p /dev/cu.usbmodemXXXX -b 460800 \
   write_flash --flash_mode dio --flash_size 16MB --flash_freq 80m \
   0x0 cores3_factory_uiflow2_v2.5.1.bin
 ```

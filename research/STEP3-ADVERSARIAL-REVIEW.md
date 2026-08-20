@@ -40,7 +40,7 @@ The brief's centerpiece is **profile binding so each physical robot knows which 
 **Both backends exist in the source, but the plan wires up only OpenClaw end-to-end.**
 
 - OpenClaw: ai-server `openclaw.ts` (68/68 tests, 9 OpenClaw tests passing per STEP1) + firmware WS bridge → **credible**.
-- Hermes: ai-server `hermes.ts` exists in circlemouth, but STEP1-HERMES-REUSABLE notes Hermes depends on the `hermes-agent` submodule for STT/TTS/LLM. The merge plan's Phase 4 step 20 ("Hermes session key routing already exists") is the **only** Hermes action item, and it's a checkbox, not a build step. There is **no plan to stand up the Hermes sidecar, no test for the Hermes path in this merge, and no verification step for Robot B talking to Venus.** The brief's "validated — Venus on Hermes:8643" claim comes from the *old* test harness (`test_agent_binding.py`), which talks to an HTTP endpoint — **not** through the new ai-server WebSocket bridge. The merge plan does not port or re-run those tests against the new architecture.
+- Hermes: ai-server `hermes.ts` exists in circlemouth, but STEP1-HERMES-REUSABLE notes Hermes depends on the `hermes-agent` submodule for STT/TTS/LLM. The merge plan's Phase 4 step 20 ("Hermes session key routing already exists") is the **only** Hermes action item, and it's a checkbox, not a build step. There is **no plan to stand up the Hermes sidecar, no test for the Hermes path in this merge, and no verification step for Robot B talking to Agent B.** The brief's "validated — Agent B on Hermes:8643" claim comes from the *old* test harness (`test_agent_binding.py`), which talks to an HTTP endpoint — **not** through the new ai-server WebSocket bridge. The merge plan does not port or re-run those tests against the new architecture.
 
 ### 1d. Web config editor and test harness — preserved?
 
@@ -148,7 +148,7 @@ if (explicit_ota_url.empty() && !local_websocket_url.empty()) {
 ### 4b. What's missing that the old BUILD_PLAN.md required
 1. **An explicit "BUILD_PLAN.md v1 swap-backends is superseded" statement** and an archiving decision for `audio_pipeline.py`/MiniSTT/MiniTTS/BodyCommandParser specs.
 2. **The body-command / marker pipeline** (`[expression:happy] [gesture:nod]`) — the old plan defined this as a first-class feature; the merge plan never carries it over. ai-server's `device_control.ts` MCP tools cover *agent→robot* tool calls, but the old plan's *agent-text-marker→avatar/servo/LED* path (and the MCP tools like `stackchan_set_head_angles`) are not wired into the merge's STT→LLM→TTS flow. The agent can't currently make the robot emote during speech.
-3. **Wake word registration** (`register_wakeword`/`delete_wakeword`, "record Rosie") — absent from the merge plan.
+3. **Wake word registration** (`register_wakeword`/`delete_wakeword`, "record Agent A") — absent from the merge plan.
 4. **Error handling UX** (server-down/no-WiFi/STT-empty sad faces) — absent.
 5. **`firmware-extras/` vs. `ai-server/` responsibility split** — the merge plan's file tree puts plaipin's config/endpoints in `firmware-extras/` but never says which parts are device-resident vs. server-resident, so duplication (see 3c) is unresolved.
 

@@ -2,9 +2,9 @@
 
 **Primary reference for porting OpenClaw into Hermes-StackChan as a second backend.**
 
-- Repo: `/Volumes/1TBSSDClawd/stackchan-node/repos/working-repos/Hermes-StackChan/`
+- Repo: `<repo-root>/stackchan-node/repos/working-repos/Hermes-StackChan/`
 - Upstream: `https://github.com/circlemouth/Hermes-StackChan.git` (fork of M5Stack's StackChan + xiaozhi-esp32)
-- Official StackChan reference: `/Volumes/1TBSSDClawd/stackchan-node/repos/StackChan/`
+- Official StackChan reference: `<repo-root>/stackchan-node/repos/StackChan/`
 - Date: 2026-08-18
 
 ---
@@ -447,8 +447,8 @@ The cleanest approach — **zero firmware changes required**:
 OPENCLAW_CONNECT_MODE=cli            # cli | gateway_ws | disabled
 OPENCLAW_COMMAND=openclaw            # or full path
 OPENCLAW_GATEWAY_URL=http://127.0.0.1:18789  # gateway port if used
-OPENCLAW_WORKSPACE=/Users/clawdio/openclaw-workspaces/dex
-OPENCLAW_SUBAGENT_ID=dex             # or rosie/dex as needed
+OPENCLAW_WORKSPACE=/Users/<your-host>/openclaw-workspaces/dex
+OPENCLAW_SUBAGENT_ID=dex             # or agent-a/dex as needed
 ```
 
 ### 4.7 `package.json` / `.env.example` highlights
@@ -582,7 +582,7 @@ The firmware talks only to `ws://<ai-server>:8765/ws`. Backend choice is entirel
 OPENCLAW_CONNECT_MODE=cli            # disabled | cli | gateway_ws
 OPENCLAW_COMMAND=openclaw
 OPENCLAW_GATEWAY_URL=http://127.0.0.1:18789
-OPENCLAW_WORKSPACE=/Users/clawdio/openclaw-workspaces/dex
+OPENCLAW_WORKSPACE=/Users/<your-host>/openclaw-workspaces/dex
 OPENCLAW_AGENT=dex
 
 # Optional subagent tool (mirror of stackchan_ask_hermes_subagent)

@@ -103,9 +103,9 @@ As Agent ALPHA identified, streaming requires:
 ## Phase 4: Agent Configuration — claimed 1 day → REALISTIC 1-2 days
 
 ### What's involved:
-- Configure Rosie as the node agent on OpenClaw Gateway: 1-2 hours
+- Configure Agent A as the node agent on OpenClaw Gateway: 1-2 hours
 - System prompt for robot interaction (include body command format, personality, tool list): 2-3 hours
-- Wire up 6+ tools (printer, fridge, memory, Telegram, time, household status): 2-3 hours (IF tools already exist — they do for Rosie)
+- Wire up 6+ tools (printer, fridge, memory, Telegram, time, household status): 2-3 hours (IF tools already exist — they do for Agent A)
 - Map body commands (emotion → expression, servo commands, LED states, gestures): 2-3 hours
 - Test end-to-end: 1-2 hours
 
@@ -145,9 +145,9 @@ As Agent ALPHA identified, streaming requires:
 
 ---
 
-## Is rosie-node worth salvaging?
+## Is agent-node worth salvaging?
 
-**No.** The rosie-node ESP-IDF code was built for a completely different architecture (room-node SDK, WebRTC, LVGL). None of it transfers to the plaipin fork approach. The only potentially useful artifact is the partition table (`my_cores3_16MB.csv` equivalent) — but plaipin already has one (`my_cores3_16MB.csv`). 
+**No.** The agent-node ESP-IDF code was built for a completely different architecture (room-node SDK, WebRTC, LVGL). None of it transfers to the plaipin fork approach. The only potentially useful artifact is the partition table (`my_cores3_16MB.csv` equivalent) — but plaipin already has one (`my_cores3_16MB.csv`). 
 
 **Throwaway confirmed.**
 

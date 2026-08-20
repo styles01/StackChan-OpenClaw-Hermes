@@ -324,7 +324,7 @@ class Session {
         this.ws = ws;
         // Per-device backend selection: read binding from WS handshake (Device-Id header)
         // Falls back to devices.json default, then to env var for backwards compat
-        const binding = deps.deviceBinding ?? { backend: (process.env.STACKCHAN_BACKEND ?? 'hermes'), agent_id: process.env.STACKCHAN_AGENT_ID ?? 'rosie' };
+        const binding = deps.deviceBinding ?? { backend: (process.env.STACKCHAN_BACKEND ?? 'hermes'), agent_id: process.env.STACKCHAN_AGENT_ID ?? 'your-agent' };
         const deviceId = deps.deviceId ?? 'unknown';
         this.hermes = deps.hermes ?? (binding.backend === 'openclaw' ? new openclaw_js_1.OpenClawClient({ agentId: binding.agent_id, deviceId }) : new hermes_js_1.HermesClient());
         this.decodeOpusFramesFn = deps.decodeOpusFrames ?? audio_js_1.decodeOpusFrames;

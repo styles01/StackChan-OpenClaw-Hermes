@@ -1,4 +1,4 @@
-// CoreS3 touch/input driver for Rosie Node
+// CoreS3 touch/input driver for Agent A Node
 // FT6336 capacitive touch + BOOT button
 // Adapted from StackChan firmware touch handling
 

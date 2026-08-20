@@ -34,9 +34,9 @@ function loadConfig(): DeviceConfig {
         const raw = readFileSync(configPath, 'utf-8')
         cachedConfig = JSON.parse(raw) as DeviceConfig
     } catch {
-        // Fallback: default to OpenClaw + rosie
+        // Fallback: default to OpenClaw + your-agent
         cachedConfig = {
-            default: { backend: 'openclaw' as Backend, agent_id: 'rosie' },
+            default: { backend: 'openclaw' as Backend, agent_id: 'your-agent' },
             devices: {}
         }
     }

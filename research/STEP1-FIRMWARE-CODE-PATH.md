@@ -1,7 +1,7 @@
 # STEP 1 — StackChan Firmware: LLM Backend Code Path
 
 **Date:** 2026-08-19
-**Repo:** `/Volumes/1TBSSDClawd/stackchan-node/repos/StackChan` (GitHub m5stack/StackChan)
+**Repo:** `<repo-root>/stackchan-node/repos/StackChan` (GitHub m5stack/StackChan)
 **Goal:** Map exactly where the LLM backend connects so we can swap it for an OpenClaw/Hermes agent adapter with MINIMAL changes — keeping STT/TTS/avatar/UI intact.
 
 ---

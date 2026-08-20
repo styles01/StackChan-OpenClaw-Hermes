@@ -7,11 +7,11 @@
 **Key insight:** Sessions are ephemeral (reset at 4am for dreaming/compaction). The **channel** is the stable identity. Stack-chan needs to be a first-class channel — like telegram, discord, whatsapp — NOT just an HTTP client with a session key.
 
 ## What We Proved
-1. ✅ `model: openclaw/rosie` → Rosie responds with full workspace access (read + write)
-2. ✅ `user: "stackchan:device-001"` → persistent session bound to Rosie (auto-scoped to `agent:rosie:openai-user:stackchan:device-001`)
-3. ❌ `x-openclaw-session-key: stackchan:device-002` → routes to Clawdio (default agent), NOT Rosie
-4. ✅ Agent-prefixed session key `agent:rosie:stackchan:device-002` → routes to Rosie correctly
-5. ✅ Stack-chan can write files to Rosie's workspace through the Gateway
+1. ✅ `model: openclaw/agent-a` → Agent A responds with full workspace access (read + write)
+2. ✅ `user: "stackchan:device-001"` → persistent session bound to Agent A (auto-scoped to `agent:agent-a:openai-user:stackchan:device-001`)
+3. ❌ `x-openclaw-session-key: stackchan:device-002` → routes to <your-host> (default agent), NOT Agent A
+4. ✅ Agent-prefixed session key `agent:agent-a:stackchan:device-002` → routes to Agent A correctly
+5. ✅ Stack-chan can write files to Agent A's workspace through the Gateway
 
 ## What We Haven't Validated
 - **Channel surface**: Is Stack-chan recognized as a channel in the Gateway? (No.)
@@ -27,13 +27,13 @@
 
 ### 2. Agent Binding — COMPLETE
 - The `bindings` array in Gateway config routes messages to agents:
-  `{ agentId: "rosie", match: { channel: "telegram", accountId: "rosie" } }`
+  `{ agentId: "agent-a", match: { channel: "telegram", accountId: "agent-a" } }`
 - Stack-chan needs a binding entry, not just a session key
 - File: `research/hermes-and-agent-binding.md`
 
 ### 3. HTTP Endpoint Session Behavior — COMPLETE
-- Root cause: bare session keys get re-scoped to default agent (Clawdio)
-- `user` field auto-scopes to `agent:rosie:openai-user:<value>` — Rosie-bound + persistent
+- Root cause: bare session keys get re-scoped to default agent (<your-host>)
+- `user` field auto-scopes to `agent:agent-a:openai-user:<value>` — Agent A-bound + persistent
 - Agent-prefixed session keys also work
 - File: `research/http-endpoint-session-behavior.md`
 - **BUT**: sessions reset at 4am. `user` field sessions are still sessions — they'll reset too.
@@ -46,7 +46,7 @@ James is saying: **channel key, not session key.** The channel is the stable ide
 
 Stack-chan needs:
 1. A **channel identity** in the Gateway (like `stackchan`)
-2. A **binding** that routes `stackchan` channel → `rosie` agent
+2. A **binding** that routes `stackchan` channel → `agent-a` agent
 3. Sessions that get created/reset under the channel, surviving 4am resets
 4. The firmware sends something that identifies its channel, not just a session
 

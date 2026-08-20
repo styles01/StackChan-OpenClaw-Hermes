@@ -6,7 +6,7 @@ We have bricked multiple devices before. BEFORE flashing any firmware to the Sta
 2. `esptool read_flash 0 0x1000000 backup_stackchan_stock.bin` (full 16MB dump)
 3. Save partition table: `esptool read_flash 0x8000 0x1000 backup_partition_table.bin`
 4. Verify backup file is exactly 16MB
-5. Store backups on SSD: `/Volumes/1TBSSDClawd/stackchan-node/backups/`
+5. Store backups on SSD: `<repo-root>/stackchan-node/backups/`
 6. ONLY then flash our firmware
 
 If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` restores brick-for-brick.
@@ -22,10 +22,10 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [ ] Commit and push updated docs
 
 ## Phase 1: Fork & Flash Stock (1 day) — ✅ DONE
-- [x] Plug in Stack-chan, detect serial port (`/dev/cu.usbmodem211301`)
+- [x] Plug in Stack-chan, detect serial port (`/dev/cu.usbmodemXXXX`)
 - [x] Full 16MB flash backup of stock firmware → `backups/cores3_factory_uiflow2_v2.5.1.bin`
 - [x] Save partition table backup
-- [x] Store on SSD: `/Volumes/1TBSSDClawd/stackchan-node/backups/`
+- [x] Store on SSD: `<repo-root>/stackchan-node/backups/`
 - [x] Official StackChan v1.4.3 firmware cloned and copied to `firmware/` (231 files)
 
 ## Phase 2: Three-Repo Merge — ✅ DONE
@@ -43,14 +43,14 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [x] httpd stack size fixed (16384)
 - [x] POST handler crash fixed (calloc + stack bump)
 - [x] mDNS confirmed working (`CONFIG_LWIP_DNS_SUPPORT_MDNS_QUERIES=y`)
-- [x] Config saved with `clawdio-mini.local` hostname (bare, no http://)
+- [x] Config saved with `<your-host>.local` hostname (bare, no http://)
 
 ## Phase 4: Device Connected to ai-server — ✅ DONE
 - [x] POST /config writes `ws://<host>:8765/ws` into `"websocket"` NVS namespace
 - [x] Auto-builds URL from config host (port 8765, path /ws)
 - [x] Custom `websocket_url` field overrides auto-built URL
-- [x] Device connects to `ws://clawdio-mini.local:8765/ws` via mDNS
-- [x] ai-server accepts WS, reads Device-Id, routes to OpenClaw/rosie
+- [x] Device connects to `ws://<your-host>.local:8765/ws` via mDNS
+- [x] ai-server accepts WS, reads Device-Id, routes to OpenClaw/agent-a
 - [x] Audio pipeline active (VAD → STT → LLM → TTS → Opus → device)
 - [x] English voice (en-GB-LibbyNeural), English STT, English fast-acks
 - [x] OpenClaw auth (Bearer token) working
@@ -148,30 +148,30 @@ If anything goes wrong: `esptool write_flash 0x0 backup_stackchan_stock.bin` res
 - [ ] Flash to Stack-chan
 - [ ] Verify lip sync still works (`robot->tts->getLevel()` returns audio level)
 - [ ] Verify triggers still work (Button A, screen touch, wake word — unchanged)
-- [ ] **MILESTONE: Press button → speak → Rosie responds through robot speaker + body moves**
+- [ ] **MILESTONE: Press button → speak → Agent A responds through robot speaker + body moves**
 
 ## Phase 4: Agent Configuration (1 day)
-- [ ] Configure "rosie-robot" agent session on OpenClaw Gateway
+- [ ] Configure "agent-a-robot" agent session on OpenClaw Gateway
 - [ ] Write system prompt with:
-  - [ ] Rosie's personality (warm, funny, household ops director)
+  - [ ] Agent A's personality (warm, funny, household ops director)
   - [ ] Body command format: `[expression:happy] [gesture:nod] [led:blue]`
   - [ ] Instruction to keep responses short (<200 chars, ~20 seconds of speech)
   - [ ] Instruction to use body commands naturally (express emotion, look around)
   - [ ] Tool availability (household, printer, fridge, memory, Telegram)
 - [ ] Wire up tools:
-  - [ ] rosie_status (household summary)
-  - [ ] rosie_printer_status (3D printer)
-  - [ ] rosie_fridge_update (fridge dashboard)
-  - [ ] rosie_memory (memory search)
-  - [ ] rosie_say (Telegram voice notes)
-  - [ ] rosie_time
+  - [ ] agent-a_status (household summary)
+  - [ ] agent-a_printer_status (3D printer)
+  - [ ] agent-a_fridge_update (fridge dashboard)
+  - [ ] agent-a_memory (memory search)
+  - [ ] agent-a_say (Telegram voice notes)
+  - [ ] agent-a_time
 - [ ] Test: "What's the printer status?" → robot looks, thinks, speaks + body commands
-- [ ] Optional: record "Rosie" as custom wake word via plaipin's registration flow
+- [ ] Optional: record "Agent A" as custom wake word via plaipin's registration flow
 - [ ] **MILESTONE: Robot does useful agentic work through the pipeline**
 
 ## Phase 5: Polish & Testing (1-2 days)
-- [ ] End-to-end test: button → speak → Rosie responds + body commands execute
-- [ ] End-to-end test: wake word → speak → Rosie responds
+- [ ] End-to-end test: button → speak → Agent A responds + body commands execute
+- [ ] End-to-end test: wake word → speak → Agent A responds
 - [ ] Calibrate audio levels (mic gain, speaker volume)
 - [ ] Test all body commands (expression changes, servo gestures, LED states)
 - [ ] Error handling:

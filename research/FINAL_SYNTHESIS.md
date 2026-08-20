@@ -88,7 +88,7 @@ The "4am reset" is NOT a cron job. It's a **lazy freshness check** evaluated on 
 **What rotates:** sessionId (new UUID), transcript (archived), token counters (reset to 0), compaction count (reset).
 **What survives:** sessionKey, channel binding (route, deliveryContext, lastChannel, lastTo, lastAccountId, origin), label, displayName, model override, thinking/verbose levels, exec settings.
 
-**Live proof:** Rosie's Telegram session key has survived **21 sessionId rotations** with the Telegram binding fully intact.
+**Live proof:** Agent A's Telegram session key has survived **21 sessionId rotations** with the Telegram binding fully intact.
 
 **HTTP sessions are treated identically.** A `user`-derived key or explicit `x-openclaw-session-key` persists across the daily reset the same way.
 
@@ -125,7 +125,7 @@ It does NOT affect:
 
 **Critical finding:** The HTTP endpoint **never consults bindings**. `resolveConfiguredBindingRoute` is only called from channel-plugin route resolvers (e.g. `resolveTelegramConversationRoute`). Zero binding references in the HTTP files.
 
-This means: Adding `{ "agentId": "rosie", "match": { "channel": "stackchan" } }` to the Gateway config will NOT route HTTP endpoint requests to Rosie. The `model` field is the ONLY agent selector for the HTTP endpoint.
+This means: Adding `{ "agentId": "agent-a", "match": { "channel": "stackchan" } }` to the Gateway config will NOT route HTTP endpoint requests to Agent A. The `model` field is the ONLY agent selector for the HTTP endpoint.
 
 **For v1:** Agent selection is via `model: openclaw/<agent_id>` only. The binding config is irrelevant for HTTP endpoint requests.
 
@@ -135,11 +135,11 @@ This means: Adding `{ "agentId": "rosie", "match": { "channel": "stackchan" } }`
 **Source:** `deep-read-device-patterns.md`
 
 The Gateway config already includes robot commands in `nodes.allowCommands`:
-- `rosie.status`, `rosie.servo.look`, `rosie.servo.home`, `rosie.vision.capture`
+- `agent-a.status`, `agent-a.servo.look`, `agent-a.servo.home`, `agent-a.vision.capture`
 - `face.set`, `face.gesture`, `talk.start`, `talk.stop`
 - `canvas.*`, `device.info`, `device.status`, `wifi.status`
 
-These are for the Node pattern (Clawdio-Mini, iPhone) — physical devices that bind via WebSocket with device pairing. Too heavy for ESP32 but shows the command surface is already anticipated.
+These are for the Node pattern (<your-host>, iPhone) — physical devices that bind via WebSocket with device pairing. Too heavy for ESP32 but shows the command surface is already anticipated.
 
 ### 7. robot-bridge is the most mature reference
 **Source:** `deep-read-device-patterns.md`

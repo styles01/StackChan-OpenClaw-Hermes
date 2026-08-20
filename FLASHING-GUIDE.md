@@ -5,7 +5,7 @@
 ## Device Info
 
 - **Board:** M5Stack CoreS3 (ESP32-S3, 16MB flash, ILI9342C display)
-- **Serial port (macOS):** `/dev/cu.usbmodem211301` (native USB-OTG, not CH340)
+- **Serial port (macOS):** `/dev/cu.usbmodemXXXX` (native USB-OTG, not CH340)
 - **Single USB port:** CoreS3 uses native USB-OTG — no UART/CH340 second port
 - **Flash type:** Quad (QIO, 4 data lines) — set in eFuse
 - **Flash size:** 16MB (0x1000000)
@@ -19,11 +19,11 @@ The "stock backup" at `backups/backup_stackchan_stock.bin` was 16MB and had vali
 **Before trusting any backup:**
 ```bash
 # Check bootloader magic at 0x0
-esptool.py --port /dev/cu.usbmodem211301 read_flash 0x0 1 /tmp/boot_magic.bin
+esptool.py --port /dev/cu.usbmodemXXXX read_flash 0x0 1 /tmp/boot_magic.bin
 xxd /tmp/boot_magic.bin  # Must be: e9
 
 # Check app magic at 0x10000
-esptool.py --port /dev/cu.usbmodem211301 read_flash 0x10000 1 /tmp/app_magic.bin
+esptool.py --port /dev/cu.usbmodemXXXX read_flash 0x10000 1 /tmp/app_magic.bin
 xxd /tmp/app_magic.bin  # Must be: e9 — if it's ff, the partition is EMPTY
 ```
 
@@ -43,7 +43,7 @@ The bootloader validates each copy with a CRC check. **Any entry whose CRC doesn
 
 **To select app0 (ota_0 at 0x10000):** Erase the otadata partition entirely (set to 0xFF). The bootloader will fall back to ota_0 when otadata is invalid/empty:
 ```bash
-esptool.py --port /dev/cu.usbmodem211301 --chip esp32s3 erase_region 0xe000 0x2000
+esptool.py --port /dev/cu.usbmodemXXXX --chip esp32s3 erase_region 0xe000 0x2000
 ```
 
 ### 3. Partition table subtypes — use MODERN ESP-IDF values
@@ -112,8 +112,8 @@ The device is in **ROM download mode** — it never found a valid app to boot. C
 The M5Stack factory firmware (UIFlow2.0) is downloadable directly from M5Stack's CDN — no M5Burner GUI needed.
 
 ```bash
-ESPTOOL="/Users/clawdio/.platformio/packages/tool-esptoolpy/esptool.py"
-PORT="/dev/cu.usbmodem211301"
+ESPTOOL="/Users/<your-host>/.platformio/packages/tool-esptoolpy/esptool.py"
+PORT="/dev/cu.usbmodemXXXX"
 
 # 1. Download factory firmware (16MB, UIFlow2.0 v2.5.1)
 curl -L -o /tmp/cores3_factory.bin \
@@ -145,18 +145,18 @@ python3 "$ESPTOOL" --port "$PORT" --chip esp32s3 run
 ### Option B: Flash custom firmware (PlatformIO)
 
 ```bash
-cd /Volumes/1TBSSDClawd/stackchan-node/repos/plaipin-openclaw-stackchan/firmware
-PIO="/Users/clawdio/.platformio/penv/bin/pio"
+cd <repo-root>/stackchan-node/repos/plaipin-openclaw-stackchan/firmware
+PIO="/Users/<your-host>/.platformio/penv/bin/pio"
 
 # Build
 $PIO run -e m5stack-cores3
 
 # Flash (handles bootloader + partitions + app)
-$PIO run -e m5stack-cores3 -t upload --upload-port /dev/cu.usbmodem211301
+$PIO run -e m5stack-cores3 -t upload --upload-port /dev/cu.usbmodemXXXX
 
 # Or flash manually with esptool (full control)
-ESPTOOL="/Users/clawdio/.platformio/packages/tool-esptoolpy/esptool.py"
-PORT="/dev/cu.usbmodem211301"
+ESPTOOL="/Users/<your-host>/.platformio/packages/tool-esptoolpy/esptool.py"
+PORT="/dev/cu.usbmodemXXXX"
 
 python3 "$ESPTOOL" --port "$PORT" --baud 921600 --chip esp32s3 \
   --before default_reset write_flash \
@@ -174,8 +174,8 @@ python3 "$ESPTOOL" --port "$PORT" --chip esp32s3 erase_region 0xe000 0x2000
 ### Option C: Full erase + reflash (nuclear option)
 
 ```bash
-ESPTOOL="/Users/clawdio/.platformio/packages/tool-esptoolpy/esptool.py"
-PORT="/dev/cu.usbmodem211301"
+ESPTOOL="/Users/<your-host>/.platformio/packages/tool-esptoolpy/esptool.py"
+PORT="/dev/cu.usbmodemXXXX"
 
 # Full erase
 python3 "$ESPTOOL" --port "$PORT" --chip esp32s3 erase_flash
@@ -200,7 +200,7 @@ python3 "$ESPTOOL" --port "$PORT" --chip esp32s3 run
 ```bash
 python3 -c "
 import serial, time, sys
-ser = serial.Serial('/dev/cu.usbmodem211301', 115200, timeout=2)
+ser = serial.Serial('/dev/cu.usbmodemXXXX', 115200, timeout=2)
 start = time.time()
 while time.time() - start < 30:
     data = ser.read(4096)
@@ -216,8 +216,8 @@ print('=== END ===')
 ## How to Back Up Device Flash (PROPERLY)
 
 ```bash
-ESPTOOL="/Users/clawdio/.platformio/packages/tool-esptoolpy/esptool.py"
-PORT="/dev/cu.usbmodem211301"
+ESPTOOL="/Users/<your-host>/.platformio/packages/tool-esptoolpy/esptool.py"
+PORT="/dev/cu.usbmodemXXXX"
 
 # Full 16MB dump
 python3 "$ESPTOOL" --port "$PORT" --baud 460800 read_flash 0x0 0x1000000 /tmp/backup.bin
@@ -238,22 +238,22 @@ with open('/tmp/backup.bin', 'rb') as f:
 
 ```bash
 # Connect / identify chip
-esptool.py --port /dev/cu.usbmodem211301 --chip esp32s3 flash_id
+esptool.py --port /dev/cu.usbmodemXXXX --chip esp32s3 flash_id
 
 # Get security info (flash encryption / secure boot status)
-esptool.py --port /dev/cu.usbmodem211301 --chip esp32s3 get_security_info
+esptool.py --port /dev/cu.usbmodemXXXX --chip esp32s3 get_security_info
 
 # Read flash at specific offset
-esptool.py --port /dev/cu.usbmodem211301 read_flash <offset> <length> /tmp/out.bin
+esptool.py --port /dev/cu.usbmodemXXXX read_flash <offset> <length> /tmp/out.bin
 
 # Erase specific region
-esptool.py --port /dev/cu.usbmodem211301 --chip esp32s3 erase_region <offset> <length>
+esptool.py --port /dev/cu.usbmodemXXXX --chip esp32s3 erase_region <offset> <length>
 
 # Full chip erase
-esptool.py --port /dev/cu.usbmodem211301 --chip esp32s3 erase_flash
+esptool.py --port /dev/cu.usbmodemXXXX --chip esp32s3 erase_flash
 
 # Run (hard reset)
-esptool.py --port /dev/cu.usbmodem211301 --chip esp32s3 run
+esptool.py --port /dev/cu.usbmodemXXXX --chip esp32s3 run
 ```
 
 ## M5Burner Factory Firmware URLs
