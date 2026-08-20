@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## v0.1 — 2026-08-19 — First Release
+
+### What's Working
+- **Full voice conversation loop** — device connects to ai-server via WebSocket, streams Opus audio, gets STT → LLM → TTS back
+- **Custom wake word** — "Hey Rosie" WakeNet9 model trained on DGX Spark, flashed to model partition
+- **Stock wake word disabled** — compiled-in "Hi Stack Chan" removed from sdkconfig
+- **ai-server bridge** — TypeScript WebSocket server (port 8765), connects device to OpenClaw agent (Rosie)
+- **English voice** — TTS (`en-GB-LibbyNeural`), STT (faster-whisper, English), English fast-acks
+- **Fast-ack** — "Yes, darling?" on wake word detection
+- **VAD + cooldown** — local VAD for speech detection, 3s post-TTS cooldown to prevent self-triggering
+- **Volume control** — correct MCP tool (`self.audio_speaker.set_volume`), boot volume boost on connect
+- **Full sentence responses** — streaming segment alignment bug fixed
+- **Configurable via .env** — fast-ack text, cooldown, segment limits, VAD params, boot volume
+
+### Known Issues (v0.1)
+- Volume may need manual tuning per device
+- Wake word model loads from assets partition on some boots (overrides model partition)
+- POST /config endpoint untested with larger payloads
+- PlatformIO/Arduino build path still broken (use ESP-IDF)
+- ai-server is ~4000 lines of TypeScript (FastAPI rewrite considered for v2)
+
+### Firmware Binaries
+- `stack-chan.bin` — 3.7MB main app (0x20000)
+- `bootloader.bin` — 24KB bootloader (0x0)
+- `partition-table.bin` — 3KB partition table (0x8000)
+- `ota_data_initial.bin` — 8KB OTA data (0xd000)
+- Flash with ESP-IDF: `idf.py -p /dev/cu.usbmodem211301 flash`
+- Or esptool: see FLASHING-GUIDE.md
+
+---
+
 ## 2026-08-19 — Three-Repo Merge (Official + Circlemouth + Plaipin)
 
 ### What Changed

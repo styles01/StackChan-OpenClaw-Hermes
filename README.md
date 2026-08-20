@@ -4,6 +4,7 @@
 
 **Give a little robot a real AI agent — with persistent identity, workspace access, session control, and profile binding across multiple backends.**
 
+[![Version: 0.1](https://img.shields.io/badge/version-0.1-blue.svg)]()
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform: ESP32](https://img.shields.io/badge/platform-ESP32-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
 [![Agent: OpenClaw](https://img.shields.io/badge/agent-OpenClaw-purple.svg)](https://docs.openclaw.ai)
@@ -333,7 +334,7 @@ Deep research into OpenClaw's channel plugin architecture, session lifecycle, an
 ### Current plan
 - `research/CURRENT_PLAN.md` — living plan & findings document
 
-## Status
+## Status — v0.1 (Aug 19, 2026)
 
 ### ✅ Done
 - Firmware extensions (commit `ff2df3a`, pushed to fork)
@@ -356,6 +357,11 @@ Deep research into OpenClaw's channel plugin architecture, session lifecycle, an
 - **OpenClaw auth** — Bearer token working, HTTP 200
 - **Firmware crash fixed** — WiFi power save + TCP reconnect cleanup, 61KB free SRAM (up from 29KB)
 - **Device talks and survives** — full conversation cycles: listening → speaking → listening (no crash!)
+- **Custom wake word** — "Hey Rosie" WakeNet9 model trained on DGX Spark, flashed to model partition
+- **Compiled-in wake word disabled** — firmware uses our custom model, not the stock "Hi Stack Chan"
+- **Volume control fixed** — correct MCP tool name (`self.audio_speaker.set_volume`), boot volume boost on connect
+- **Response truncation fixed** — streaming segment alignment bug found and fixed, full sentences now speak
+- **Configurable ai-server** — fast-ack text, cooldown, segment limits, VAD params, all via `.env`
 
 ### 📋 TODO — Firmware (v1)
 - **C1:** Add session/channel headers to `OpenClawClient::http_post_json()`

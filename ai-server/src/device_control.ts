@@ -38,7 +38,7 @@ export type StackChanBridgeStatus = {
 
 const TOOL_MAP: Record<StackChanToolName, string> = {
     stackchan_get_status: 'self.robot.get_status',
-    stackchan_set_speaker_volume: 'self.robot.set_speaker_volume',
+    stackchan_set_speaker_volume: 'self.audio_speaker.set_volume',
     stackchan_play_test_tone: 'self.audio.play_test_tone',
     stackchan_get_head_angles: 'self.robot.get_head_angles',
     stackchan_set_head_angles: 'self.robot.set_head_angles',

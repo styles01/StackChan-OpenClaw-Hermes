@@ -212,6 +212,38 @@ function stableSpeechSegmentsFromPartialReply(
     return segments.slice(0, -1)
 }
 
+/**
+ * After streaming TTS, determine which final segments still need to be spoken.
+ * We can't just slice by count because streaming stable segments may split at
+ * different boundaries than the final segments. Instead, we track the actual text
+ * that was spoken and re-join/re-split the remainder.
+ */
+function computeRemainingSegments(fullReply: string, spokenText: string, finalSegments: string[]): string[] {
+    const spokenNorm = normalizeSpeechText(spokenText).trim()
+    if (!spokenNorm) return finalSegments
+    // Walk through final segments and accumulate until we've covered all spoken text
+    let acc = ''
+    let skipIdx = 0
+    for (let i = 0; i < finalSegments.length; i++) {
+        acc += finalSegments[i]
+        const accNorm = normalizeSpeechText(acc).trim()
+        // If we've matched or exceeded the spoken text, skip through this segment
+        if (accNorm === spokenNorm) {
+            skipIdx = i + 1
+            break
+        }
+        if (accNorm.length >= spokenNorm.length && accNorm.startsWith(spokenNorm)) {
+            // Spoken text is a prefix of accumulated segments — partial segment match.
+            // Re-derive the unspoken portion of this segment.
+            const remainder = finalSegments[i].slice(spokenNorm.length - normalizeSpeechText(acc.slice(0, acc.length - finalSegments[i].length)).trim().length)
+            const remaining = [remainder, ...finalSegments.slice(i + 1)].filter(Boolean)
+            return remaining.length > 0 ? remaining : []
+        }
+        skipIdx = i + 1
+    }
+    return finalSegments.slice(skipIdx)
+}
+
 // auto モード: フレームが途切れてから処理開始するまでの無音判定時間 (ms)
 const TURN_CONTROL_CONFIG = readTurnControlConfig()
 const SILENCE_TIMEOUT_MS = TURN_CONTROL_CONFIG.silenceTimeoutMs
@@ -237,6 +269,7 @@ const FAST_ACK_TEXT = (process.env.STACKCHAN_FAST_ACK_TEXT ?? 'はい。').trim(
 const FAST_ACK_TEXTS = readFastAckTexts()
 const STOP_LLM_AFTER_MAX_SPOKEN_SEGMENTS = readEnvBool('STACKCHAN_STOP_LLM_AFTER_MAX_SPOKEN_SEGMENTS', true)
 const MAX_DURATION_STT_RMS_THRESHOLD = readEnvFloat('STACKCHAN_MAX_DURATION_STT_RMS_THRESHOLD', 0.006, 0, 0.2)
+const BOOT_VOLUME = readEnvInt('STACKCHAN_BOOT_VOLUME', 0, 0, 100, process.env)
 const STREAMING_DECODE_FAILURE_LIMIT = readEnvInt('STACKCHAN_STREAMING_DECODE_FAILURE_LIMIT', 3, 1, 20)
 const BARGE_IN_DECODE_FAILURE_LIMIT = readEnvInt('STACKCHAN_BARGE_IN_DECODE_FAILURE_LIMIT', 3, 1, 20)
 const DEFAULT_IGNORED_SHORT_TRANSCRIPTS = new Set([
@@ -790,6 +823,15 @@ export class Session {
                 },
             })
             console.log(`[session ${this.sessionId}] hello, protocol version=${this.version}`)
+            if (BOOT_VOLUME > 0) {
+                void this.callRobotToolInternal('self.audio_speaker.set_volume', {
+                    volume: BOOT_VOLUME,
+                }, { automatic: true, waitForResponse: true }).then(() => {
+                    console.log(`[session ${this.sessionId}] boot volume set to ${BOOT_VOLUME}`)
+                }).catch(err => {
+                    console.warn(`[session ${this.sessionId}] boot volume set failed: ${err instanceof Error ? err.message : String(err)}`)
+                })
+            }
             return
         }
 
@@ -1040,6 +1082,7 @@ export class Session {
         const llmStartMs = nowMs()
         let reply = ''
         let spokenSegments = 0
+        let spokenText = ''
         let playback: TtsPlayback | undefined
 
         try {
@@ -1054,12 +1097,14 @@ export class Session {
                 const stableSegments = stableSpeechSegmentsFromPartialReply(reply, this.speechSegmentationConfig)
                 while (spokenSegments < stableSegments.length && this.state === 'processing') {
                     playback ??= this.startTtsPlayback(ttsLabel)
+                    const segText = stableSegments[spokenSegments]
                     await this.speakSegmentInPlayback(
                         playback,
-                        stableSegments[spokenSegments],
+                        segText,
                         `${ttsLabel}.stream.segment${spokenSegments}`,
                         spokenSegments,
                     )
+                    spokenText += segText
                     spokenSegments += 1
                     if (playback.interrupted) break
                 }
@@ -1090,7 +1135,10 @@ export class Session {
         }
 
         try {
-            const remainingSegments = finalSegments.slice(spokenSegments)
+            // Compare by content, not by index — streaming stable segments may
+            // split differently than the final segments, so slicing by count
+            // can drop text. Re-derive remaining segments from the unspoken tail.
+            const remainingSegments = computeRemainingSegments(reply, spokenText, finalSegments)
             await this.speakSegmentsInPlayback(playback, remainingSegments, ttsLabel, spokenSegments)
         } finally {
             await this.finishTtsPlayback(playback)
@@ -1333,7 +1381,7 @@ export class Session {
                 console.log(`[session ${this.sessionId}] local TTS output unavailable; using M5 speaker`)
                 return
             }
-            await this.callRobotToolInternal('self.robot.set_speaker_volume', {
+            await this.callRobotToolInternal('self.audio_speaker.set_volume', {
                 volume: 0,
                 permanent: false,
             }, { automatic: true, waitForResponse: true })
@@ -1359,7 +1407,7 @@ export class Session {
         if (!playback.m5SpeakerMutedForLocalOutput) return
         playback.m5SpeakerMutedForLocalOutput = false
         try {
-            await this.callRobotToolInternal('self.robot.set_speaker_volume', {
+            await this.callRobotToolInternal('self.audio_speaker.set_volume', {
                 volume: this.localTtsOutputConfig.fallbackM5Volume,
                 permanent: false,
             }, { automatic: true, waitForResponse: true })
