@@ -51,6 +51,72 @@ Profiles are configured via BLE provisioning or the web config editor — no ref
 
 OpenClaw and Hermes have different strengths. OpenClaw gives agents workspace file I/O, channel persistence, and tool use. Hermes gives agents voice-first interaction, MCP tools, and a TUI dashboard. Some robots serve as household assistants (OpenClaw/Agent A), others as research companions (Hermes/Agent B). Profile binding lets one fleet of robots span both worlds.
 
+## Requirements
+
+### Hardware
+
+- **M5Stack CoreS3** — ESP32-S3, 16MB flash, ILI9342C display, dual microphones, speaker
+- USB-C cable (for flashing)
+- WiFi network (2.4 GHz — ESP32 does not support 5 GHz)
+
+### Firmware Toolchain
+
+- **ESP-IDF v5.5.4** (not Arduino/PlatformIO — see [Firmware](#firmware) for why)
+- Python 3.9+
+- `esptool.py` (for flashing without ESP-IDF)
+
+### ai-server (the bridge)
+
+The ai-server is a TypeScript bridge between the ESP32 device and your AI agent backend. You need:
+
+- **Node.js** 20+
+- **npm** — install dependencies: `cd ai-server && npm install`
+- **tsx** — for running TypeScript directly: `npx tsx src/index.ts`
+- Dependencies: `ws` (WebSocket), `opusscript` (Opus codec), `dotenv` (config)
+
+### Agent Backend (choose one or both)
+
+- **OpenClaw** — [OpenClaw Gateway](https://docs.openclaw.ai) running on your network (port 18789 by default). You need an agent ID, bot token, and model name.
+- **Hermes** — [HermesAgent](https://github.com/NousResearch/hermes-agent) running on your network. You need the Hermes Python environment and dashboard URL.
+
+### End-to-End Module List
+
+| Component | What it is | Where | Required? |
+|-----------|-----------|------|----------|
+| **Firmware** | ESP32 firmware (C++, ESP-IDF) | `firmware/` | Yes — runs on the device |
+| **ai-server** | TypeScript WebSocket bridge | `ai-server/` | Yes — connects device to agent |
+| **Web Config Editor** | Browser-based config UI | `test-harness/web-config.html` | Optional — configure device over WiFi |
+| **Wake Word Flasher** | Python tool to flash custom wake word model | `tools/wake_word_flasher.py` | Optional — for custom wake words |
+| **Test Harness** | Python E2E + unit tests | `test-harness/` | Optional — for validation |
+| **Config Editor** | YAML config server (Node.js) | `config-editor/` | Optional — alternative config UI |
+| **OpenClaw Gateway** | AI agent platform | [docs.openclaw.ai](https://docs.openclaw.ai) | One backend required |
+| **HermesAgent** | AI agent platform | [github.com/NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | One backend required |
+
+### Quick Start
+
+```bash
+# 1. Flash the firmware (requires ESP-IDF v5.5.4)
+export IDF_PATH=<your-esp-idf-path>
+. "$IDF_PATH/export.sh"
+cd firmware
+idf.py set-target esp32s3
+python3 ./fetch_repos.py
+idf.py -p /dev/cu.usbmodemXXXX flash
+
+# 2. Start the ai-server
+cd ai-server && npm install
+cp .env.example .env  # edit with your config
+npx tsx src/index.ts
+
+# 3. Configure the robot (browser-based, no reflashing)
+# Open test-harness/web-config.html in a browser
+# Enter the device IP, set your backend + agent config
+
+# 4. Talk to your robot!
+```
+
+---
+
 ## What We Built
 
 ### Firmware Extensions
